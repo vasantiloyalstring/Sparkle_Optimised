@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,6 +27,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
+import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.UiState
@@ -35,7 +37,7 @@ import java.util.*
 @Composable
 fun InvoiceFieldsDialog(
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
+    onConfirm: (InvoiceFields) -> Unit,
     branchList: List<BranchModel>,
     salesmanList: UiState<List<EmployeeList>>
 ) {
@@ -213,7 +215,23 @@ fun InvoiceFieldsDialog(
                     )
                     GradientButtonIcon(
                         text = "Ok",
-                        onClick = onConfirm,
+                        onClick = {
+                            // simple validation optional
+                            if (selectedBranch.isBlank() || date.isBlank()) {
+                                Toast.makeText(context, "Please select Branch & Date", Toast.LENGTH_SHORT).show()
+                                return@GradientButtonIcon
+                            }
+
+                            onConfirm(
+                                InvoiceFields(
+                                    branchName = selectedBranch,
+                                    date = date,
+                                    fine = fine,
+                                    wastage = wastage,
+                                    salesmanName = salesman
+                                )
+                            )
+                        },
                         icon = painterResource(id = R.drawable.check_circle),
                         iconDescription = "OK",
                         modifier = Modifier

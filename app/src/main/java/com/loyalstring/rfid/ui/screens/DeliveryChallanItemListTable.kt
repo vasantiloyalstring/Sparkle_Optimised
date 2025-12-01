@@ -25,10 +25,13 @@ import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 
 @Composable
 fun DeliveryChallanItemListTable(
-    productList: List<ChallanDetails>
+    productList: List<ChallanDetails>,
+    onTotalsChange: (baseTotal: Double, gstAmount: Double, finalTotal: Double) -> Unit = { _, _, _ -> },
+    onItemUpdated: (index: Int, updated: ChallanDetails) -> Unit = { _, _ -> }
 ) {
     val horizontalScroll = rememberScrollState()
     var selectedItem by remember { mutableStateOf<ChallanDetails?>(null) }
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
     var showDialog by remember { mutableStateOf(false) }
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
@@ -85,6 +88,7 @@ fun DeliveryChallanItemListTable(
                             .padding(vertical = 3.dp)
                             .clickable {
                                 selectedItem = item
+                                selectedIndex = index
                                 showDialog = true
                             },
                         verticalAlignment = Alignment.CenterVertically
@@ -157,7 +161,7 @@ fun DeliveryChallanItemListTable(
                 }
             }
 
-            if (showDialog && selectedItem != null) {
+       /*     if (showDialog && selectedItem != null) {
                 DeliveryChallanDialogEditAndDisplay(
                     selectedItem = selectedItem,
                     branchList = branchList,
@@ -168,18 +172,54 @@ fun DeliveryChallanItemListTable(
                         showDialog = false
                     }
                 )
+            }*/
+
+            if (showDialog && selectedItem != null && selectedIndex != null) {
+                DeliveryChallanDialogEditAndDisplay(
+                    selectedItem = selectedItem,
+                    branchList = branchList,
+                    salesmanList = salesmanList,
+                    onDismiss = { showDialog = false },
+                    onSave = { updatedChallan ->
+                        showDialog = false
+                        onItemUpdated(selectedIndex!!, updatedChallan)  // ✅ direct ChallanDetails
+                    }
+                )
+              /*  DeliveryChallanDialogEditAndDisplay(
+                    selectedItem = selectedItem,
+                    branchList = branchList,
+                    salesmanList = salesmanList,
+                    onDismiss = { showDialog = false },
+                    onSave = { updatedItem ->
+                        showDialog = false
+
+                        val old = selectedItem!!
+                        val updatedChallan = old.copy(
+                            GrossWt = updatedItem.grWt.toString(),
+                            NetWt = updatedItem.nWt.toString(),
+                            StoneAmount = updatedItem.stoneAmt.toString(),
+                            ItemAmount = updatedItem.itemAmt.toString(),
+                            // add other mappings as needed
+                        )
+
+                        // ✅ notify parent to update item
+                        onItemUpdated(selectedIndex!!, updatedChallan)
+                    }
+                )*/
             }
+
+
 
             // ✅ Add space below footer
             Spacer(modifier = Modifier.height(5.dp))
 
-            DeliveryChallanSummaryRow(
-                gstPercent = 3.0,
-                totalAmount = 50000.0,
-                onGstCheckedChange = { isChecked ->
-                    println("GST Checkbox changed: $isChecked")
-                }
-            )
+
+                DeliveryChallanSummaryRow(
+                    totalAmount = totalAmt,
+                    onAmountsChange = { gst, final ->
+                        onTotalsChange(totalAmt, gst, final)
+                    }
+                )
         }
     }
 }

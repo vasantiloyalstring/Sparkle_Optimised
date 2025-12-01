@@ -53,10 +53,10 @@ import java.util.*
 fun DeliveryChallanDialogEditAndDisplay(
     selectedItem: ChallanDetails?,
     branchList: List<BranchModel>,
-    salesmanList: UiState<List<EmployeeList>>, // ✅ Added this line
+    salesmanList: UiState<List<EmployeeList>>,
     onDismiss: () -> Unit,
     edit: Int = 0,
-    onSave: (DeliveryChallanItem) -> Unit,
+    onSave: (ChallanDetails) -> Unit,   // ✅ yaha DeliveryChallanItem ke jagah ChallanDetails
     orderViewModel: OrderViewModel = hiltViewModel(),
     singleProductViewModel: SingleProductViewModel = hiltViewModel()
 ) {
@@ -513,9 +513,132 @@ fun DeliveryChallanDialogEditAndDisplay(
                     GradientButtonIcon(
                         text = "Save",
                         onClick = {
-                            // build updated OrderItem (copy existing and replace fields)
-                           /* selectedItem?.let { s ->
-                                val updated = s.copy(
+                            val s = selectedItem
+                            if (s == null) {
+                                Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                                return@GradientButtonIcon
+                            }
+
+                            // 1️⃣ Parse all required numeric values
+                            val gross = grossWT.toDoubleOrNull() ?: 0.0
+                            val stoneW = stoneWt.toDoubleOrNull() ?: 0.0
+                            val diamondW = dimondWt.toDoubleOrNull() ?: 0.0
+                            val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
+                            val stoneAmtVal = stoneAmt.toDoubleOrNull() ?: 0.0
+                            val diamondAmtVal = (s.DiamondSellAmount.toDoubleOrNull()
+                                ?: s.DiamondSellAmount.toDoubleOrNull()
+                                ?: 0.0)
+
+                            val makingPerGramVal = (s.MakingPerGram.toDoubleOrNull()
+                                ?: 0.0)   // ya agar tum input se le rahe ho to makingPerGram state use karo
+                            val makingPercentVal = (s.MakingPercentage.toDoubleOrNull()
+                                ?: 0.0)   // ya makingPercent state
+                            val fixMakingVal = (s.MakingFixedAmt.toDoubleOrNull()
+                                ?: 0.0)   // ya fixMaking state
+
+                            val wastageWtVal = wastage.toDoubleOrNull() ?: 0.0      // Fix Wastage Wt
+                            val finePercentVal = finePercentage.toDoubleOrNull() ?: 0.0
+
+                            // 2️⃣ Net Wt = Gross Wt - Stone Wt - Diamond Wt
+                            val netWtCalc = gross - stoneW - diamondW
+                            val netWtStr = "%.3f".format(netWtCalc.coerceAtLeast(0.0))
+
+                            // 3️⃣ Metal Amt = Net Wt * Rate
+                            val metalAmtVal = netWtCalc * rate
+                            val metalAmtStr = "%.2f".format(metalAmtVal)
+
+                            // 4️⃣ Making by gram = Net Wt * MakingPerGram
+                            val makingByGram = netWtCalc * makingPerGramVal
+
+                            // 5️⃣ Making by % = Metal Amt * (Making %)
+                            val makingByPercent = metalAmtVal * (makingPercentVal / 100.0)
+
+                            // 6️⃣ Fix Wastage = Wastage Wt * Gold Rate
+                            val fixWastageAmt = wastageWtVal * rate
+
+                            // 7️⃣ Total Making = gram + fix making + making% + fix wastage
+                            val totalMakingVal = makingByGram + fixMakingVal + makingByPercent + fixWastageAmt
+                            val makingAmtStr = "%.2f".format(totalMakingVal)
+
+                            // 8️⃣ Fine Wt = Net Wt * Fine %
+                            val fineWtVal = netWtCalc * (finePercentVal / 100.0)
+                            val fineWtStr = "%.3f".format(fineWtVal)
+
+                            // 9️⃣ Item Amt = Stone Amt + Diamond Amt + Metal Amt + Making Amt
+                            val itemAmtVal = stoneAmtVal + diamondAmtVal + metalAmtVal + totalMakingVal
+                            val itemAmtStr = "%.2f".format(itemAmtVal)
+
+                            // UI state bhi update kar de (optional but recommended)
+                            NetWt = netWtStr
+                            finePlusWt = fineWtStr
+                            itemAmt = itemAmtStr
+                            // agar chaho to metalAmt / makingAmt ke state bhi rakho
+
+                            val updated = s.copy(
+                                // 🔹 Basic jewellery fields
+                                GrossWt = grossWT,
+                                NetWt = netWtStr,
+                                TotalWt = totalWt,
+                                PackingWeight = packingWt,
+
+                                // 🔹 Stone / diamond
+                                TotalStoneWeight = stoneWt,
+                                DiamondWeight = dimondWt,
+                                StoneAmount = stoneAmt,
+                                TotalStoneAmount = stoneAmt,
+
+                                // 🔹 Rate / amount
+                                RatePerGram = ratePerGRam,
+                                MetalRate = ratePerGRam,
+                                MetalAmount = metalAmtStr,      // 👉 Metal Amt as per formula
+                                MakingCharg = makingAmtStr,     // 👉 Total Making Amt
+                                HallmarkAmount = hallMarkAmt,
+                                MRP = mrp,
+                                ItemAmount = itemAmtStr,        // 👉 FINAL ITEM AMT
+                                TotalItemAmount = itemAmtStr,
+                                Amount = itemAmtStr,
+                                TotalAmount = itemAmtStr,
+
+                                // 🔹 Purity & size etc.
+                                Purity = purity,
+                                Size = size,
+                                FineWastageWt = fineWtStr,      // Fine Wt
+                                FinePercentage = finePercentage,
+                                DiamondColour = typeOfColors,
+
+                                // 🔹 Description / remark
+                                Description = remark,
+
+                                // 🔹 Making fields back into model (if needed)
+                                MakingPerGram = makingPerGramVal.toString(),
+                                MakingPercentage = makingPercentVal.toString(),
+                                MakingFixedAmt = fixMakingVal.toString(),
+                                fixWastage = wastage,
+
+                                // 🔹 Qty
+                                Quantity = qty,
+                                qty = qty.toIntOrNull() ?: s.qty
+                            )
+
+                            onSave(updated)
+                            onDismiss()
+                        },
+                        icon = painterResource(id = R.drawable.check_circle),
+                        iconDescription = "Save",
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .padding(start = 4.dp)
+                    )
+
+
+                    /*    GradientButtonIcon(
+                            text = "Save",
+                            onClick = {
+                                // build updated OrderItem (copy existing and replace fields)
+                                selectedItem?.let { s ->
+                                    *//*val updated = s.copy(
                                     branchName = branch,
                                     exhibition = exhibition,
                                     remark = remark,
@@ -545,6 +668,43 @@ fun DeliveryChallanDialogEditAndDisplay(
                                     stoneAmt = stoneAmt,
                                     itemAmt = itemAmt,
                                     finePlusWt = finePlusWt
+                                )*//*
+                                val updated = s.copy(
+                                    // 🔹 Basic jewellery fields
+                                    GrossWt = grossWT,                    // String
+                                    NetWt = NetWt,                        // String
+                                    TotalWt = totalWt,                    // String
+                                    PackingWeight = packingWt,            // String
+
+                                    // 🔹 Stone / diamond
+                                    TotalStoneWeight = stoneWt,           // String
+                                    DiamondWeight = dimondWt,             // String
+                                    StoneAmount = stoneAmt,               // String
+                                    TotalStoneAmount = stoneAmt,          // (optional) same as StoneAmount if needed
+
+                                    // 🔹 Rate / amount
+                                    RatePerGram = ratePerGRam,           // String
+                                    MetalRate = ratePerGRam,             // optional mapping
+                                    HallmarkAmount = hallMarkAmt,        // String
+                                    MRP = mrp,                            // String
+                                    ItemAmount = itemAmt,                 // String
+                                    TotalItemAmount = itemAmt,            // optional
+                                    Amount = itemAmt,                     // optional mapping
+                                    TotalAmount = itemAmt,                // optional (if you want per item)
+
+                                    // 🔹 Purity & size etc.
+                                    Purity = purity,                      // String
+                                    Size = size,                          // String
+                                    FineWastageWt = finePlusWt,           // String
+                                    FinePercentage = finePercentage,      // String
+                                    DiamondColour = typeOfColors,         // String
+
+                                    // 🔹 Description / remark
+                                    Description = remark,                 // String
+
+                                    // 🔹 Qty (tumhare model me Quantity:String + qty:Int dono hai)
+                                    Quantity = qty,                       // String
+                                    qty = qty.toIntOrNull() ?: s.qty      // Int, safe parse
                                 )
                                 onSave(updated)
                                 onDismiss()
@@ -552,12 +712,12 @@ fun DeliveryChallanDialogEditAndDisplay(
                                 // If selectedItem is null, show toast and close
                                 Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT).show()
                                 onDismiss()
-                            }*/
+                            }
                         },
                         icon = painterResource(id = R.drawable.check_circle),
                         iconDescription = "Save",
                         modifier = Modifier.weight(1f).height(48.dp).padding(start = 4.dp)
-                    )
+                    )*/
                 }
             }
         }

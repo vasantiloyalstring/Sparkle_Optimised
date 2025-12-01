@@ -261,7 +261,7 @@ fun DeliveryChallanTable(
                             val values = listOf(
                                 (index + 1).toString(),
                                 challan.ChallanNo ?: "",
-                                "_",
+                                formatCreatedOn(challan.CreatedOn),
                                 challan.CustomerName ?: "",
                                 challan.Qty ?: "0",
                                 challan.GrossWt ?: "0.000",
@@ -339,6 +339,21 @@ fun DeliveryChallanTable(
                 }
             }
         }
+    }
+}
+
+fun formatCreatedOn(createdOn: String?): String {
+    if (createdOn.isNullOrBlank()) return ""
+
+    return try {
+        val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val output = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+
+        val date = input.parse(createdOn)
+        if (date != null) output.format(date) else createdOn
+    } catch (e: Exception) {
+        e.printStackTrace()
+        createdOn
     }
 }
 

@@ -18,10 +18,23 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun DeliveryChallanSummaryRow(
     gstPercent: Double = 3.0,
-    totalAmount: Double = 50000.0,
-    onGstCheckedChange: (Boolean) -> Unit = {}
+    totalAmount: Double,
+    onGstCheckedChange: (Boolean) -> Unit = {},
+    // ✅ extra callback agar parent ko GST aur final total chahiye ho
+    onAmountsChange: (gstAmount: Double, finalAmount: Double) -> Unit = { _, _ -> }
 ) {
     var isGstChecked by remember { mutableStateOf(true) }
+
+    // ✅ GST amount & final total calculate based on checkbox
+    val gstAmount = remember(isGstChecked, totalAmount, gstPercent) {
+        if (isGstChecked) totalAmount * gstPercent / 100.0 else 0.0
+    }
+    val finalAmount = totalAmount + gstAmount
+
+    // ✅ Jab bhi GST ya total change ho, parent ko bata do
+    LaunchedEffect(isGstChecked, totalAmount, gstPercent) {
+        onAmountsChange(gstAmount, finalAmount)
+    }
 
     Row(
         modifier = Modifier
@@ -69,7 +82,7 @@ fun DeliveryChallanSummaryRow(
             textAlign = TextAlign.Center
         )
 
-        // 🔹 Amount Box
+        // 🔹 Amount Box (✅ yaha ab FINAL amount dikh raha hai – base + GST if checked)
         Box(
             modifier = Modifier
                 .background(Color.White, RoundedCornerShape(6.dp))
@@ -77,7 +90,7 @@ fun DeliveryChallanSummaryRow(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "₹ ${"%,.2f".format(totalAmount)}",
+                text = "₹ ${"%,.2f".format(finalAmount)}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1565C0)
