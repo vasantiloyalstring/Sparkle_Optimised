@@ -318,6 +318,13 @@ fun AppNavigation(
                     navController = navController
                 )
             }
+
+            composable(Screens.SampleOutListScreen.route) {
+                SampleOutListScreen(
+                    onBack = { navController.popBackStack() },
+                    navController,
+                )
+            }
         }
     }
 }

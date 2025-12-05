@@ -36,7 +36,8 @@ enum class Screens(val route: String) {
     SearchMenuScreen("search_screen"),
     SampleOutScreen("sample_out"),
     SearchScreen("search_screen/{mode}"),
-    DeliveryChallanListScreen("delivery_challan_list_screen")
+    DeliveryChallanListScreen("delivery_challan_list_screen"),
+    SampleOutListScreen("sample_out_list_screen")
 
 
 

@@ -1,0 +1,293 @@
+package com.loyalstring.rfid.ui.screens
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
+import com.loyalstring.rfid.viewmodel.OrderViewModel
+import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.R
+
+@Composable
+fun SampleOutListTableComponent(
+    productList: List<ChallanDetails>,
+    onTotalsChange: (baseTotal: Double, gstAmount: Double, finalTotal: Double) -> Unit = { _, _, _ -> },
+    onItemUpdated: (index: Int, updated: ChallanDetails) -> Unit = { _, _ -> },
+    onDeleteItem: (index: Int) -> Unit = {}      // ✅ delete callback
+) {
+    // 🔹 Shared scroll just for middle columns
+    val horizontalScroll = rememberScrollState()
+
+    var selectedItem by remember { mutableStateOf<ChallanDetails?>(null) }
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    val orderViewModel: OrderViewModel = hiltViewModel()
+    val singleProductViewModel: SingleProductViewModel = hiltViewModel()
+
+    val branchList = singleProductViewModel.branches
+    val salesmanList by orderViewModel.empListFlow.collectAsState()
+
+    // 🔹 Header titles & dynamic widths (MUST be same size)
+    val headerTitles = listOf(
+        "Itemcode", "T Wt", "G.Wt",
+        "S.Wt", "D Wt", "N.Wt",
+        "F+W Wt", "Qty", "Pcs"
+    )
+
+    val columnWidths = listOf(
+        90.dp, // Itemcode
+        60.dp, // T Wt
+        60.dp, // G.Wt
+        60.dp, // S.Wt
+        60.dp, // D Wt
+        60.dp, // N.Wt
+        70.dp, // F+W Wt
+        50.dp, // Qty
+        50.dp  // Pcs
+    )
+    // ⚠️ headerTitles.size == columnWidths.size == 9
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(bottom = 5.dp)
+    ) {
+        // 🔹 HEADER (P Name fixed | middle scroll | Action fixed)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF2E2E2E))
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Fixed first column: Product Name
+            Text(
+                text = "Product Name",
+                modifier = Modifier
+                    .width(110.dp)
+                    .padding(horizontal = 2.dp),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+
+            // Scrollable middle columns
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(horizontalScroll)
+            ) {
+                headerTitles.forEachIndexed { index, title ->
+                    Text(
+                        text = title,
+                        modifier = Modifier
+                            .width(columnWidths[index])
+                            .padding(horizontal = 2.dp),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            // Fixed last column: Action
+            Text(
+                text = "Action",
+                modifier = Modifier
+                    .width(40.dp)
+                    .padding(horizontal = 1.dp),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
+
+        // 🔹 DATA ROWS
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            items(productList.size) { index ->
+                val item = productList[index]
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (index % 2 == 0) Color(0xFFF4F4F4) else Color.White
+                        )
+                        .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Fixed Product Name
+                    Text(
+                        text = item.ProductName ?: "",
+                        modifier = Modifier
+                            .width(110.dp)
+                            .padding(horizontal = 2.dp),
+                        fontSize = 11.sp,
+                        color = Color.DarkGray,
+                        maxLines = 1
+                    )
+
+                    // Scrollable middle cells
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(horizontalScroll)
+                    ) {
+                        val values = listOf(
+                            item.ItemCode ?: "",
+                            item.TotalWt ?: "",
+                            item.GrossWt ?: "",
+                            item.TotalStoneWeight ?: "",
+                            item.DiamondWeight ?: "",
+                            item.NetWt ?: "",
+                            item.FineWastageWt ?: "",
+                            item.qty.toString(),
+                            item.Pieces ?: ""
+                        )
+                        // ⚠️ values.size MUST be 9
+
+                        values.forEachIndexed { i, value ->
+                            Text(
+                                text = value,
+                                modifier = Modifier
+                                    .width(columnWidths[i])
+                                    .padding(horizontal = 2.dp),
+                                fontSize = 11.sp,
+                                color = Color.DarkGray,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    // Fixed Action column (Delete – Edit agar chahiye to yahan add karo)
+                    // Fixed Action column (Delete – Edit agar chahiye to yahan add karo)
+                    Row(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_delete), // 🔹 tumhara delete icon
+                            contentDescription = "Delete",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable {
+                                    onDeleteItem(index)   // 🔥 parent ko bolo "is index wala item hatao"
+                                }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 🔹 Totals footer (aligned to same columns)
+        val totalQty = productList.size
+        val totalWt = productList.sumOf { it.TotalWt?.toDoubleOrNull() ?: 0.0 }
+        val totalGross = productList.sumOf { it.GrossWt?.toDoubleOrNull() ?: 0.0 }
+        val totalStone = productList.sumOf { it.TotalStoneWeight?.toDoubleOrNull() ?: 0.0 }
+        val totalDai = productList.sumOf { it.DiamondWeight?.toDoubleOrNull() ?: 0.0 }
+        val totalNet = productList.sumOf { it.NetWt?.toDoubleOrNull() ?: 0.0 }
+        val totalFinePlusWastage = productList.sumOf { it.FineWastageWt?.toDoubleOrNull() ?: 0.0 }
+        val totalPcs = productList.sumOf { it.Pieces?.toDoubleOrNull() ?: 0.0 }
+
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2E2E2E))
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Fixed label
+                Text(
+                    text = "Total",
+                    modifier = Modifier
+                        .width(110.dp)
+                        .padding(horizontal = 2.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1
+                )
+
+                // Scrollable totals – EXACTLY 9 values
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(horizontalScroll)
+                ) {
+                    val totals = listOf(
+                        totalQty.toString(),                    // Itemcode col – count
+                        "%.3f".format(totalWt),                // T Wt
+                        "%.3f".format(totalGross),             // G.Wt
+                        "%.3f".format(totalStone),             // S.Wt
+                        "%.2f".format(totalDai),               // D Wt
+                        "%.2f".format(totalNet),               // N.Wt
+                        "%.2f".format(totalFinePlusWastage),   // F+W Wt
+                        totalQty.toString(),                   // Qty
+                        "%.0f".format(totalPcs)                // Pcs
+                    )
+                    // ⚠️ totals.size == columnWidths.size == 9
+
+                    totals.forEachIndexed { i, total ->
+                        Text(
+                            text = total,
+                            modifier = Modifier
+                                .width(columnWidths[i])
+                                .padding(horizontal = 2.dp),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Fixed last col for footer (blank under "Action")
+                Spacer(
+                    modifier = Modifier
+                        .width(40.dp)
+                )
+            }
+        }
+
+        // 🔹 Edit dialog (agar use karna hai to yahan rakho)
+        if (showDialog && selectedItem != null && selectedIndex != null) {
+            DeliveryChallanDialogEditAndDisplay(
+                selectedItem = selectedItem,
+                branchList = branchList,
+                salesmanList = salesmanList,
+                onDismiss = { showDialog = false },
+                onSave = { updatedChallan ->
+                    showDialog = false
+                    onItemUpdated(selectedIndex!!, updatedChallan)
+                }
+            )
+        }
+    }
+}
+

@@ -34,6 +34,8 @@ import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutListRequest
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutListResponse
 import com.loyalstring.rfid.data.model.setting.LocationGetRequest
 import com.loyalstring.rfid.data.model.setting.LocationItem
 import com.loyalstring.rfid.data.model.setting.LocationSyncRequest
@@ -254,6 +256,10 @@ interface RetrofitInterface {
 
     @POST("/api/Invoice/GetAllCustomerTounch")
     suspend fun getAllCustomerTounch(@Body request: CustomerTunchRequest): Response<List<CustomerTunchResponse>>
+
+    @POST("api/Transaction/GetAllCustomerIssue")
+    suspend fun getAllSampleOut(@Body request: SampleOutListRequest): Response<List<SampleOutListResponse>>
+
 
 
 
