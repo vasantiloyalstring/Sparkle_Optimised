@@ -46,7 +46,7 @@ data class BulkItem(
     val matchGwt: Double?,
     val totalStoneWt: Double?,
     val matchStoneWt: Double?,
-    val totalNetWt: Double,
+    val totalNetWt: Double?,
     val matchNetWt: Double?,
     val unmatchedQty: Int?,
     val matchedQty: Int?,
