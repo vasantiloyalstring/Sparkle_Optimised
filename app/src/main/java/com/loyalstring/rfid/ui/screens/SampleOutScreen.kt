@@ -2,6 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.annotation.SuppressLint
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -46,10 +47,15 @@ import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.ClientCodeRequest
-import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
-import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
+
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
+import com.loyalstring.rfid.data.model.sampleOut.IssueItemDto
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutIssueItem
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutUpdateRequest
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -57,6 +63,7 @@ import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
+import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
@@ -68,7 +75,9 @@ import kotlin.text.orEmpty
 @Composable
 fun SampleOutScreen(
     onBack: () -> Unit,
-    navController: NavHostController
+    navController: NavHostController,
+    Id: Int? = null,
+    SampleOutNo: String? =null
 ) {
 
     val viewModel: BulkViewModel = hiltViewModel()
@@ -81,6 +90,7 @@ fun SampleOutScreen(
     var firstPress by remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
     val productListViewModel: ProductListViewModel = hiltViewModel()
+    val sampleOutViewModel: SampleOutViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     val dailyRates by orderViewModel.getAllDailyRate.collectAsState()
@@ -89,22 +99,47 @@ fun SampleOutScreen(
     var customerId by remember { mutableStateOf<Int?>(null) }
     var expandedCustomer by remember { mutableStateOf(false) }
     var selectedCustomer by remember { mutableStateOf<EmployeeList?>(null) }
+    var showInvoiceDialog by remember { mutableStateOf(false) }
 
     var itemCode by remember { mutableStateOf(TextFieldValue("")) }
     var showDropdownItemcode by remember { mutableStateOf(false) }
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
     var selectedItem by remember { mutableStateOf<ItemCodeResponse?>(null) }
     val isLoading by orderViewModel.isItemCodeLoading.collectAsState()
-    var showInvoiceDialog by remember { mutableStateOf(false) }
+
     val branchList = singleProductViewModel.branches
-    var invoiceFields by remember { mutableStateOf<InvoiceFields?>(null) }
-    val productList = remember { mutableStateListOf<ChallanDetails>() }
+    var sampleOutFields by remember { mutableStateOf<SampleOutFields?>(null) }
+    val productList = remember { mutableStateListOf<SampleOutDetails>() }
     val deliveryChallanViewModel: DeliveryChallanViewModel = hiltViewModel()
     val tags by viewModel.scannedTags.collectAsState()
     val scanTrigger by viewModel.scanTrigger.collectAsState()
     var baseTotal by remember { mutableStateOf(0.0) }
     var gstAmount by remember { mutableStateOf(0.0) }
     var totalWithGst by remember { mutableStateOf(0.0) }
+
+
+    val errorMsg by sampleOutViewModel.error.collectAsState()
+    val loading by sampleOutViewModel.loading.collectAsState()
+    // ✅ Success toast – sirf jab addResult non-null ho
+
+
+// ❌ Error toast – sirf jab errorMsg set ho
+    LaunchedEffect(errorMsg) {
+        errorMsg?.let { msg ->
+            android.widget.Toast
+                .makeText(
+                    context,
+                    "Error: $msg",
+                    android.widget.Toast.LENGTH_SHORT
+                )
+                .show()
+
+            sampleOutViewModel.clearError()
+        }
+    }
+
+
+
 
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
@@ -226,8 +261,8 @@ fun SampleOutScreen(
             // Item Amount = Stone + Diamond + Metal + Making
             val itemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
 
-            val productDetail = ChallanDetails(
-                ChallanId = 0,
+            val productDetail = SampleOutDetails(
+                Id = 0,
                 MRP = matchedItem.mrp?.toString() ?: "0.0",
                 CategoryName = matchedItem.category.orEmpty(),
                 ChallanStatus = "Pending",
@@ -437,9 +472,9 @@ fun SampleOutScreen(
             val finePercent = safeDouble(matchedItem.makingPercent)
             val fineWt = netWt * finePercent / 100.0
 
-            // --- Build ChallanDetails ---
-            val productDetail = ChallanDetails(
-                ChallanId = 0,
+            // --- Build SampleOutDetails ---
+            val productDetail = SampleOutDetails(
+                Id = 0,
                 MRP = matchedItem.mrp?.toString() ?: "0.0",
                 CategoryName = matchedItem.category.orEmpty(),
                 ChallanStatus = "Pending",
@@ -562,6 +597,310 @@ fun SampleOutScreen(
         }
     }
 
+    // 🔹 When last challan number updates → Add the challan
+    val lastSampleOutNo by sampleOutViewModel.lastSampleOutNo.collectAsState()
+
+    LaunchedEffect(lastSampleOutNo) {
+
+        // Only run when a new value is emitted
+        val lastNo = lastSampleOutNo ?: return@LaunchedEffect
+        Log.e("SampleOut", "lastNo"+lastNo)
+
+        val clientCode = employee?.clientCode.orEmpty()
+        val branchId = employee?.defaultBranchId ?: 1   // ya jahan se bhi branchId le raha hai
+        val custId = customerId ?: 0
+
+        // ❌ 1) Client code missing → add API mat call karo
+        if (clientCode.isBlank()) {
+            Log.e("SampleOut", "ClientCode missing")
+            Toast.makeText(
+                context,
+                "Client code missing",
+                Toast.LENGTH_SHORT
+            ).show()
+            sampleOutViewModel.clearLastSampleOutNo()
+            return@LaunchedEffect
+        }
+
+        // ❌ 2) Customer select nahi hua → add API mat call karo
+        if (custId == 0) {
+            Log.e("SampleOut", "Customer not selected")
+            Toast.makeText(
+                context,
+                "Please select customer",
+                Toast.LENGTH_SHORT
+            ).show()
+            sampleOutViewModel.clearLastSampleOutNo()
+            return@LaunchedEffect
+        }
+
+        // ❌ 3) Koi items hi nahi → add API mat call karo
+        if (productList.isEmpty()) {
+            Log.e("SampleOut", "No items in productList")
+            Toast.makeText(
+                context,
+                "Please add at least 1 item",
+                Toast.LENGTH_SHORT
+            ).show()
+            sampleOutViewModel.clearLastSampleOutNo()
+            return@LaunchedEffect
+        }
+
+        // ✅ Sab validation pass → abhi hi number generate karo + API call
+        val newLastSampleOutNO = sampleOutViewModel.getNextSampleOutNo(lastNo)
+        Log.d("@@","newLastSampleOutNO"+newLastSampleOutNO   )
+
+        val request = SampleOutAddRequest(
+            ClientCode = clientCode,
+            BranchId = branchId,
+            CustomerId = custId,
+            SampleOutNo = newLastSampleOutNO,
+            ReturnDate = productList.get(0).ReturnDate,
+            Description =  productList.get(0).Description,
+            Date = productList.get(0).Date,
+            SampleStatus = "SampleOut",
+            Quantity = productList.size,
+            TotalDiamondWeight = productList.sumOf { it.DiamondWt.toDoubleOrNull() ?: 0.0 }.toString(),
+            TotalGrossWt = productList.sumOf { it.GrossWt.toDoubleOrNull() ?: 0.0 }.toString(),
+            TotalNetWt = productList.sumOf { it.NetWt.toDoubleOrNull() ?: 0.0 }.toString(),
+            TotalStoneWeight = productList.sumOf { it.StoneAmt.toDoubleOrNull() ?: 0.0 }.toString(),
+            TotalWt = productList.sumOf { it.TotalWt.toDoubleOrNull() ?: 0.0 }.toString(),
+            IssueItems = productList.map { challan ->
+                SampleOutIssueItem(
+                    ItemCode = challan.ItemCode,
+                    SKU = challan.SKU,
+                    SKUId = challan.SKUId ?: 0,
+                    CategoryId = challan.CategoryId ?: 0,
+                    ProductId = challan.ProductId ?: 0,
+                    DesignId = challan.DesignId ?: 0,
+                    PurityId = challan.PurityId ?: 0,
+                    Quantity = challan.qty ?: 1,
+                    GrossWt = challan.GrossWt,
+                    NetWt = challan.NetWt,
+                    TotalWt = challan.TotalWt ?: challan.NetWt,
+                    FinePercentage = challan.FinePer,
+                    WastegePercentage = challan.StoneLessPercent,
+                    StoneWeight = challan.TotalStoneWeight ?: "0.000",
+                    DiamondWeight = challan.TotalDiamondWeight ?: "0.000",
+                    FineWastageWt = challan.FineWastageWt ?: "0.000",
+                    RatePerGram = challan.MetalRate,
+                    MetalAmount = challan.MetalAmount,
+                    Description = challan.Description ?: "",
+                    SampleStatus = "SampleOut",
+                    ClientCode = clientCode,
+                    StoneAmount = challan.StoneAmt ?: "0.00",
+                    SampleOutNo = newLastSampleOutNO,
+                    DiamondAmount = challan.DiamondAmt ?: "",
+                    Pieces = challan.Pieces ?: "0",
+                    CategoryName = challan.CategoryName ?: "",
+                    ProductName = challan.ProductName ?: "",
+                    PurityName = challan.Purity ?: "",
+                    DesignName = challan.DesignName ?: "",
+                    Id = challan.LabelledStockId ?: 0,
+                    CustomerId = custId,
+                    VendorId = 0,
+                    BranchId = branchId,
+                    LabelledStockId = challan.LabelledStockId ?: 0,
+                    CustomerName = customerName,
+                    SampleInDate = "2025-12-06",
+                    CreatedOn = "2025-12-06",
+                    Customer = null
+                )
+            }
+        )
+
+        // ✅ Ab sirf valid state me hi API call hoga
+        sampleOutViewModel.addSampleOut(request)
+    }
+
+
+    LaunchedEffect(Unit) {
+        sampleOutViewModel.clearAddResult()
+        sampleOutViewModel.clearLastSampleOutNo()
+    }
+
+    // 🔹 Show success message when challan added
+    val addSampleOut by sampleOutViewModel.addResult.collectAsState()
+    val updateSampleOut by sampleOutViewModel.updateResult.collectAsState()
+
+    LaunchedEffect(addSampleOut) {
+        // 👉 initial emptyList / clear ke baad emptyList ko ignore karo
+        val result = addSampleOut ?: return@LaunchedEffect
+        Toast.makeText(
+            context,
+            "✅ SampleOut saved successfully",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        sampleOutViewModel.clearAddResult()   // yaha pe emptyList set karo
+        viewModel.resetProductScanResults()
+        kotlinx.coroutines.delay(500)
+    }
+
+    LaunchedEffect(updateSampleOut) {
+        val result = updateSampleOut ?: return@LaunchedEffect
+
+        Toast.makeText(context, "✅ SampleOut updated successfully", Toast.LENGTH_SHORT).show()
+        sampleOutViewModel.clearUpdateResult()
+    }
+    fun IssueItemDto.toSampleOutDetails(): SampleOutDetails {
+        return SampleOutDetails(
+            Id = 0,
+            MRP = "0.0", // agar API nahi bhej rahi to default
+            CategoryName = this.CategoryName ?: "",
+            ChallanStatus = this.SampleStatus ?: "SampleOut",
+            ProductName = this.ProductName ?: "",
+            Quantity = this.Quantity.toString(),
+            HSNCode = "",
+            ItemCode = this.ItemCode ?: "",
+            GrossWt = this.GrossWt ?: "0.0",
+            NetWt = this.NetWt ?: "0.0",
+            ProductId = this.ProductId ?: 0,
+            CustomerId = this.CustomerId ?: 0,
+
+            MetalRate = this.RatePerGram ?: "0.0",
+            MakingCharg = this.MetalAmount ?: "0.0",   // ya alag field ho to change kar
+            MetalAmount = this.MetalAmount ?: "0.0",
+            ItemAmount = this.MetalAmount ?: "0.0",
+            TotalItemAmount = this.MetalAmount ?: "0.0",
+            TotalAmount = this.MetalAmount ?: "0.0",
+            Price = this.MetalAmount ?: "0.0",
+
+            HUIDCode = "",
+            ProductCode = "",
+            ProductNo = "",
+            Size = "1",
+            StoneAmount = this.StoneAmount ?: "0.0",
+            TotalWt = this.TotalWt ?: this.NetWt ?: "0.0",
+            PackingWeight = "0.0",
+            OldGoldPurchase = false,
+            RatePerGram = this.RatePerGram ?: "0.0",
+            Amount = this.MetalAmount ?: "0.0",
+            ChallanType = "Delivery",
+            FinePercentage = this.FinePercentage ?: "0.0",
+            PurchaseInvoiceNo = "",
+            HallmarkAmount = "0.0",
+            HallmarkNo = "",
+            MakingFixedAmt = "0.0",
+            MakingFixedWastage = "0.0",
+            MakingPerGram = "0.0",
+            MakingPercentage = "0.0",
+            Description = this.Description ?: "",
+
+            CuttingGrossWt = this.GrossWt ?: "0.0",
+            CuttingNetWt = this.NetWt ?: "0.0",
+            BaseCurrency = "INR",
+            CategoryId = this.CategoryId ?: 0,
+            PurityId = this.PurityId ?: 0,
+            TotalStoneWeight = this.StoneWeight ?: "0.0",
+            TotalStoneAmount = this.StoneAmount ?: "0.0",
+            TotalStonePieces = "0",
+            TotalDiamondWeight = this.DiamondWeight ?: "0.0",
+            TotalDiamondPieces = "0",
+            TotalDiamondAmount = this.DiamondAmount ?: "0.0",
+
+            SKUId = this.SKUId ?: 0,
+            SKU = this.SKU ?: "",
+            FineWastageWt = this.FineWastageWt ?: "0.0",
+            ItemGSTAmount = "0.0",
+            ClientCode = this.ClientCode ?: "",
+
+            DiamondSize = "",
+            DiamondWeight = this.DiamondWeight ?: "0.0",
+            DiamondPurchaseRate = "0.0",
+            DiamondSellRate = "0.0",
+            DiamondClarity = "",
+            DiamondColour = "",
+            DiamondShape = "",
+            DiamondCut = "",
+            DiamondName = "",
+            DiamondSettingType = "",
+            DiamondCertificate = "",
+            DiamondPieces = "0",
+            DiamondPurchaseAmount = "0.0",
+            DiamondSellAmount = this.DiamondAmount ?: "0.0",
+            DiamondDescription = "",
+
+            MetalName = "",
+            NetAmount = this.MetalAmount ?: "0.0",
+            GSTAmount = "0.0",
+
+            Purity = this.PurityName ?: "",
+            DesignName = this.DesignName ?: "",
+            CompanyId = 0,
+            BranchId = this.BranchId ?: 0,
+            CounterId = 0,
+            EmployeeId = 0,
+            LabelledStockId = this.LabelledStockId ?: 0,
+            FineSilver = "0.0",
+            FineGold = "0.0",
+            DebitSilver = "0.0",
+            DebitGold = "0.0",
+            BalanceSilver = "0.0",
+            BalanceGold = "0.0",
+            ConvertAmt = "0.0",
+            Pieces = this.Pieces ?: "1",
+            StoneLessPercent = this.WastegePercentage ?: "0.0",
+            DesignId = this.DesignId ?: 0,
+            PacketId = 0,
+            RFIDCode = "",       // agar backend bhejta ho to add kar
+            Image = "",
+            DiamondWt = this.DiamondWeight ?: "0.0",
+            StoneAmt = this.StoneAmount ?: "0.0",
+            DiamondAmt = this.DiamondAmount ?: "0.0",
+            FinePer = this.FinePercentage ?: "0.0",
+            FineWt = this.FineWastageWt ?: "0.0",
+            qty = this.Quantity,
+            tid = "",
+            totayRate = this.RatePerGram ?: "0.0",
+            makingPercent = "0.0",
+            fixMaking = "0.0",
+            fixWastage = "0.0",
+            TIDNumber = "",
+            CustomerName = "", Date = "",
+            ReturnDate = ""
+
+
+        )
+    }
+
+
+    LaunchedEffect(Id) {
+        if (Id != null && Id != 0) {
+            isEditMode = true
+
+            // ✅ Step 1: Load challan list if not already loaded
+            employee?.let {
+                sampleOutViewModel.loadSampleOut(it.clientCode ?: "", "SampleOut")
+            }
+
+            // ✅ Step 2: Observe challan list and find the matching one
+            sampleOutViewModel.sampleOutList.collect { challans ->
+                val selected = challans.firstOrNull { it.Id == Id }
+                if (selected != null) {
+                    sampleOutViewModel.setSelectedSampleOut(selected)
+
+                    // ✅ Step 3: Prefill UI fields
+                    customerName = selected.Customer?.FirstName.toString()
+                    customerId = selected.CustomerId
+                    productList.clear()
+                    selected.IssueItems
+                        ?.filterNotNull()
+                        ?.map { it.toSampleOutDetails() }   // ⬅️ yaha mapper use karo
+                        ?.let { mappedList ->
+                            productList.clear()
+                            productList.addAll(mappedList)
+                        }
+                }
+            }
+        }
+    }
+
+
+
+
+
+
     fun normalize(value: String?): String =
         value
             ?.trim()
@@ -657,8 +996,8 @@ fun SampleOutScreen(
             val lastImagePath = imageString.split(",").lastOrNull()?.trim()
             val finalImageUrl = if (!lastImagePath.isNullOrBlank()) "$baseUrl$lastImagePath" else ""
 
-            val newProduct = ChallanDetails(
-                ChallanId = 0,
+            val newProduct = SampleOutDetails(
+                Id = 0,
                 MRP = matchedItem.mrp?.toString() ?: "0.0",
                 CategoryName = matchedItem.category.orEmpty(),
                 ChallanStatus = "Pending",
@@ -804,9 +1143,174 @@ fun SampleOutScreen(
 
 
             ScanBottomBar(
-                onSave = {
+           /*     onSave = {
+                    val clientCode = employee?.clientCode.orEmpty()
+                    val branchId = employee?.defaultBranchId ?: 1   // ya jahan se bhi branchId le raha hai
+                    val custId = customerId ?: 0
 
-                },
+                    if (clientCode.isBlank()) {
+                        Log.e("SampleOut", "ClientCode missing")
+                        return@ScanBottomBar
+                    }
+
+                    if (custId == 0) {
+                        Log.e("SampleOut", "Customer not selected")
+                        return@ScanBottomBar
+                    }
+
+                    if (productList.isEmpty()) {
+                        Log.e("SampleOut", "No items in productList")
+                        return@ScanBottomBar
+                    }
+
+                    // ✅ ViewModel ko bolo full flow handle karne ko
+                    sampleOutViewModel.saveSampleOutWithAutoNumber(
+                        clientCode = clientCode,
+                        branchId = branchId
+                    ) { sampleOutNo ->
+
+                        // Yahan tu SampleOutAddRequest bana, jisme SampleOutNo = sampleOutNo (e.g. "C13")
+                        SampleOutAddRequest(
+                            ClientCode = clientCode,
+                            BranchId = branchId,
+                            CustomerId = custId,
+                            SampleOutNo = sampleOutNo,
+                            ReturnDate = "2025-12-05", // ya UI se selected date
+                            Description = "",
+                            SampleStatus = "SampleOut",
+                            Quantity = productList.size, // ya sum of qty
+                            TotalDiamondWeight = productList.sumOf { it.DiamondWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalGrossWt = productList.sumOf { it.GrossWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalNetWt = productList.sumOf { it.NetWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalStoneWeight = productList.sumOf { it.StoneAmt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalWt = productList.sumOf { it.TotalWt.toDoubleOrNull() ?: 0.0 }.toString(),
+
+                            IssueItems = productList.map { challan ->
+                                SampleOutIssueItem(
+                                    ItemCode         = challan.ItemCode,
+                                    SKU              = challan.SKU,
+                                    SKUId            = challan.SKUId ?: 0,
+                                    CategoryId       = challan.CategoryId ?: 0,
+                                    ProductId        = challan.ProductId ?: 0,
+                                    DesignId         = challan.DesignId ?: 0,
+                                    PurityId         = challan.PurityId ?: 0,
+                                    Quantity         = challan.qty ?: 1,
+                                    GrossWt          = challan.GrossWt,
+                                    NetWt            = challan.NetWt,
+                                    TotalWt          = challan.TotalWt ?: challan.NetWt,
+                                    FinePercentage   = challan.FinePer,
+                                    WastegePercentage= challan.StoneLessPercent,
+                                    StoneWeight      = challan.TotalStoneWeight ?: "0.000",
+                                    DiamondWeight    = challan.TotalDiamondWeight ?: "0.000",
+                                    FineWastageWt    = challan.FineWastageWt ?: "0.000",
+                                    RatePerGram      = challan.MetalRate,
+                                    MetalAmount      = challan.MetalAmount,
+                                    Description      = challan.Description ?: "",
+                                    SampleStatus     = "SampleOut",
+                                    ClientCode       = clientCode,
+                                    StoneAmount      = challan.StoneAmt ?: "0.00",
+                                    SampleOutNo      = sampleOutNo,
+                                    DiamondAmount    = challan.DiamondAmt ?: "",
+                                    Pieces           = challan.Pieces ?: "0",
+                                    CategoryName     = challan.CategoryName ?: "",
+                                    ProductName      = challan.ProductName ?: "",
+                                    PurityName       = challan.Purity ?: "",
+                                    DesignName       = challan.DesignName ?: "",
+                                    Id               = challan.LabelledStockId ?: 0,
+                                    CustomerId       = custId,
+                                    VendorId         = 0,
+                                    BranchId         = branchId,
+                                    LabelledStockId  = challan.LabelledStockId ?: 0,
+                                    CustomerName = customerName,
+                                    SampleInDate = "2025-12-06",
+                                    CreatedOn = "2025-12-06",
+                                    Customer = null
+
+                                )
+
+
+                            }
+
+                        )
+                    }
+
+                },*/
+
+                onSave = {
+                    if (isEditMode) {
+                    // ✅ 1️⃣ Create the update request object
+                        val request = SampleOutUpdateRequest(
+                            Id=Id,
+                            ClientCode = employee?.clientCode.toString(),
+                            BranchId = employee?.branchNo?.toInt(),
+                            CustomerId = customerId!!.toInt(),
+                            SampleOutNo = SampleOutNo.toString(),
+                            ReturnDate = productList.get(0).ReturnDate,
+                            Description =  productList.get(0).Description,
+                            Date = productList.get(0).Date,
+                            SampleStatus = "SampleOut",
+                            Quantity = productList.size,
+                            TotalDiamondWeight = productList.sumOf { it.DiamondWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalGrossWt = productList.sumOf { it.GrossWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalNetWt = productList.sumOf { it.NetWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalStoneWeight = productList.sumOf { it.StoneAmt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            TotalWt = productList.sumOf { it.TotalWt.toDoubleOrNull() ?: 0.0 }.toString(),
+                            IssueItems = productList.map { challan ->
+                                SampleOutIssueItem(
+                                    ItemCode = challan.ItemCode,
+                                    SKU = challan.SKU,
+                                    SKUId = challan.SKUId ?: 0,
+                                    CategoryId = challan.CategoryId ?: 0,
+                                    ProductId = challan.ProductId ?: 0,
+                                    DesignId = challan.DesignId ?: 0,
+                                    PurityId = challan.PurityId ?: 0,
+                                    Quantity = challan.qty ?: 1,
+                                    GrossWt = challan.GrossWt,
+                                    NetWt = challan.NetWt,
+                                    TotalWt = challan.TotalWt ?: challan.NetWt,
+                                    FinePercentage = challan.FinePer,
+                                    WastegePercentage = challan.StoneLessPercent,
+                                    StoneWeight = challan.TotalStoneWeight ?: "0.000",
+                                    DiamondWeight = challan.TotalDiamondWeight ?: "0.000",
+                                    FineWastageWt = challan.FineWastageWt ?: "0.000",
+                                    RatePerGram = challan.MetalRate,
+                                    MetalAmount = challan.MetalAmount,
+                                    Description = challan.Description ?: "",
+                                    SampleStatus = "SampleOut",
+                                    ClientCode = challan.ClientCode,
+                                    StoneAmount = challan.StoneAmt ?: "0.00",
+                                    SampleOutNo = challan.Id.toString(),
+                                    DiamondAmount = challan.DiamondAmt ?: "",
+                                    Pieces = challan.Pieces ?: "0",
+                                    CategoryName = challan.CategoryName ?: "",
+                                    ProductName = challan.ProductName ?: "",
+                                    PurityName = challan.Purity ?: "",
+                                    DesignName = challan.DesignName ?: "",
+                                    Id = Id ?: 0,
+                                    CustomerId = customerId!!.toInt(),
+                                    VendorId = 0,
+                                    BranchId = employee?.branchNo?.toInt(),
+                                    LabelledStockId = challan.LabelledStockId ?: 0,
+                                    CustomerName = customerName,
+                                    SampleInDate = "2025-12-06",
+                                    CreatedOn = "2025-12-06",
+                                    Customer = null
+                                )
+                            }
+                        )
+
+                        // ✅ Ab sirf valid state me hi API call hoga
+                        sampleOutViewModel.updateSampleOut(request)
+              
+                } else {
+
+                    val clientCode = employee?.clientCode ?: return@ScanBottomBar
+                    val branchId = employee.branchNo ?: 1
+
+                    // 🔹 Step 1: Fetch last challan no
+                    sampleOutViewModel.fetchLastSampleOutNo(clientCode, branchId)
+
+                }},
                 onList = { navController.navigate(Screens.SampleOutListScreen.route) },
                 onScan = {
                     viewModel.startSingleScan(20)
@@ -960,27 +1464,33 @@ fun SampleOutScreen(
     }
 
     if (showInvoiceDialog) {
-        InvoiceFieldsDialog(
+        SampleOutFieldsDialog (
             onDismiss = { showInvoiceDialog = false },
             branchList = branchList,
             salesmanList = customerSuggestions, // ya jo bhi tu use kar raha hai
             onConfirm = { fields ->
                 showInvoiceDialog = false
-                invoiceFields = fields
+                sampleOutFields = fields
 
                 // 🔥 Yaha sab items pe same values set kar:
                 for (i in productList.indices) {
                     val old = productList[i]
                     productList[i] = old.copy(
-                        // yahan tu actual ChallanDetails fields map karega
+
+                        Date = fields.date,
+                        Description = fields.description,
+                        ReturnDate = fields.returnDate
+
                         // example mapping:
-                        BranchId = branchList
+                       /* BranchId = branchList
                             .firstOrNull { it.BranchName == fields.branchName }
                             ?.Id ?: old.BranchId,
                         FinePer = fields.fine,
-                        fixWastage = fields.wastage,
+                        fixWastage = fields.wastage,*/
                         // agar EmployeeId chahiye:
                         // EmployeeId = ...
+
+
                     )
                 }
             }

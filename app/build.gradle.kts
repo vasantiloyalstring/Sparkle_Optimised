@@ -114,6 +114,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
+    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
 
     // Navigation
     implementation(libs.androidx.navigation.fragment.ktx)

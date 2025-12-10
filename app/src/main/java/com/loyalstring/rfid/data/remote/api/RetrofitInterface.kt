@@ -34,8 +34,12 @@ import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutLastNoReq
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutListRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutListResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutUpdateRequest
 import com.loyalstring.rfid.data.model.setting.LocationGetRequest
 import com.loyalstring.rfid.data.model.setting.LocationItem
 import com.loyalstring.rfid.data.model.setting.LocationSyncRequest
@@ -259,6 +263,15 @@ interface RetrofitInterface {
 
     @POST("api/Transaction/GetAllCustomerIssue")
     suspend fun getAllSampleOut(@Body request: SampleOutListRequest): Response<List<SampleOutListResponse>>
+
+    @POST("api/Transaction/AddCustomerIssue")
+    suspend fun addSampleOut(@Body request: SampleOutAddRequest): Response<SampleOutAddResponse>
+
+    @POST("api/Transaction/GetCustLastSampleOutNo")
+    suspend fun lastSampleOutNo(@Body request: SampleOutLastNoReq): String
+
+    @POST("api/Transaction/UpdateCustomerIssue")
+    suspend fun updateSampleOut(@Body request: SampleOutUpdateRequest): Response<SampleOutAddResponse>
 
 
 

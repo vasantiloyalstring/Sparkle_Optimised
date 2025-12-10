@@ -1307,6 +1307,7 @@ fun FilterSelectionDialog(
    ----------------------- */
 @Composable
 fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
+
     val totalQty = items.size
     val totalGwtBD =
         items.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
@@ -1320,7 +1321,7 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
     unmatchedItems.size
     val unmatchedWtBD =
         unmatchedItems.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
-
+    Log.d("SummryRow","SummryRow")
     Row(
         Modifier
             .fillMaxWidth()

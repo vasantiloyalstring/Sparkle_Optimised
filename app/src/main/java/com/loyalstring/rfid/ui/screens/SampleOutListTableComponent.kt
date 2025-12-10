@@ -1,14 +1,27 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,22 +30,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
-import com.loyalstring.rfid.R
 
 @Composable
 fun SampleOutListTableComponent(
-    productList: List<ChallanDetails>,
+    productList: List<SampleOutDetails>,
     onTotalsChange: (baseTotal: Double, gstAmount: Double, finalTotal: Double) -> Unit = { _, _, _ -> },
-    onItemUpdated: (index: Int, updated: ChallanDetails) -> Unit = { _, _ -> },
+    onItemUpdated: (index: Int, updated: SampleOutDetails) -> Unit = { _, _ -> },
     onDeleteItem: (index: Int) -> Unit = {}      // ✅ delete callback
 ) {
     // 🔹 Shared scroll just for middle columns
     val horizontalScroll = rememberScrollState()
 
-    var selectedItem by remember { mutableStateOf<ChallanDetails?>(null) }
+    var selectedItem by remember { mutableStateOf<SampleOutDetails?>(null) }
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
@@ -136,7 +149,14 @@ fun SampleOutListTableComponent(
                         .background(
                             if (index % 2 == 0) Color(0xFFF4F4F4) else Color.White
                         )
-                        .padding(vertical = 3.dp),
+
+                        .padding(vertical = 3.dp)
+                    .clickable {
+                    selectedItem = item
+                    selectedIndex = index
+                    showDialog = true
+                    Log.d("SampleOut", "Row clicked index=$index item=${item.ItemCode}")
+                },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Fixed Product Name
@@ -188,7 +208,9 @@ fun SampleOutListTableComponent(
                         modifier = Modifier
                             .width(40.dp)
                             .padding(horizontal = 4.dp),
+
                         verticalAlignment = Alignment.CenterVertically
+
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_delete), // 🔹 tumhara delete icon
@@ -277,7 +299,7 @@ fun SampleOutListTableComponent(
 
         // 🔹 Edit dialog (agar use karna hai to yahan rakho)
         if (showDialog && selectedItem != null && selectedIndex != null) {
-            DeliveryChallanDialogEditAndDisplay(
+            SampleOutDialogEditAndDisplay(
                 selectedItem = selectedItem,
                 branchList = branchList,
                 salesmanList = salesmanList,

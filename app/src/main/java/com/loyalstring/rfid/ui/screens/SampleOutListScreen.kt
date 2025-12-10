@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -294,7 +296,10 @@ fun SampleOutTable(
                             // Edit Button
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
-                                    navController.navigate("editDeliveryChallan/${challan.Id}")
+
+                                    val sampleOutNoSafe = challan.SampleOutNo ?: ""
+                                    Log.d("Edit","EDIT Screen"+sampleOutNoSafe +"challan.Id"+challan.Id )
+                                    navController.navigate("updateSampleOutScreen/${challan.Id}/$sampleOutNoSafe")
                                 }
                             }) {
                                 Icon(
@@ -307,7 +312,11 @@ fun SampleOutTable(
 
                             // Print Button
                             IconButton(onClick = {
-                                navController.navigate("editDeliveryChallan/${challan.Id}")
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    val sampleOutNoSafe = challan.SampleOutNo ?: ""
+                                    // TODO: Integrate PDF print logic here
+                                    "updateSampleOutScreen/${challan.Id}/${sampleOutNoSafe}"
+                                }
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.print_svg),

@@ -10,6 +10,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.scalars.ScalarsConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -53,6 +54,7 @@ object NetWorkRetrofitClient {
 
         return Retrofit.Builder()
             .baseUrl(baseUrl) // replace with your URL
+            .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(GsonConverterFactory.create()) // or MoshiConverterFactory.create()
             .client(okHttpClient)
             .build()

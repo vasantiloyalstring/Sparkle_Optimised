@@ -2,6 +2,7 @@ package com.loyalstring.rfid.navigation
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.material3.DrawerState
 import androidx.compose.runtime.Composable
@@ -316,6 +317,7 @@ fun AppNavigation(
                 SampleOutScreen(
                     onBack = { navController.popBackStack() },
                     navController = navController
+
                 )
             }
 
@@ -323,6 +325,35 @@ fun AppNavigation(
                 SampleOutListScreen(
                     onBack = { navController.popBackStack() },
                     navController,
+                )
+            }
+
+           /* composable("updateSampleOutScreen/{Id}/{SampleOutNo") { backStackEntry ->
+                val Id = backStackEntry.arguments?.getString("Id")?.toIntOrNull()
+                val SampleOutNo = backStackEntry.arguments?.getString("SampleOutNo")?.toIntOrNull()
+                SampleOutScreen(
+                    onBack = { navController.popBackStack() },
+                    navController = navController,
+                    Id = Id ,
+                    SampleOutNo=SampleOutNo// ✅ pass here
+                )
+            }*/
+            composable(
+                route = "updateSampleOutScreen/{Id}/{SampleOutNo}",
+                arguments = listOf(
+                    navArgument("Id") { type = NavType.IntType },
+                    navArgument("SampleOutNo") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getInt("Id")
+                val sampleOutNo = backStackEntry.arguments?.getString("SampleOutNo")
+                Log.d("@@","ID"+id +"   sampleOutNo "+sampleOutNo)
+
+                SampleOutScreen(
+                    onBack = { navController.popBackStack() },
+                    navController = navController,
+                    Id = id,
+                    SampleOutNo = sampleOutNo   // ✅ isko String? hi rakho
                 )
             }
         }

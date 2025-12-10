@@ -7,7 +7,7 @@ data class Employee(
     @SerializedName("EmployeeId") val employeeId: Int,
     @SerializedName("ClientCode") val clientCode: String?,
     @SerializedName("CompanyNo") val companyNo: String?,
-    @SerializedName("BranchNo") val branchNo: String?,
+    @SerializedName("BranchNo") val branchNo: Int?,
     @SerializedName("CompCode") val compCode: String?,
     @SerializedName("BranchCode") val branchCode: String?,
     @SerializedName("EmployeeCode") val employeeCode: String?,

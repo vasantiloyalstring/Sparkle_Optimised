@@ -1,0 +1,120 @@
+package com.loyalstring.rfid.data.model.sampleOut
+
+data class SampleOutAddResponse(
+    val Id: Int,
+    val SampleStatus: String,
+    val SampleOutNo: String,
+    val StatusType: Boolean,
+    val CreatedOn: String,
+    val LastUpdated: String,
+    val CustomerId: Int,
+    val Quantity: Int,
+    val TotalWt: String,
+    val PackingWeight: String?,      // null aa sakta hai
+    val Status: String?,             // null aa sakta hai
+    val TotalGrossWt: String,
+    val TotalNetWt: String,
+    val VendorId: Int,
+    val FineWastagePercent: String?, // null
+    val FineWastageWt: String?,      // null
+    val TotalStoneWeight: String,
+    val TotalDiamondWeight: String,
+    val ReturnDate: String,
+    val Description: String,
+    val ClientCode: String,
+    val SampleInDate: String?,       // null
+    val BranchId: Int,
+    val IssueItems: List<SampleOutIssueItem>,
+    val Customer: SampleOutCustomer
+)
+
+// 🔹 Nested IssueItems entry
+data class SampleOutIssueItem(
+    val ItemCode: String,
+    val SKU: String?,
+    val SKUId: Int,
+    val CategoryId: Int,
+    val ProductId: Int,
+    val DesignId: Int,
+    val PurityId: Int,
+    val Quantity: Int,
+    val GrossWt: String,
+    val NetWt: String,
+    val TotalWt: String,
+    val FinePercentage: String?,
+    val WastegePercentage: String?,
+    val StoneWeight: String,
+    val DiamondWeight: String,
+    val FineWastageWt: String,
+    val RatePerGram: String?,
+    val MetalAmount: String?,
+    val Description: String,
+    val SampleStatus: String,
+    val ClientCode: String,
+    val StoneAmount: String,
+    val SampleOutNo: String,
+    val DiamondAmount: String?,      // JSON me "" hai, safe to keep nullable
+    val Pieces: String,
+    val CategoryName: String,
+    val ProductName: String,
+    val PurityName: String,
+    val DesignName: String,
+    val Id: Int,
+    val CustomerId: Int,
+    val VendorId: Int,
+    val CreatedOn: String,
+    val CustomerName: String?,
+    val SampleInDate: String?,
+    val BranchId: Int?,
+    val Customer: SampleOutCustomer?, // yaha JSON me null hai
+    val LabelledStockId: Int
+)
+
+// 🔹 Nested Customer object
+data class SampleOutCustomer(
+    val Id: Int,
+    val FirstName: String,
+    val LastName: String,
+    val MiddleName: String,
+    val Gender: String,
+    val DateOfBirth: String,
+    val PerAddStreet: String,
+    val PerAddTown: String,
+    val PerAddState: String,
+    val PerAddPincode: String,
+    val CurrAddStreet: String,
+    val CurrAddTown: String?,
+    val CurrAddPincode: String,
+    val CurrAddState: String,
+    val Area: String,
+    val City: String,
+    val Country: String,
+    val Mobile: String,
+    val Email: String,
+    val Password: String,
+    val CustomerLoginId: String,
+    val GstNo: String,
+    val PanNo: String,
+    val AadharNo: String,
+    val BalanceAmount: String,
+    val AdvanceAmount: String,
+    val Discount: String,
+    val CreditPeriod: String,
+    val FineGold: String,
+    val FineSilver: String,
+    val ClientCode: String,
+    val VendorId: Int,
+    val AddToVendor: Boolean,
+    val CustomerSlabId: Int,
+    val CreditPeriodId: Int,
+    val RateOfInterestId: Int,
+    val Remark: String,
+    val BranchId: Int,
+    val OnlineStatus: String,
+    val MaritalStatus: String,
+    val DateOfMarriage: String,
+    val Addresses: List<Any>,       // structure nahi diya, isliye Any rakha
+    val CreatedOn: String,
+    val LastUpdated: String,
+    val StatusType: Boolean
+)
