@@ -59,12 +59,11 @@ fun DeliveryChallanDialogEditAndDisplay(
     onSave: (ChallanDetails) -> Unit,   // ✅ yaha DeliveryChallanItem ke jagah ChallanDetails
     orderViewModel: OrderViewModel = hiltViewModel(),
     singleProductViewModel: SingleProductViewModel = hiltViewModel()
-) {
+){
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    // Pull employee/client code for network calls
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -81,10 +80,11 @@ fun DeliveryChallanDialogEditAndDisplay(
         }
     }
 
-    // --- Form state (same as Order screen) ---
+    // ------------ state ------------
     var branch by remember { mutableStateOf("") }
     var exhibition by remember { mutableStateOf("") }
     var remark by remember { mutableStateOf("") }
+
     var purity by remember { mutableStateOf("") }
     var size by remember { mutableStateOf("") }
     var length by remember { mutableStateOf("") }
@@ -93,8 +93,6 @@ fun DeliveryChallanDialogEditAndDisplay(
     var polishType by remember { mutableStateOf("") }
     var finePercentage by remember { mutableStateOf("") }
     var wastage by remember { mutableStateOf("") }
-    var orderDate by remember { mutableStateOf("") }
-    var deliverDate by remember { mutableStateOf("") }
 
     var productName by remember { mutableStateOf("") }
     var itemCode by remember { mutableStateOf("") }
@@ -113,21 +111,20 @@ fun DeliveryChallanDialogEditAndDisplay(
     var itemAmt by remember { mutableStateOf("") }
     var finePlusWt by remember { mutableStateOf("") }
 
-    // Dropdown expansion states
-    var expandedBranch by remember { mutableStateOf(false) }
+    // dropdown states
     var expandedPurity by remember { mutableStateOf(false) }
     var expandedColors by remember { mutableStateOf(false) }
     var expandedScrew by remember { mutableStateOf(false) }
     var expandedPolish by remember { mutableStateOf(false) }
 
     val colorsList = listOf(
-        "Yellow Gold","White Gold","Rose Gold","Green Gold","Black Gold","Blue Gold","Purple Gold"
+        "Yellow Gold", "White Gold", "Rose Gold", "Green Gold",
+        "Black Gold", "Blue Gold", "Purple Gold"
     )
-    val screwList = listOf("Type 1","Type 2","Type 3")
-    val polishList = listOf("High Polish","Matte Finish","Satin Finish","Hammered")
+    val screwList = listOf("Type 1", "Type 2", "Type 3")
+    val polishList = listOf("High Polish", "Matte Finish", "Satin Finish", "Hammered")
     val baseUrl = "https://rrgold.loyalstring.co.in/"
 
-    // Format date helper
     val inputFormats = listOf(
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
@@ -138,62 +135,49 @@ fun DeliveryChallanDialogEditAndDisplay(
         for (format in inputFormats) {
             try {
                 val parsed = format.parse(dateString)
-                if (parsed != null) {
-                    return dateFormatter.format(parsed)
-                }
+                if (parsed != null) return dateFormatter.format(parsed)
             } catch (_: Exception) { }
         }
         return ""
     }
 
-    // Initialize from selectedItem
+    // ---------- init from selected item ----------
     selectedItem?.let { s ->
-        branch = s.BranchId?.toString().orEmpty()
         productName = s.ProductName.orEmpty()
         itemCode = s.ItemCode.orEmpty()
+        sku = s.SKU.orEmpty()
+
         totalWt = s.TotalWt.orEmpty()
         packingWt = s.PackingWeight.orEmpty()
         grossWT = s.GrossWt.orEmpty()
         stoneWt = s.TotalStoneWeight.orEmpty()
         dimondWt = s.DiamondWeight.orEmpty()
         NetWt = s.NetWt.orEmpty()
-        sku = s.SKU.orEmpty()
+
         purity = s.Purity.orEmpty()
         size = s.Size.orEmpty()
-        length = ""
-        exhibition = ""
-        remark =""
+        length = "" // no backing field in model
+
         typeOfColors = s.DiamondColour.orEmpty()
         screwType = ""
         polishType = ""
         finePercentage = s.FinePer.orEmpty()
         wastage = s.fixWastage.orEmpty()
-        orderDate = formatDateSafe("")
-        deliverDate = formatDateSafe("")
-        qty = s.qty.toString()/*when {
-            s.qty == null -> ""
-            s.qty.equals("null", true) -> "1"
-         *//*   s.qty.isBlank() -> ""
-            s.qty == "0" -> "1"*//*
-            else -> s.qty
-        }*/
+
+        qty = s.qty.toString()
         hallMarkAmt = s.HallmarkAmount.orEmpty()
         mrp = s.MRP.orEmpty()
         ratePerGRam = s.totayRate.orEmpty()
         stoneAmt = s.StoneAmount.orEmpty()
         finePlusWt = s.FineWastageWt.orEmpty()
 
-        // Prefer MRP, fallback to ItemAmount
-        itemAmt = if (!s.MRP.isNullOrEmpty()) s.MRP else s.ItemAmount.orEmpty()
+        exhibition = ""
+        remark = ""
 
-        // Safe numeric formatting
-        itemAmt = try {
-            "%.2f".format(itemAmt.toDouble())
-        } catch (_: Exception) { itemAmt }
+        itemAmt = if (!s.MRP.isNullOrEmpty()) s.MRP else s.ItemAmount.orEmpty()
+        itemAmt = try { "%.2f".format(itemAmt.toDouble()) } catch (_: Exception) { itemAmt }
     }
 
-
-    // Observe daily rates if available
     val dailyRates by orderViewModel.getAllDailyRate.collectAsState(initial = emptyList())
     LaunchedEffect(purity, dailyRates) {
         if (purity.isNotBlank() && dailyRates.isNotEmpty()) {
@@ -207,15 +191,22 @@ fun DeliveryChallanDialogEditAndDisplay(
         }
     }
 
+    // purity list from vm
+    val purityList by singleProductViewModel.purityResponse1.collectAsState()
+    val purityNames = purityList.map { it.PurityName ?: "" }
+
     Dialog(onDismissRequest = { onDismiss() }) {
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             shape = RoundedCornerShape(12.dp),
             color = Color.White,
             tonalElevation = 4.dp
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // header
+
+                // ---------- HEADER ----------
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -226,13 +217,13 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.order_edit_icon),
-                            contentDescription = "Delivery Challan Icon",
+                            contentDescription = "Custom Order Icon",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Delivery Challan Fields",
+                            text = "Custom Order Fields",
                             color = Color.White,
                             fontSize = 18.sp,
                             fontFamily = poppins
@@ -242,17 +233,18 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                 Spacer(Modifier.height(6.dp))
 
+                // ---------- BODY (SCROLLABLE) ----------
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(8.dp)
                 ) {
-                    // image row
+                    // 📷 Image area (top)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(80.dp)
+                            .height(120.dp)
                             .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
                             .padding(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -263,33 +255,39 @@ fun DeliveryChallanDialogEditAndDisplay(
                             contentDescription = "Product image",
                             placeholder = painterResource(R.drawable.add_photo),
                             error = painterResource(R.drawable.add_photo),
-                            modifier = Modifier.size(100.dp)
+                            modifier = Modifier.size(110.dp)
                         )
                     }
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                    // Branch dropdown (convert BranchModel -> String list)
-                    val branchNames = branchList.map { it.BranchName ?: "" }
-                    DropdownRow(
-                        label = "Branch",
-                        list = branchNames,
-                        selected = branch,
-                        expanded = expandedBranch,
-                        onSelect = { branch = it },
-                        onExpand = { expandedBranch = it }
-                    )
-
-                    Spacer(Modifier.height(4.dp))
+                    // 1️⃣ Product Name
                     FieldRow("Product Name", productName) { productName = it }
                     Spacer(Modifier.height(4.dp))
+
+                    // 2️⃣ ItemCode
                     FieldRow("ItemCode", itemCode) { itemCode = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // Total weight / packing / gross / stone / diamond / net
+                    // 3️⃣ SKU
+                    FieldRow("SKU", sku) { sku = it }
+                    Spacer(Modifier.height(4.dp))
+
+                    // 4️⃣ Purity (dropdown)
+                    DropdownRow(
+                        label = "Purity",
+                        list = purityNames,
+                        selected = purity,
+                        expanded = expandedPurity,
+                        onSelect = { purity = it },
+                        onExpand = { expandedPurity = it }
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    // 5️⃣ Total Weight
                     FieldRow("Total Weight", totalWt) { newVal ->
                         totalWt = newVal
-                        // recalc gross and net
                         val totalValue = totalWt.toDoubleOrNull() ?: 0.0
                         val pack = packingWt.toDoubleOrNull() ?: 0.0
                         grossWT = String.format("%.3f", totalValue - pack)
@@ -304,21 +302,27 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow("Packing Wt", packingWt) { newVal ->
+                    // 6️⃣ Packing Weight
+                    FieldRow("Packing Weight", packingWt) { newVal ->
                         packingWt = newVal
                         val totalValue = totalWt.toDoubleOrNull() ?: 0.0
                         val pack = packingWt.toDoubleOrNull() ?: 0.0
                         grossWT = String.format("%.3f", totalValue - pack)
                         val stone = stoneWt.toDoubleOrNull() ?: 0.0
                         val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format("%.3f", (totalValue - pack) - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0)))
+                        NetWt = String.format(
+                            "%.3f",
+                            (totalValue - pack) - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
+                        )
                         val net = NetWt.toDoubleOrNull() ?: 0.0
                         val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
                         itemAmt = "%.2f".format(net * rate)
                     }
 
                     Spacer(Modifier.height(4.dp))
-                    FieldRow("Gross Wt", grossWT) { newVal ->
+
+                    // 7️⃣ Gross Weight
+                    FieldRow("Gross Weight", grossWT) { newVal ->
                         grossWT = newVal
                         val g = grossWT.toDoubleOrNull() ?: 0.0
                         val s = stoneWt.toDoubleOrNull() ?: 0.0
@@ -330,24 +334,34 @@ fun DeliveryChallanDialogEditAndDisplay(
                     }
 
                     Spacer(Modifier.height(4.dp))
+
+                    // 8️⃣ Stone Weight
                     FieldRow("Stone Weight", stoneWt) { newVal ->
                         stoneWt = newVal
                         val total = grossWT.toDoubleOrNull() ?: 0.0
                         val stone = stoneWt.toDoubleOrNull() ?: 0.0
                         val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format("%.3f", total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0)))
+                        NetWt = String.format(
+                            "%.3f",
+                            total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
+                        )
                         val net = NetWt.toDoubleOrNull() ?: 0.0
                         val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
                         itemAmt = "%.2f".format(net * rate)
                     }
 
                     Spacer(Modifier.height(4.dp))
+
+                    // 9️⃣ Dimond Weight
                     FieldRow("Dimond Weight", dimondWt) { newVal ->
                         dimondWt = newVal
                         val total = grossWT.toDoubleOrNull() ?: 0.0
                         val stone = stoneWt.toDoubleOrNull() ?: 0.0
                         val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format("%.3f", total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0)))
+                        NetWt = String.format(
+                            "%.3f",
+                            total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
+                        )
                         val net = NetWt.toDoubleOrNull() ?: 0.0
                         val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
                         itemAmt = "%.2f".format(net * rate)
@@ -355,7 +369,7 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // Net Wt display
+                    // 🔟 Net Weight (read-only)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -364,7 +378,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Net Wt",
+                            text = "Net Weight",
                             modifier = Modifier.weight(0.4f),
                             fontSize = 12.sp,
                             color = Color.Black,
@@ -378,14 +392,62 @@ fun DeliveryChallanDialogEditAndDisplay(
                                 .padding(horizontal = 8.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            Text(text = if (NetWt.isBlank()) "0.000" else NetWt, fontSize = 13.sp, fontFamily = poppins)
+                            Text(
+                                text = if (NetWt.isBlank()) "0.000" else NetWt,
+                                fontSize = 13.sp,
+                                fontFamily = poppins
+                            )
                         }
                     }
 
+                    Spacer(Modifier.height(6.dp))
+
+                    // 1️⃣1️⃣ Size
+                    FieldRow("Size", size) { size = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // Rate / item amount / hallmark / mrp
-                    FieldRow("Rate/Gram", ratePerGRam) { newVal ->
+                    // 1️⃣2️⃣ Length
+                    FieldRow("Length", length) { length = it }
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣3️⃣ Type of Color
+                    DropdownRow(
+                        label = "Type of Color",
+                        list = colorsList,
+                        selected = typeOfColors,
+                        expanded = expandedColors,
+                        onSelect = { typeOfColors = it },
+                        onExpand = { expandedColors = it }
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣4️⃣ Screw Type
+                    DropdownRow(
+                        label = "Screw Type",
+                        list = screwList,
+                        selected = screwType,
+                        expanded = expandedScrew,
+                        onSelect = { screwType = it },
+                        onExpand = { expandedScrew = it }
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣5️⃣ Polish Type
+                    DropdownRow(
+                        label = "Polish Type",
+                        list = polishList,
+                        selected = polishType,
+                        expanded = expandedPolish,
+                        onSelect = { polishType = it },
+                        onExpand = { expandedPolish = it }
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣6️⃣ Rate/Gm
+                    FieldRow("Rate/Gm", ratePerGRam) { newVal ->
                         ratePerGRam = newVal
                         val net = NetWt.toDoubleOrNull() ?: 0.0
                         val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
@@ -393,15 +455,35 @@ fun DeliveryChallanDialogEditAndDisplay(
                     }
 
                     Spacer(Modifier.height(4.dp))
-                    FieldRow("Hallmark Amt", hallMarkAmt) { newVal ->
+
+                    // 1️⃣7️⃣ Fine%
+                    FieldRow("Fine%", finePercentage) { finePercentage = it }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣8️⃣ Wastage%
+                    FieldRow("Wastage%", wastage) { wastage = it }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 1️⃣9️⃣ Quantity
+                    FieldRow("Quantity", qty) { qty = it }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 2️⃣0️⃣ Hallmark Amount
+                    FieldRow("Hallmark Amount", hallMarkAmt) { newVal ->
                         hallMarkAmt = newVal
                         val newHall = hallMarkAmt.toDoubleOrNull() ?: 0.0
-                        val baseAmt = (NetWt.toDoubleOrNull() ?: 0.0) * (ratePerGRam.toDoubleOrNull() ?: 0.0)
+                        val baseAmt =
+                            (NetWt.toDoubleOrNull() ?: 0.0) * (ratePerGRam.toDoubleOrNull() ?: 0.0)
                         itemAmt = String.format("%.2f", baseAmt + newHall)
                     }
 
                     Spacer(Modifier.height(4.dp))
-                    FieldRow("Mrp", mrp) { newVal ->
+
+                    // 2️⃣1️⃣ MRP
+                    FieldRow("MRP", mrp) { newVal ->
                         mrp = newVal
                         val mrpValue = mrp.toDoubleOrNull()
                         if (mrpValue != null && mrpValue > 0) {
@@ -409,93 +491,14 @@ fun DeliveryChallanDialogEditAndDisplay(
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Exhibition", exhibition) { exhibition = it }
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Remark", remark) { remark = it }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Purity dropdown using simple list from singleProductViewModel
-                    val purityList by singleProductViewModel.purityResponse1.collectAsState()
-                    val purityNames = purityList.map { it.PurityName ?: "" }
-                    DropdownRow(
-                        label = "Purity",
-                        list = purityNames,
-                        selected = purity,
-                        expanded = expandedPurity,
-                        onSelect = { purity = it },
-                        onExpand = { expandedPurity = it }
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Size & Length
-                    FieldRow("Size", size) { size = it }
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Length", length) { length = it }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Colors, Screw, Polish dropdowns
-                    DropdownRow("Color", colorsList, typeOfColors, expandedColors, { typeOfColors = it }, { expandedColors = it })
-                    Spacer(Modifier.height(4.dp))
-                    DropdownRow("Screw Type", screwList, screwType, expandedScrew, { screwType = it }, { expandedScrew = it })
-                    Spacer(Modifier.height(4.dp))
-                    DropdownRow("Polish Type", polishList, polishType, expandedPolish, { polishType = it }, { expandedPolish = it })
-
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Fine %", finePercentage) { finePercentage = it }
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Wastage", wastage) { wastage = it }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Order Date
-                    DateRow("Order Date", orderDate) {
-                        DatePickerDialog(
-                            context,
-                            { _, y, m, d ->
-                                val selected = Calendar.getInstance().apply { set(y, m, d) }
-                                orderDate = dateFormatter.format(selected.time)
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        ).show()
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Deliver Date (min is order date if set)
-                    DateRow("Deliver Date", deliverDate) {
-                        DatePickerDialog(
-                            context,
-                            { _, y, m, d ->
-                                val selected = Calendar.getInstance().apply { set(y, m, d) }
-                                deliverDate = dateFormatter.format(selected.time)
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        ).apply {
-                            if (orderDate.isNotEmpty()) {
-                                try {
-                                    val orderCal = Calendar.getInstance()
-                                    orderCal.time = dateFormatter.parse(orderDate)!!
-                                    orderCal.set(Calendar.HOUR_OF_DAY, 0); orderCal.set(Calendar.MINUTE, 0)
-                                    orderCal.set(Calendar.SECOND, 0); orderCal.set(Calendar.MILLISECOND, 0)
-                                    datePicker.minDate = orderCal.timeInMillis
-                                } catch (_: Exception) {}
-                            }
-                        }.show()
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-                    FieldRow("Quantity", qty) { qty = it }
+                    // (optional) extra fields after sequence
+                    Spacer(Modifier.height(6.dp))
+                    // FieldRow("Exhibition", exhibition) { exhibition = it }
+                    //Spacer(Modifier.height(4.dp))
+                    //FieldRow("Remark", remark) { remark = it }
                 }
 
-                // Buttons: Cancel / Save
+                // ---------- BUTTONS ----------
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -507,7 +510,10 @@ fun DeliveryChallanDialogEditAndDisplay(
                         onClick = { onDismiss() },
                         icon = painterResource(id = R.drawable.ic_cancel),
                         iconDescription = "Cancel",
-                        modifier = Modifier.weight(1f).height(48.dp).padding(end = 4.dp)
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .padding(end = 4.dp)
                     )
 
                     GradientButtonIcon(
@@ -515,12 +521,13 @@ fun DeliveryChallanDialogEditAndDisplay(
                         onClick = {
                             val s = selectedItem
                             if (s == null) {
-                                Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT)
+                                    .show()
                                 onDismiss()
                                 return@GradientButtonIcon
                             }
 
-                            // 1️⃣ Parse all required numeric values
+                            // same calc block you already had (shortened as-is)
                             val gross = grossWT.toDoubleOrNull() ?: 0.0
                             val stoneW = stoneWt.toDoubleOrNull() ?: 0.0
                             val diamondW = dimondWt.toDoubleOrNull() ?: 0.0
@@ -530,93 +537,67 @@ fun DeliveryChallanDialogEditAndDisplay(
                                 ?: s.DiamondSellAmount.toDoubleOrNull()
                                 ?: 0.0)
 
-                            val makingPerGramVal = (s.MakingPerGram.toDoubleOrNull()
-                                ?: 0.0)   // ya agar tum input se le rahe ho to makingPerGram state use karo
-                            val makingPercentVal = (s.MakingPercentage.toDoubleOrNull()
-                                ?: 0.0)   // ya makingPercent state
-                            val fixMakingVal = (s.MakingFixedAmt.toDoubleOrNull()
-                                ?: 0.0)   // ya fixMaking state
+                            val makingPerGramVal = (s.MakingPerGram.toDoubleOrNull() ?: 0.0)
+                            val makingPercentVal = (s.MakingPercentage.toDoubleOrNull() ?: 0.0)
+                            val fixMakingVal = (s.MakingFixedAmt.toDoubleOrNull() ?: 0.0)
 
-                            val wastageWtVal = wastage.toDoubleOrNull() ?: 0.0      // Fix Wastage Wt
+                            val wastageWtVal = wastage.toDoubleOrNull() ?: 0.0
                             val finePercentVal = finePercentage.toDoubleOrNull() ?: 0.0
 
-                            // 2️⃣ Net Wt = Gross Wt - Stone Wt - Diamond Wt
                             val netWtCalc = gross - stoneW - diamondW
                             val netWtStr = "%.3f".format(netWtCalc.coerceAtLeast(0.0))
 
-                            // 3️⃣ Metal Amt = Net Wt * Rate
                             val metalAmtVal = netWtCalc * rate
                             val metalAmtStr = "%.2f".format(metalAmtVal)
 
-                            // 4️⃣ Making by gram = Net Wt * MakingPerGram
                             val makingByGram = netWtCalc * makingPerGramVal
-
-                            // 5️⃣ Making by % = Metal Amt * (Making %)
                             val makingByPercent = metalAmtVal * (makingPercentVal / 100.0)
-
-                            // 6️⃣ Fix Wastage = Wastage Wt * Gold Rate
                             val fixWastageAmt = wastageWtVal * rate
 
-                            // 7️⃣ Total Making = gram + fix making + making% + fix wastage
-                            val totalMakingVal = makingByGram + fixMakingVal + makingByPercent + fixWastageAmt
+                            val totalMakingVal =
+                                makingByGram + fixMakingVal + makingByPercent + fixWastageAmt
                             val makingAmtStr = "%.2f".format(totalMakingVal)
 
-                            // 8️⃣ Fine Wt = Net Wt * Fine %
                             val fineWtVal = netWtCalc * (finePercentVal / 100.0)
                             val fineWtStr = "%.3f".format(fineWtVal)
 
-                            // 9️⃣ Item Amt = Stone Amt + Diamond Amt + Metal Amt + Making Amt
-                            val itemAmtVal = stoneAmtVal + diamondAmtVal + metalAmtVal + totalMakingVal
+                            val itemAmtVal =
+                                stoneAmtVal + diamondAmtVal + metalAmtVal + totalMakingVal
                             val itemAmtStr = "%.2f".format(itemAmtVal)
 
-                            // UI state bhi update kar de (optional but recommended)
                             NetWt = netWtStr
                             finePlusWt = fineWtStr
                             itemAmt = itemAmtStr
-                            // agar chaho to metalAmt / makingAmt ke state bhi rakho
 
                             val updated = s.copy(
-                                // 🔹 Basic jewellery fields
                                 GrossWt = grossWT,
                                 NetWt = netWtStr,
                                 TotalWt = totalWt,
                                 PackingWeight = packingWt,
-
-                                // 🔹 Stone / diamond
                                 TotalStoneWeight = stoneWt,
                                 DiamondWeight = dimondWt,
                                 StoneAmount = stoneAmt,
                                 TotalStoneAmount = stoneAmt,
-
-                                // 🔹 Rate / amount
                                 RatePerGram = ratePerGRam,
                                 MetalRate = ratePerGRam,
-                                MetalAmount = metalAmtStr,      // 👉 Metal Amt as per formula
-                                MakingCharg = makingAmtStr,     // 👉 Total Making Amt
+                                MetalAmount = metalAmtStr,
+                                MakingCharg = makingAmtStr,
                                 HallmarkAmount = hallMarkAmt,
                                 MRP = mrp,
-                                ItemAmount = itemAmtStr,        // 👉 FINAL ITEM AMT
+                                ItemAmount = itemAmtStr,
                                 TotalItemAmount = itemAmtStr,
                                 Amount = itemAmtStr,
                                 TotalAmount = itemAmtStr,
-
-                                // 🔹 Purity & size etc.
                                 Purity = purity,
                                 Size = size,
-                                FineWastageWt = fineWtStr,      // Fine Wt
+                                FineWastageWt = fineWtStr,
                                 FinePercentage = finePercentage,
                                 DiamondColour = typeOfColors,
-
-                                // 🔹 Description / remark
                                 Description = remark,
-
-                                // 🔹 Making fields back into model (if needed)
                                 MakingPerGram = makingPerGramVal.toString(),
                                 MakingPercentage = makingPercentVal.toString(),
                                 MakingFixedAmt = fixMakingVal.toString(),
                                 fixWastage = wastage,
-
-                                // 🔹 Qty
                                 Quantity = qty,
                                 qty = qty.toIntOrNull() ?: s.qty
                             )
@@ -631,93 +612,6 @@ fun DeliveryChallanDialogEditAndDisplay(
                             .height(48.dp)
                             .padding(start = 4.dp)
                     )
-
-
-                    /*    GradientButtonIcon(
-                            text = "Save",
-                            onClick = {
-                                // build updated OrderItem (copy existing and replace fields)
-                                selectedItem?.let { s ->
-                                    *//*val updated = s.copy(
-                                    branchName = branch,
-                                    exhibition = exhibition,
-                                    remark = remark,
-                                    purity = purity,
-                                    size = size,
-                                    length = length,
-                                    typeOfColor = typeOfColors,
-                                    screwType = screwType,
-                                    polishType = polishType,
-                                    finePer = finePercentage,
-                                    wastage = wastage,
-                                    orderDate = orderDate,
-                                    deliverDate = deliverDate,
-                                    productName = productName,
-                                    itemCode = itemCode,
-                                    sku = sku,
-                                    totalWt = totalWt,
-                                    packingWt = packingWt,
-                                    grWt = grossWT,
-                                    stoneWt = stoneWt,
-                                    dimondWt = dimondWt,
-                                    nWt = NetWt,
-                                    todaysRate = ratePerGRam,
-                                    hallmarkAmt = hallMarkAmt,
-                                    mrp = mrp,
-                                    qty = qty,
-                                    stoneAmt = stoneAmt,
-                                    itemAmt = itemAmt,
-                                    finePlusWt = finePlusWt
-                                )*//*
-                                val updated = s.copy(
-                                    // 🔹 Basic jewellery fields
-                                    GrossWt = grossWT,                    // String
-                                    NetWt = NetWt,                        // String
-                                    TotalWt = totalWt,                    // String
-                                    PackingWeight = packingWt,            // String
-
-                                    // 🔹 Stone / diamond
-                                    TotalStoneWeight = stoneWt,           // String
-                                    DiamondWeight = dimondWt,             // String
-                                    StoneAmount = stoneAmt,               // String
-                                    TotalStoneAmount = stoneAmt,          // (optional) same as StoneAmount if needed
-
-                                    // 🔹 Rate / amount
-                                    RatePerGram = ratePerGRam,           // String
-                                    MetalRate = ratePerGRam,             // optional mapping
-                                    HallmarkAmount = hallMarkAmt,        // String
-                                    MRP = mrp,                            // String
-                                    ItemAmount = itemAmt,                 // String
-                                    TotalItemAmount = itemAmt,            // optional
-                                    Amount = itemAmt,                     // optional mapping
-                                    TotalAmount = itemAmt,                // optional (if you want per item)
-
-                                    // 🔹 Purity & size etc.
-                                    Purity = purity,                      // String
-                                    Size = size,                          // String
-                                    FineWastageWt = finePlusWt,           // String
-                                    FinePercentage = finePercentage,      // String
-                                    DiamondColour = typeOfColors,         // String
-
-                                    // 🔹 Description / remark
-                                    Description = remark,                 // String
-
-                                    // 🔹 Qty (tumhare model me Quantity:String + qty:Int dono hai)
-                                    Quantity = qty,                       // String
-                                    qty = qty.toIntOrNull() ?: s.qty      // Int, safe parse
-                                )
-                                onSave(updated)
-                                onDismiss()
-                            } ?: run {
-                                // If selectedItem is null, show toast and close
-                                Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT).show()
-                                onDismiss()
-                            }
-                        },
-                        icon = painterResource(id = R.drawable.check_circle),
-                        iconDescription = "Save",
-                        modifier = Modifier.weight(1f).height(48.dp).padding(start = 4.dp)
-                    )*/
                 }
             }
         }
