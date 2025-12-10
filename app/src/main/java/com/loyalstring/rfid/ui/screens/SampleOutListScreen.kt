@@ -2,7 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
@@ -41,11 +41,10 @@ import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SampleOutViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.compose.material3.Text
-import androidx.compose.material3.LocalTextStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +52,14 @@ fun SampleOutListScreen(
     onBack: () -> Unit,
     navController: NavHostController,
 ) {
+
     val viewModel: SampleOutViewModel = hiltViewModel()
     val context = LocalContext.current
     val employee =
         remember { UserPreferences.getInstance(context).getEmployee(Employee::class.java) }
-
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     val challanList by viewModel.sampleOutList.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -83,9 +85,21 @@ fun SampleOutListScreen(
         .sortedByDescending { it.Id }
         .take(visibleItems)
 
+    // ✅ Localized column headers
     val headerTitles = listOf(
-        "S.No", "S.O.No", "Cust Name", "Date", "R Date", "Description",
-        "P Name", "T Wt", "G.Wt", "S.Wt", "D.Wt", "Qty", "Action"
+        localizedContext.getString(R.string.header_s_no),
+        localizedContext.getString(R.string.header_so_no),
+        localizedContext.getString(R.string.header_customer_name),
+        localizedContext.getString(R.string.header_date),
+        localizedContext.getString(R.string.header_return_date),
+        localizedContext.getString(R.string.header_description),
+        localizedContext.getString(R.string.header_product_name),
+        localizedContext.getString(R.string.header_total_weight),
+        localizedContext.getString(R.string.header_gross_weight),
+        localizedContext.getString(R.string.header_stone_weight),
+        localizedContext.getString(R.string.header_diamond_weight),
+        localizedContext.getString(R.string.header_quantity),
+        localizedContext.getString(R.string.header_action)
     )
 
     val columnWidths = listOf(
@@ -95,12 +109,12 @@ fun SampleOutListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         GradientTopBar(
-            title = "Sample Out List",
+            title = localizedContext.getString(R.string.sample_out_list_title),
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = localizedContext.getString(R.string.cd_back),
                         tint = Color.White
                     )
                 }
@@ -113,7 +127,8 @@ fun SampleOutListScreen(
             onValueChange = {
                 searchQuery = it
                 visibleItems = 10
-            }
+            },
+            localizedContext=localizedContext
         )
 
         SampleOutTable(
@@ -125,12 +140,13 @@ fun SampleOutListScreen(
                 if (visibleItems < filteredData.size) visibleItems += 10
             },
             isLoading = isLoading,
-            context = context
+            context = context,
+            localizedContext=localizedContext
         )
 
         if (error != null) {
             Text(
-                text = error ?: "Error loading list",
+                text = error ?: localizedContext.getString(R.string.error_loading_list),
                 color = Color.Red,
                 modifier = Modifier.padding(16.dp)
             )
@@ -146,7 +162,8 @@ fun SampleOutTable(
     data: List<SampleOutListResponse>,
     onLoadMore: () -> Unit,
     isLoading: Boolean,
-    context: Context
+    context: Context,
+    localizedContext: Context
 ) {
     val sharedScrollState = rememberScrollState()
 
@@ -186,7 +203,7 @@ fun SampleOutTable(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Actions",
+                    text = localizedContext.getString(R.string.header_actions),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -241,32 +258,17 @@ fun SampleOutTable(
                                 challan.Quantity ?: "0"
                             )
 
-
-                          /*  values.forEachIndexed { index, rawValue ->
-                                val value = rawValue ?: ""           // handle null
-                                Text(
-                                    text = value.toString(),          // enforce String type
-                                    modifier = Modifier
-                                        .width(columnWidths[index])
-                                        .padding(6.dp),
-                                    fontSize = 11.sp,
-                                    fontFamily = poppins,
-                                    maxLines = 1
-                                )
-
-                            }*/
-
-                            values.forEachIndexed { index, rawValue ->
+                            values.forEachIndexed { i, rawValue ->
                                 val textValue = rawValue?.toString().orEmpty()
 
                                 val isMultiLine =
-                                    headerTitles.getOrNull(index) == "P Name" ||
-                                            headerTitles.getOrNull(index) == "Cust Name"
+                                    headerTitles.getOrNull(i) == localizedContext.getString(R.string.header_product_name) ||
+                                            headerTitles.getOrNull(i) == localizedContext.getString(R.string.header_customer_name)
 
                                 Text(
                                     text = textValue,
                                     modifier = Modifier
-                                        .width(columnWidths[index])
+                                        .width(columnWidths[i])
                                         .padding(6.dp),
                                     maxLines = if (isMultiLine) 5 else 1,
                                     style = LocalTextStyle.current.copy(
@@ -277,9 +279,6 @@ fun SampleOutTable(
                                     )
                                 )
                             }
-
-
-
                         }
 
                         // Fixed Actions
@@ -296,15 +295,17 @@ fun SampleOutTable(
                             // Edit Button
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
-
                                     val sampleOutNoSafe = challan.SampleOutNo ?: ""
-                                    Log.d("Edit","EDIT Screen"+sampleOutNoSafe +"challan.Id"+challan.Id )
+                                    Log.d(
+                                        "Edit",
+                                        "EDIT Screen $sampleOutNoSafe challan.Id ${challan.Id}"
+                                    )
                                     navController.navigate("updateSampleOutScreen/${challan.Id}/$sampleOutNoSafe")
                                 }
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_edit_svg),
-                                    contentDescription = "Edit",
+                                    contentDescription = localizedContext.getString(R.string.cd_edit),
                                     tint = Color(0xFF37474F),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -315,12 +316,12 @@ fun SampleOutTable(
                                 CoroutineScope(Dispatchers.Main).launch {
                                     val sampleOutNoSafe = challan.SampleOutNo ?: ""
                                     // TODO: Integrate PDF print logic here
-                                    "updateSampleOutScreen/${challan.Id}/${sampleOutNoSafe}"
+                                    Log.d("Print", "PRINT Screen $sampleOutNoSafe challan.Id ${challan.Id}")
                                 }
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.print_svg),
-                                    contentDescription = "Print",
+                                    contentDescription = localizedContext.getString(R.string.cd_print),
                                     tint = Color(0xFF37474F),
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -336,7 +337,7 @@ fun SampleOutTable(
 }
 
 @Composable
-fun SampleOutSearchBar(value: String, onValueChange: (String) -> Unit) {
+fun SampleOutSearchBar(value: String, onValueChange: (String) -> Unit, localizedContext: Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -349,7 +350,7 @@ fun SampleOutSearchBar(value: String, onValueChange: (String) -> Unit) {
     ) {
         Icon(
             Icons.Default.Search,
-            contentDescription = "Search",
+            contentDescription = localizedContext.getString(R.string.cd_search),
             modifier = Modifier.padding(start = 12.dp),
             tint = Color.Gray
         )
@@ -368,7 +369,7 @@ fun SampleOutSearchBar(value: String, onValueChange: (String) -> Unit) {
             )
             if (value.isEmpty()) {
                 Text(
-                    text = "Search by Sample Out No or customer name",
+                    text = localizedContext.getString(R.string.search_hint_sample_out),
                     color = Color.Gray,
                     fontSize = 16.sp,
                     modifier = Modifier
@@ -384,7 +385,11 @@ fun SampleOutSearchBar(value: String, onValueChange: (String) -> Unit) {
                         .padding(end = 4.dp)
                         .size(24.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray)
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = localizedContext.getString(R.string.cd_clear),
+                        tint = Color.Gray
+                    )
                 }
             }
         }

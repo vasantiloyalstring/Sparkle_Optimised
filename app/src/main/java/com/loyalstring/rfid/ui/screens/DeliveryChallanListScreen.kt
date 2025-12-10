@@ -2,12 +2,12 @@ package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,8 +16,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,30 +33,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import androidx.compose.ui.res.painterResource
 import java.util.*
-import com.loyalstring.rfid.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeliveryChallanListScreen(
     onBack: () -> Unit,
     navController: NavHostController,
-
 ) {
     val viewModel: DeliveryChallanViewModel = hiltViewModel()
     val context = LocalContext.current
-    val employee = remember { UserPreferences.getInstance(context).getEmployee(Employee::class.java) }
+    val employee = remember {
+        UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+    }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     val challanList by viewModel.challanList.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
@@ -77,32 +80,33 @@ fun DeliveryChallanListScreen(
     val filteredData = if (searchQuery.isNotEmpty()) {
         challanList.filter {
             it.ChallanNo.orEmpty().contains(searchQuery, true) ||
-                    it.ChallanNo.orEmpty().contains(searchQuery, true)
+                    it.CustomerName.orEmpty().contains(searchQuery, true)
         }
     } else challanList
 
     val visibleData = filteredData.sortedByDescending { it.Id }
 
+    // 🔹 Localized table headers
     val headerTitles = listOf(
-        "S.No",
-        "C.No",
-        "Date",
-        "Cust Name",
-        "Qty",
-        "G.Wt",
-        "S.Wt",
-        "D.Wt",
-        "N.Wt",
-        "F+Wt",
-        "Tax Amt",
-        "Total Amt",
-        "Branch",
-        "Action"
+        localizedContext.getString(R.string.header_s_no),
+        localizedContext.getString(R.string.header_challan_no),
+        localizedContext.getString(R.string.header_date),
+        localizedContext.getString(R.string.header_customer_name),
+        localizedContext.getString(R.string.header_qty),
+        localizedContext.getString(R.string.header_gross_weight),
+        localizedContext.getString(R.string.header_stone_weight),
+        localizedContext.getString(R.string.header_diamond_weight),
+        localizedContext.getString(R.string.header_net_weight),
+        localizedContext.getString(R.string.header_fine_plus_weight),
+        localizedContext.getString(R.string.header_tax_amount),
+        localizedContext.getString(R.string.header_total_amount),
+        localizedContext.getString(R.string.header_branch),
+        localizedContext.getString(R.string.header_actions)
     )
 
     val columnWidths = listOf(
         45.dp,  // S.No
-        45.dp, // Challan No
+        45.dp,  // Challan No
         80.dp,  // Date
         140.dp, // Customer Name
         50.dp,  // Qty
@@ -119,12 +123,12 @@ fun DeliveryChallanListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         GradientTopBar(
-            title = "Delivery Challan List",
+            title = localizedContext.getString(R.string.title_delivery_challan_list),
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = localizedContext.getString(R.string.cd_back),
                         tint = Color.White
                     )
                 }
@@ -132,13 +136,14 @@ fun DeliveryChallanListScreen(
             showCounter = false
         )
 
-        // ✅ Use renamed composable to avoid Material3 name conflict
         DeliverySearchBar(
             value = searchQuery,
             onValueChange = {
                 searchQuery = it
                 visibleItems = 10
-            }
+            },
+            localizedContext=localizedContext
+
         )
 
         DeliveryChallanTable(
@@ -150,12 +155,13 @@ fun DeliveryChallanListScreen(
                 if (visibleItems < filteredData.size) visibleItems += 10
             },
             isLoading = isLoading,
-            context = context
+            context = context,
+            localizedContext=localizedContext
         )
 
         if (error != null) {
             Text(
-                text = error ?: "Error loading challans",
+                text = error ?: localizedContext.getString(R.string.error_loading_challans),
                 color = Color.Red,
                 modifier = Modifier.padding(16.dp)
             )
@@ -171,7 +177,8 @@ fun DeliveryChallanTable(
     data: List<DeliveryChallanResponseList>,
     onLoadMore: () -> Unit,
     isLoading: Boolean,
-    context: Context
+    context: Context,
+    localizedContext: Context
 ) {
     val sharedScrollState = rememberScrollState()
 
@@ -211,7 +218,7 @@ fun DeliveryChallanTable(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Actions",
+                    text = headerTitles.last(),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -229,6 +236,12 @@ fun DeliveryChallanTable(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(data) { index, challan ->
+
+                    // Auto load more effect
+                    if (index == data.lastIndex) {
+                        onLoadMore()
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -241,23 +254,6 @@ fun DeliveryChallanTable(
                                 .weight(1f)
                                 .horizontalScroll(sharedScrollState)
                         ) {
-                           /* val values = listOf(
-                                (index + 1).toString(),
-                                challan.ChallanNo ?: "",
-                                formatDate(challan.LastUpdated ?: ""),
-                                challan.CustomerId ?: "",
-                                challan.Qty ?: "0",
-                                challan.GrossWt ?: "0.000",
-                                challan.StoneWt ?: "0.000",
-                                challan.TotalDiamondWeight ?: "0.000",
-                                challan.NetWt ?: "0.000",
-                                challan.TotalFineMetal ?: "0.000",
-                                challan.TotalGSTAmount ?: "0.00",
-                                challan.TotalAmount ?: "0.00",
-                                challan.BranchId ?: "-"
-                            )
-*/
-
                             val values = listOf(
                                 (index + 1).toString(),
                                 challan.ChallanNo ?: "",
@@ -291,48 +287,51 @@ fun DeliveryChallanTable(
                         }
 
                         // Fixed Actions
-                        // Fixed Actions
                         Row(
                             modifier = Modifier
                                 .width(columnWidths.last())
                                 .height(40.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                6.dp,
+                                Alignment.CenterHorizontally
+                            ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 🖨️ Print Button
+                            // 🖨️ Edit Button (left icon)
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
                                     Toast.makeText(
                                         context,
-                                        "editing ${challan.ChallanNo ?: "Challan"}",
+                                        context.getString(
+                                            R.string.toast_editing_challan,
+                                            challan.ChallanNo ?: ""
+                                        ),
                                         Toast.LENGTH_SHORT
                                     ).show()
-                                    // TODO: Integrate PDF print logic here
                                     navController.navigate("editDeliveryChallan/${challan.Id}")
                                 }
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_edit_svg),
-                                    contentDescription = "Edit",
+                                    contentDescription = localizedContext.getString(R.string.cd_edit_challan),
                                     tint = Color(0xFF37474F),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
 
-                            // ✏️ Edit Button
+                            // ✏️ Print Button (right icon)
                             IconButton(onClick = {
-                                // ✅ Navigate to your Edit screen, pass challanId or challanNo
+                                // TODO: Attach print/PDF logic
                                 navController.navigate("editDeliveryChallan/${challan.Id}")
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.print_svg),
-                                    contentDescription = "Print",
+                                    contentDescription = localizedContext.getString(R.string.cd_print_challan),
                                     tint = Color(0xFF37474F),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
-
                     }
 
                     Divider(color = Color(0xFFE0E0E0))
@@ -344,11 +343,9 @@ fun DeliveryChallanTable(
 
 fun formatCreatedOn(createdOn: String?): String {
     if (createdOn.isNullOrBlank()) return ""
-
     return try {
         val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         val output = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-
         val date = input.parse(createdOn)
         if (date != null) output.format(date) else createdOn
     } catch (e: Exception) {
@@ -358,7 +355,7 @@ fun formatCreatedOn(createdOn: String?): String {
 }
 
 @Composable
-fun DeliverySearchBar(value: String, onValueChange: (String) -> Unit) {
+fun DeliverySearchBar(value: String, onValueChange: (String) -> Unit, localizedContext: Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -369,7 +366,12 @@ fun DeliverySearchBar(value: String, onValueChange: (String) -> Unit) {
             .border(1.dp, Color.Gray, RoundedCornerShape(12.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.padding(start = 12.dp), tint = Color.Gray)
+        Icon(
+            Icons.Default.Search,
+            contentDescription = localizedContext.getString(R.string.cd_search),
+            modifier = Modifier.padding(start = 12.dp),
+            tint = Color.Gray
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             BasicTextField(
@@ -385,7 +387,7 @@ fun DeliverySearchBar(value: String, onValueChange: (String) -> Unit) {
             )
             if (value.isEmpty()) {
                 Text(
-                    text = "Search by challan no or customer name",
+                    text = localizedContext.getString(R.string.hint_search_challan_or_customer),
                     color = Color.Gray,
                     fontSize = 16.sp,
                     modifier = Modifier
@@ -401,20 +403,13 @@ fun DeliverySearchBar(value: String, onValueChange: (String) -> Unit) {
                         .padding(end = 4.dp)
                         .size(24.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray)
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = localizedContext.getString(R.string.cd_clear),
+                        tint = Color.Gray
+                    )
                 }
             }
         }
     }
 }
-
-/*fun formatDate(dateString: String): String {
-    return try {
-        val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val date = format.parse(dateString)
-        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        outputFormat.format(date ?: Date())
-    } catch (e: Exception) {
-        dateString
-    }
-}*/

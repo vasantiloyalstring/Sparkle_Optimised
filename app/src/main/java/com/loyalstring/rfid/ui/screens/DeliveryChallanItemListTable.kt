@@ -1,5 +1,7 @@
+// File: DeliveryChallanItemListTable.kt
 package com.loyalstring.rfid.ui.screens
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -14,14 +16,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.loyalstring.rfid.R
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun DeliveryChallanItemListTable(
@@ -36,14 +42,32 @@ fun DeliveryChallanItemListTable(
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
 
+    val context = LocalContext.current
     val branchList = singleProductViewModel.branches
     val salesmanList by orderViewModel.empListFlow.collectAsState()
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    // header titles come from strings.xml (translated)
+    val headerTitles = listOf(
+        localizedContext.getString(R.string.product_name_short),
+        localizedContext.getString(R.string.itemcode),
+        localizedContext.getString(R.string.g_wt),
+        localizedContext.getString(R.string.n_wt),
+        localizedContext.getString(R.string.fw_wt),
+        localizedContext.getString(R.string.s_amt),
+        localizedContext.getString(R.string.d_amt),
+        localizedContext.getString(R.string.item_amt),
+        localizedContext.getString(R.string.rfid_code)
+    )
+
+    val cellWidth = 70.dp
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(bottom = 5.dp) // ✅ Adds space below entire table (footer included)
+            .padding(bottom = 5.dp)
     ) {
         // 🔹 Scrollable content (Header + Data)
         Box(
@@ -54,21 +78,18 @@ fun DeliveryChallanItemListTable(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 🔹 Always show header first
+                // Header
                 item {
                     Row(
                         modifier = Modifier
                             .background(Color(0xFF2E2E2E))
                             .padding(vertical = 4.dp)
                     ) {
-                        listOf(
-                            "P Name", "Itemcode", "G.Wt", "N.Wt", "F+W Wt",
-                            "S.Amt", "D Amt", "Item Amt", "RFID Code"
-                        ).forEach { title ->
+                        headerTitles.forEach { title ->
                             Text(
                                 text = title,
                                 modifier = Modifier
-                                    .width(70.dp)
+                                    .width(cellWidth)
                                     .padding(horizontal = 2.dp),
                                 color = Color.White,
                                 fontSize = 11.sp,
@@ -78,7 +99,7 @@ fun DeliveryChallanItemListTable(
                     }
                 }
 
-                // 🔹 Data rows appear below header (only when items exist)
+                // Data rows
                 items(productList.size) { index ->
                     val item = productList[index]
                     Row(
@@ -107,7 +128,7 @@ fun DeliveryChallanItemListTable(
                             Text(
                                 text = value,
                                 modifier = Modifier
-                                    .width(70.dp)
+                                    .width(cellWidth)
                                     .padding(horizontal = 2.dp),
                                 fontSize = 11.sp,
                                 color = Color.DarkGray,
@@ -117,7 +138,6 @@ fun DeliveryChallanItemListTable(
                     }
                 }
             }
-
         }
 
         // 🔹 Fixed Footer Row (Totals)
@@ -137,7 +157,7 @@ fun DeliveryChallanItemListTable(
             ) {
                 Row {
                     listOf(
-                        "Total",
+                        localizedContext.getString(R.string.total),
                         totalQty.toString(),
                         "%.3f".format(totalGross),
                         "%.3f".format(totalNet),
@@ -150,7 +170,7 @@ fun DeliveryChallanItemListTable(
                         Text(
                             text = total,
                             modifier = Modifier
-                                .width(70.dp)
+                                .width(cellWidth)
                                 .padding(horizontal = 2.dp),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -161,18 +181,21 @@ fun DeliveryChallanItemListTable(
                 }
             }
 
-       /*     if (showDialog && selectedItem != null) {
+            // optional dialog for editing a row
+            /*
+            if (showDialog && selectedItem != null) {
                 DeliveryChallanDialogEditAndDisplay(
                     selectedItem = selectedItem,
                     branchList = branchList,
                     salesmanList = salesmanList,
                     onDismiss = { showDialog = false },
                     onSave = { updatedItem ->
-                        // optional save logic
                         showDialog = false
+                        selectedIndex?.let { onItemUpdated(it, updatedItem) }
                     }
                 )
-            }*/
+            }
+            */
 
             if (showDialog && selectedItem != null && selectedIndex != null) {
                 DeliveryChallanDialogEditAndDisplay(
@@ -182,44 +205,20 @@ fun DeliveryChallanItemListTable(
                     onDismiss = { showDialog = false },
                     onSave = { updatedChallan ->
                         showDialog = false
-                        onItemUpdated(selectedIndex!!, updatedChallan)  // ✅ direct ChallanDetails
-                    }
-                )
-              /*  DeliveryChallanDialogEditAndDisplay(
-                    selectedItem = selectedItem,
-                    branchList = branchList,
-                    salesmanList = salesmanList,
-                    onDismiss = { showDialog = false },
-                    onSave = { updatedItem ->
-                        showDialog = false
-
-                        val old = selectedItem!!
-                        val updatedChallan = old.copy(
-                            GrossWt = updatedItem.grWt.toString(),
-                            NetWt = updatedItem.nWt.toString(),
-                            StoneAmount = updatedItem.stoneAmt.toString(),
-                            ItemAmount = updatedItem.itemAmt.toString(),
-                            // add other mappings as needed
-                        )
-
-                        // ✅ notify parent to update item
                         onItemUpdated(selectedIndex!!, updatedChallan)
                     }
-                )*/
+                )
             }
 
-
-
-            // ✅ Add space below footer
             Spacer(modifier = Modifier.height(5.dp))
 
-
-                DeliveryChallanSummaryRow(
-                    totalAmount = totalAmt,
-                    onAmountsChange = { gst, final ->
-                        onTotalsChange(totalAmt, gst, final)
-                    }
-                )
+            DeliveryChallanSummaryRow(
+                totalAmount = totalAmt,
+                onAmountsChange = { gst, final ->
+                    onTotalsChange(totalAmt, gst, final)
+                }
+            )
         }
     }
 }
+

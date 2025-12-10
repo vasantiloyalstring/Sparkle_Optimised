@@ -2,6 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -41,14 +42,10 @@ import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
 import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
-
-// Agar FieldWithLabel & InputField dusre file me hain:
-import com.loyalstring.rfid.ui.screens.FieldWithLabel
-import com.loyalstring.rfid.ui.screens.InputField
-
 // Agar SampleOutFields data class alag package me hai:
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -68,6 +65,10 @@ fun SampleOutFieldsDialog(
     var date by remember { mutableStateOf("") }
     var returnDate by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     Dialog(onDismissRequest = { onDismiss() }) {
         Surface(
@@ -95,7 +96,7 @@ fun SampleOutFieldsDialog(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.stylus_note),
-                            contentDescription = "Sample Out Fields",
+                            contentDescription = localizedContext.getString(R.string.cd_sample_out_fields_icon),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -103,7 +104,7 @@ fun SampleOutFieldsDialog(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = "Sample Out Fields",
+                            text = localizedContext.getString(R.string.sample_out_fields_title),
                             fontSize = 18.sp,
                             color = Color.White,
                             fontFamily = poppins
@@ -120,9 +121,9 @@ fun SampleOutFieldsDialog(
                 ) {
                     // Date
                     FieldWithLabel(
-                        label = "Date",
+                        label = localizedContext.getString(R.string.label_date),
                         value = date,
-                        placeholder = "Select date",
+                        placeholder = localizedContext.getString(R.string.placeholder_select_date),
                         onClick = {
                             DatePickerDialog(
                                 context,
@@ -143,9 +144,9 @@ fun SampleOutFieldsDialog(
 
                     // Return Date
                     FieldWithLabel(
-                        label = "Return Date",
+                        label = localizedContext.getString(R.string.label_return_date),
                         value = returnDate,
-                        placeholder = "Select return date",
+                        placeholder = localizedContext.getString(R.string.placeholder_select_return_date),
                         onClick = {
                             DatePickerDialog(
                                 context,
@@ -166,7 +167,7 @@ fun SampleOutFieldsDialog(
 
                     // Description
                     InputField(
-                        label = "Description",
+                        label = localizedContext.getString(R.string.label_description),
                         value = description,
                         onValueChange = { description = it }
                     )
@@ -182,22 +183,22 @@ fun SampleOutFieldsDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     GradientButtonIcon(
-                        text = "Cancel",
+                        text = localizedContext.getString(R.string.btn_cancel),
                         onClick = onDismiss,
                         icon = painterResource(id = R.drawable.ic_cancel),
-                        iconDescription = "Cancel",
+                        iconDescription = localizedContext.getString(R.string.btn_cancel),
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp)
                             .padding(end = 6.dp)
                     )
                     GradientButtonIcon(
-                        text = "Ok",
+                        text = localizedContext.getString(R.string.btn_ok),
                         onClick = {
                             if (date.isBlank() || returnDate.isBlank()) {
                                 Toast.makeText(
                                     context,
-                                    "Please select Date & Return Date",
+                                    context.getString(R.string.msg_select_date_return),
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 return@GradientButtonIcon
@@ -212,7 +213,7 @@ fun SampleOutFieldsDialog(
                             )
                         },
                         icon = painterResource(id = R.drawable.check_circle),
-                        iconDescription = "OK",
+                        iconDescription = localizedContext.getString(R.string.btn_ok),
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp)
@@ -223,3 +224,4 @@ fun SampleOutFieldsDialog(
         }
     }
 }
+

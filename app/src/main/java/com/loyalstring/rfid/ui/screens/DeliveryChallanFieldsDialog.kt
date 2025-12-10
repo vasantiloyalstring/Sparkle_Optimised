@@ -1,9 +1,9 @@
 package com.loyalstring.rfid.ui.screens
 
-
-
 import android.app.DatePickerDialog
+import android.content.Context
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,6 +56,10 @@ fun InvoiceFieldsDialog(
 
     var expandedBranch by remember { mutableStateOf(false) }
     var expandedSalesman by remember { mutableStateOf(false) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     Dialog(onDismissRequest = { onDismiss() }) {
         Surface(
@@ -80,8 +86,8 @@ fun InvoiceFieldsDialog(
                         modifier = Modifier.padding(start = 16.dp)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.stylus_note), // or use any Material icon you prefer
-                            contentDescription = "Invoice Fileds",
+                            painter = painterResource(id = R.drawable.stylus_note),
+                            contentDescription = localizedContext.getString(R.string.cd_invoice_fields),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -89,7 +95,7 @@ fun InvoiceFieldsDialog(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = "Invoice Fileds",
+                            text = localizedContext.getString(R.string.title_invoice_fields),
                             fontSize = 18.sp,
                             color = Color.White,
                             fontFamily = poppins
@@ -104,25 +110,25 @@ fun InvoiceFieldsDialog(
                     modifier = Modifier
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                 ) {
-                    // Branch
                     // Branch Dropdown
                     DropdownMenuField(
-                        label = "Select Branch",
+                        label = localizedContext.getString(R.string.label_select_branch),
                         options = branchList,
                         selectedValue = selectedBranch,
                         expanded = expandedBranch,
                         onValueChange = { selectedBranch = it },
                         onExpandedChange = { expandedBranch = it },
-                        getOptionLabel = { it.BranchName ?: "" }  // ✅ tell how to display
+                        getOptionLabel = { it.BranchName ?: "" },
+                        localizedContext=localizedContext
                     )
 
                     Spacer(Modifier.height(8.dp))
 
                     // Date picker
                     FieldWithLabel(
-                        label = "Date",
+                        label = localizedContext.getString(R.string.label_date),
                         value = date,
-                        placeholder = "Select date",
+                        placeholder = localizedContext.getString(R.string.placeholder_select_date),
                         onClick = {
                             DatePickerDialog(
                                 context,
@@ -142,24 +148,28 @@ fun InvoiceFieldsDialog(
                     Spacer(Modifier.height(8.dp))
 
                     // Fine %
-                    InputField(label = "Fine%", value = fine, onValueChange = { fine = it })
+                    InputField(
+                        label = localizedContext.getString(R.string.label_fine_percent),
+                        value = fine,
+                        onValueChange = { fine = it }
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
                     // Wastage
-                    InputField(label = "Wastage", value = wastage, onValueChange = { wastage = it })
+                    InputField(
+                        label = localizedContext.getString(R.string.label_wastage),
+                        value = wastage,
+                        onValueChange = { wastage = it }
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
                     // Salesman
-                    // 🔹 Salesman Dropdown (fixed)
-
                     when (salesmanList) {
                         is UiState.Success -> {
-                            println("✅ Loaded ${salesmanList.data.size} salesmen")
-
                             DropdownMenuField(
-                                label = "Salesman",
+                                label = localizedContext.getString(R.string.label_salesman),
                                 options = salesmanList.data,
                                 selectedValue = salesman,
                                 expanded = expandedSalesman,
@@ -170,9 +180,11 @@ fun InvoiceFieldsDialog(
                                         emp.FirstName,
                                         emp.LastName
                                     ).joinToString(" ").ifBlank { "Unknown" }
-                                }
+                                },
+                                localizedContext = localizedContext
                             )
                         }
+
                         is UiState.Loading -> {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -181,17 +193,16 @@ fun InvoiceFieldsDialog(
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                             }
                         }
+
                         is UiState.Error -> {
                             Text(
-                                text = "Failed to load salesmen",
+                                text = localizedContext.getString(R.string.error_load_salesman),
                                 color = Color.Red,
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(8.dp)
                             )
                         }
                     }
-
-
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -204,21 +215,24 @@ fun InvoiceFieldsDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     GradientButtonIcon(
-                        text = "Cancel",
+                        text = localizedContext.getString(R.string.btn_cancel),
                         onClick = onDismiss,
                         icon = painterResource(id = R.drawable.ic_cancel),
-                        iconDescription = "Cancel",
+                        iconDescription = localizedContext.getString(R.string.btn_cancel),
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp)
                             .padding(end = 6.dp)
                     )
                     GradientButtonIcon(
-                        text = "Ok",
+                        text = localizedContext.getString(R.string.btn_ok),
                         onClick = {
-                            // simple validation optional
                             if (selectedBranch.isBlank() || date.isBlank()) {
-                                Toast.makeText(context, "Please select Branch & Date", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.error_select_branch_date),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return@GradientButtonIcon
                             }
 
@@ -233,7 +247,7 @@ fun InvoiceFieldsDialog(
                             )
                         },
                         icon = painterResource(id = R.drawable.check_circle),
-                        iconDescription = "OK",
+                        iconDescription = localizedContext.getString(R.string.btn_ok),
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp)
@@ -246,10 +260,9 @@ fun InvoiceFieldsDialog(
 }
 
 /*-----------------------------------------------------------
-   Shared UI Components (clean & reusable)
+   Shared UI Components
 -----------------------------------------------------------*/
 
-// 🔸 Dropdown Field
 @Composable
 fun <T> DropdownMenuField(
     label: String,
@@ -258,7 +271,8 @@ fun <T> DropdownMenuField(
     expanded: Boolean,
     onValueChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
-    getOptionLabel: (T) -> String = { it.toString() }
+    getOptionLabel: (T) -> String = { it.toString() },
+    localizedContext: Context
 ) {
     Box(
         modifier = Modifier
@@ -282,7 +296,7 @@ fun <T> DropdownMenuField(
             )
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = "Dropdown",
+                contentDescription = localizedContext.getString(R.string.cd_dropdown),
                 tint = Color.Gray
             )
         }
@@ -305,7 +319,6 @@ fun <T> DropdownMenuField(
     }
 }
 
-// 🔸 Text Input Field
 @Composable
 fun InputField(label: String, value: String, onValueChange: (String) -> Unit) {
     Box(
@@ -331,7 +344,6 @@ fun InputField(label: String, value: String, onValueChange: (String) -> Unit) {
     }
 }
 
-// 🔸 Readonly Field with Click Action (for Date)
 @Composable
 fun FieldWithLabel(label: String, value: String, placeholder: String, onClick: () -> Unit) {
     Box(

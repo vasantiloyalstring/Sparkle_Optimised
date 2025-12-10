@@ -184,5 +184,158 @@
     <string name="delete_failed_message">❌ Failed to delete item</string>
 
 
+    <!-- SampleOut list -->
+    <string name="sample_out_list_title">Sample Out List</string>
+    <string name="search_hint_sample_out">Search by Sample Out No or customer name</string>
+    <string name="error_loading_list">Error loading list</string>
+
+    <!-- Column headers -->
+    <string name="header_s_no">S.No</string>
+    <string name="header_so_no">S.O.No</string>
+    <string name="header_customer_name">Cust Name</string>
+    <string name="header_date">Date</string>
+    <string name="header_return_date">R Date</string>
+    <string name="header_description">Description</string>
+    <string name="header_product_name">P Name</string>
+    <string name="header_total_weight">T Wt</string>
+    <string name="header_gross_weight">G.Wt</string>
+    <string name="header_stone_weight">S.Wt</string>
+    <string name="header_diamond_weight">D.Wt</string>
+    <string name="header_quantity">Qty</string>
+    <string name="header_action">Action</string>
+    <string name="header_actions">Actions</string>
+
+    <!-- Content descriptions / generic -->
+    <string name="cd_back">Back</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear">Clear search</string>
+    <string name="cd_edit">Edit</string>
+    <string name="cd_print">Print</string>
+
+
+    <string name="sample_out_fields_title">Sample Out Fields</string>
+    <string name="label_date">Date</string>
+    <string name="label_return_date">Return Date</string>
+    <string name="label_description">Description</string>
+    <string name="placeholder_select_date">Select date</string>
+    <string name="placeholder_select_return_date">Select return date</string>
+
+    <string name="msg_select_date_return">Please select Date &amp; Return Date</string>
+    <string name="cd_sample_out_fields_icon">Sample out fields icon</string>
+
+    <!-- Custom Order / Sample Out dialog -->
+    <string name="title_custom_order_fields">Custom Order Fields</string>
+    <string name="cd_custom_order_icon">Custom order fields icon</string>
+    <string name="cd_product_image">Product image</string>
+
+    <string name="label_product_name">Product Name</string>
+    <string name="label_item_code">ItemCode</string>
+    <string name="label_sku">SKU</string>
+
+    <string name="label_total_weight">Total Weight</string>
+    <string name="label_packing_weight">Packing Weight</string>
+    <string name="label_gross_weight">Gross Weight</string>
+    <string name="label_stone_weight">Stone Weight</string>
+    <string name="label_diamond_weight">Diamond Weight</string>
+    <string name="label_net_weight">Net Weight</string>
+    <string name="label_size">Size</string>
+    <string name="label_length">Length</string>
+    <string name="label_type_color">Type of Color</string>
+    <string name="label_screw_type">Screw Type</string>
+    <string name="label_polish_type">Polish Type</string>
+    <string name="label_rate_per_gram">Rate/Gm</string>
+    <string name="label_fine_percent">Fine%</string>
+    <string name="label_wastage_percent">Wastage%</string>
+    <string name="label_quantity">Quantity</string>
+    <string name="label_hallmark_amount">Hallmark Amount</string>
+    <string name="label_mrp">MRP</string>
+
+
+    <string name="btn_save">Save</string>
+
+    <string name="msg_no_item_selected">No item selected</string>
+
+
+    <!-- Delivery Challan List -->
+    <string name="title_delivery_challan_list">Delivery Challan List</string>
+
+
+    <!-- Table headers -->
+
+    <string name="header_challan_no">C.No</string>
+
+    <string name="header_qty">Qty</string>
+
+    <string name="header_net_weight">N.Wt</string>
+    <string name="header_fine_plus_weight">F+Wt</string>
+    <string name="header_tax_amount">Tax Amt</string>
+    <string name="header_total_amount">Total Amt</string>
+    <string name="header_branch">Branch</string>
+
+
+    <!-- Search bar -->
+    <string name="hint_search_challan_or_customer">
+        Search by challan no or customer name
+    </string>
+
+    <!-- Messages -->
+    <string name="error_loading_challans">Error loading challans</string>
+    <string name="toast_editing_challan">Editing challan %1$s</string>
+    <string name="label_challan">Challan</string>
+
+    <!-- Icon descriptions -->
+    <string name="cd_edit_challan">Edit challan</string>
+    <string name="cd_print_challan">Print challan</string>
+
+    <!-- Invoice Fields Dialog -->
+    <string name="title_invoice_fields">Invoice Fields</string>
+    <string name="cd_invoice_fields">Invoice fields icon</string>
+
+    <string name="label_select_branch">Select Branch</string>
+
+    <string name="label_wastage">Wastage</string>
+    <string name="label_salesman">Salesman</string>
+
+
+
+    <string name="error_select_branch_date">Please select Branch &amp; Date</string>
+    <string name="error_load_salesman">Failed to load salesmen</string>
+
+    <string name="cd_dropdown">Open dropdown</string>
+
+
+
+    <string name="product_name">Product Name</string>
+    <string name="itemcode">Itemcode</string>
+    <string name="t_wt">T Wt</string>
+    <string name="g_wt">G.Wt</string>
+    <string name="s_wt">S.Wt</string>
+    <string name="d_wt">D Wt</string>
+    <string name="n_wt">N.Wt</string>
+    <string name="fw_wt">F+W Wt</string>
+    <string name="qty">Qty</string>
+    <string name="pcs">Pcs</string>
+    <string name="action">Action</string>
+    <string name="total">Total</string>
+    <string name="delete">Delete</string>
+
+    <string name="product_name_short">P Name</string>
+
+    <string name="s_amt">S.Amt</string>
+    <string name="d_amt">D Amt</string>
+    <string name="item_amt">Item Amt</string>
+    <string name="rfid_code">RFID Code</string>
+
+    <!-- GST label: GST 3.00% -->
+    <string name="gst_with_percent">GST %1$.2f%%</string>
+
+    <!-- Total Amount label -->
+    <string name="total_amount">Total Amount</string>
+
+    <!-- Currency + amount (uses rupee sign + grouping + 2 decimals) -->
+    <string name="currency_amount">₹ %1$,.2f</string>
+
+
+
 
 </resources>

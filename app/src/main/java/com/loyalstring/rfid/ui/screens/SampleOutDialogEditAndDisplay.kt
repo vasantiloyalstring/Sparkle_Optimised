@@ -2,6 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,6 +40,7 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -64,6 +66,10 @@ fun SampleOutDialogEditAndDisplay(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
@@ -218,13 +224,13 @@ fun SampleOutDialogEditAndDisplay(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.order_edit_icon),
-                            contentDescription = "Custom Order Icon",
+                            contentDescription =  localizedContext.getString(R.string.cd_custom_order_icon),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Custom Order Fields",
+                            text =  localizedContext.getString(R.string.title_custom_order_fields),
                             color = Color.White,
                             fontSize = 18.sp,
                             fontFamily = poppins
@@ -234,14 +240,13 @@ fun SampleOutDialogEditAndDisplay(
 
                 Spacer(Modifier.height(6.dp))
 
-                // ---------- BODY (SCROLLABLE) ----------
+                // ---------- BODY ----------
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(8.dp)
                 ) {
-                    // 📷 Image area (top)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -253,7 +258,7 @@ fun SampleOutDialogEditAndDisplay(
                     ) {
                         AsyncImage(
                             model = baseUrl + (selectedItem?.Image ?: ""),
-                            contentDescription = "Product image",
+                            contentDescription =  localizedContext.getString(R.string.cd_product_image),
                             placeholder = painterResource(R.drawable.add_photo),
                             error = painterResource(R.drawable.add_photo),
                             modifier = Modifier.size(110.dp)
@@ -262,21 +267,26 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // 1️⃣ Product Name
-                    FieldRow("Product Name", productName) { productName = it }
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_product_name),
+                        value = productName
+                    ) { productName = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // 2️⃣ ItemCode
-                    FieldRow("ItemCode", itemCode) { itemCode = it }
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_item_code),
+                        value = itemCode
+                    ) { itemCode = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // 3️⃣ SKU
-                    FieldRow("SKU", sku) { sku = it }
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_sku),
+                        value = sku
+                    ) { sku = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // 4️⃣ Purity (dropdown)
                     DropdownRow(
-                        label = "Purity",
+                        label =  localizedContext.getString(R.string.label_purity),
                         list = purityNames,
                         selected = purity,
                         expanded = expandedPurity,
@@ -286,8 +296,11 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(6.dp))
 
-                    // 5️⃣ Total Weight
-                    FieldRow("Total Weight", totalWt) { newVal ->
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_total_weight),
+                        value = totalWt
+                    ) { newVal ->
+                        // existing logic...
                         totalWt = newVal
                         val totalValue = totalWt.toDoubleOrNull() ?: 0.0
                         val pack = packingWt.toDoubleOrNull() ?: 0.0
@@ -303,8 +316,11 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 6️⃣ Packing Weight
-                    FieldRow("Packing Weight", packingWt) { newVal ->
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_packing_weight),
+                        value = packingWt
+                    ) { newVal ->
+                        // existing logic...
                         packingWt = newVal
                         val totalValue = totalWt.toDoubleOrNull() ?: 0.0
                         val pack = packingWt.toDoubleOrNull() ?: 0.0
@@ -322,8 +338,10 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 7️⃣ Gross Weight
-                    FieldRow("Gross Weight", grossWT) { newVal ->
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_gross_weight),
+                        value = grossWT
+                    ) { newVal ->
                         grossWT = newVal
                         val g = grossWT.toDoubleOrNull() ?: 0.0
                         val s = stoneWt.toDoubleOrNull() ?: 0.0
@@ -336,8 +354,11 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 8️⃣ Stone Weight
-                    FieldRow("Stone Weight", stoneWt) { newVal ->
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_stone_weight),
+                        value = stoneWt
+                    ) { newVal ->
+                        // existing logic...
                         stoneWt = newVal
                         val total = grossWT.toDoubleOrNull() ?: 0.0
                         val stone = stoneWt.toDoubleOrNull() ?: 0.0
@@ -353,8 +374,11 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 9️⃣ Dimond Weight
-                    FieldRow("Dimond Weight", dimondWt) { newVal ->
+                    FieldRow(
+                        label =  localizedContext.getString(R.string.label_diamond_weight),
+                        value = dimondWt
+                    ) { newVal ->
+                        // existing logic...
                         dimondWt = newVal
                         val total = grossWT.toDoubleOrNull() ?: 0.0
                         val stone = stoneWt.toDoubleOrNull() ?: 0.0
@@ -370,7 +394,6 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 🔟 Net Weight (read-only)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -379,7 +402,7 @@ fun SampleOutDialogEditAndDisplay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Net Weight",
+                            text =  localizedContext.getString(R.string.label_net_weight),
                             modifier = Modifier.weight(0.4f),
                             fontSize = 12.sp,
                             color = Color.Black,
@@ -403,17 +426,14 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(6.dp))
 
-                    // 1️⃣1️⃣ Size
-                    FieldRow("Size", size) { size = it }
+                    FieldRow( localizedContext.getString(R.string.label_size), size) { size = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣2️⃣ Length
-                    FieldRow("Length", length) { length = it }
+                    FieldRow( localizedContext.getString(R.string.label_length), length) { length = it }
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣3️⃣ Type of Color
                     DropdownRow(
-                        label = "Type of Color",
+                        label =  localizedContext.getString(R.string.label_type_color),
                         list = colorsList,
                         selected = typeOfColors,
                         expanded = expandedColors,
@@ -423,9 +443,8 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣4️⃣ Screw Type
                     DropdownRow(
-                        label = "Screw Type",
+                        label =  localizedContext.getString(R.string.label_screw_type),
                         list = screwList,
                         selected = screwType,
                         expanded = expandedScrew,
@@ -435,9 +454,8 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣5️⃣ Polish Type
                     DropdownRow(
-                        label = "Polish Type",
+                        label =  localizedContext.getString(R.string.label_polish_type),
                         list = polishList,
                         selected = polishType,
                         expanded = expandedPolish,
@@ -447,8 +465,7 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣6️⃣ Rate/Gm
-                    FieldRow("Rate/Gm", ratePerGRam) { newVal ->
+                    FieldRow( localizedContext.getString(R.string.label_rate_per_gram), ratePerGRam) { newVal ->
                         ratePerGRam = newVal
                         val net = NetWt.toDoubleOrNull() ?: 0.0
                         val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
@@ -457,23 +474,23 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣7️⃣ Fine%
-                    FieldRow("Fine%", finePercentage) { finePercentage = it }
+                    FieldRow( localizedContext.getString(R.string.label_fine_percent), finePercentage) {
+                        finePercentage = it
+                    }
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣8️⃣ Wastage%
-                    FieldRow("Wastage%", wastage) { wastage = it }
+                    FieldRow( localizedContext.getString(R.string.label_wastage_percent), wastage) {
+                        wastage = it
+                    }
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 1️⃣9️⃣ Quantity
-                    FieldRow("Quantity", qty) { qty = it }
+                    FieldRow( localizedContext.getString(R.string.label_quantity), qty) { qty = it }
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 2️⃣0️⃣ Hallmark Amount
-                    FieldRow("Hallmark Amount", hallMarkAmt) { newVal ->
+                    FieldRow( localizedContext.getString(R.string.label_hallmark_amount), hallMarkAmt) { newVal ->
                         hallMarkAmt = newVal
                         val newHall = hallMarkAmt.toDoubleOrNull() ?: 0.0
                         val baseAmt =
@@ -483,22 +500,14 @@ fun SampleOutDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // 2️⃣1️⃣ MRP
-                    FieldRow("MRP", mrp) { newVal ->
+                    FieldRow( localizedContext.getString(R.string.label_mrp), mrp) { newVal ->
                         mrp = newVal
                         val mrpValue = mrp.toDoubleOrNull()
                         if (mrpValue != null && mrpValue > 0) {
                             itemAmt = String.format("%.2f", mrpValue)
                         }
                     }
-
-                    // (optional) extra fields after sequence
-                    Spacer(Modifier.height(6.dp))
-                   // FieldRow("Exhibition", exhibition) { exhibition = it }
-                    //Spacer(Modifier.height(4.dp))
-                    //FieldRow("Remark", remark) { remark = it }
                 }
-
                 // ---------- BUTTONS ----------
                 Row(
                     Modifier
@@ -507,7 +516,7 @@ fun SampleOutDialogEditAndDisplay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     GradientButtonIcon(
-                        text = "Cancel",
+                        text =   localizedContext.getString(R.string.btn_cancel),
                         onClick = { onDismiss() },
                         icon = painterResource(id = R.drawable.ic_cancel),
                         iconDescription = "Cancel",
@@ -518,12 +527,15 @@ fun SampleOutDialogEditAndDisplay(
                     )
 
                     GradientButtonIcon(
-                        text = "Save",
+                        text =  localizedContext.getString(R.string.btn_save),
                         onClick = {
                             val s = selectedItem
                             if (s == null) {
-                                Toast.makeText(context, "No item selected", Toast.LENGTH_SHORT)
-                                    .show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.msg_no_item_selected),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 onDismiss()
                                 return@GradientButtonIcon
                             }

@@ -181,5 +181,152 @@
     <string name="no_results_found">कोई परिणाम नहीं मिला</string>
     <string name="rfid_prefix">आरएफआईडी: %1$s</string>
 
+    <string name="sample_out_list_title">सैंपल आउट सूची</string>
+    <string name="search_hint_sample_out">सैंपल आउट नंबर या ग्राहक नाम से खोजें</string>
+    <string name="error_loading_list">सूची लोड करने में त्रुटि</string>
+
+    <string name="header_s_no">क्र.सं.</string>
+    <string name="header_so_no">सैंपल आउट नं.</string>
+    <string name="header_customer_name">ग्राहक नाम</string>
+    <string name="header_date">तारीख</string>
+    <string name="header_return_date">रिटर्न तारीख</string>
+    <string name="header_description">विवरण</string>
+    <string name="header_product_name">प्रोडक्ट नाम</string>
+    <string name="header_total_weight">कुल वज़न</string>
+    <string name="header_gross_weight">ग्रॉस वज़न</string>
+    <string name="header_stone_weight">स्टोन वज़न</string>
+    <string name="header_diamond_weight">डायमंड वज़न</string>
+    <string name="header_quantity">मात्रा</string>
+    <string name="header_action">क्रिया</string>
+    <string name="header_actions">क्रियाएँ</string>
+
+    <string name="cd_back">पीछे</string>
+    <string name="cd_search">खोज</string>
+    <string name="cd_clear">साफ़ करें</string>
+    <string name="cd_edit">संपादित करें</string>
+    <string name="cd_print">प्रिंट</string>
+
+    <!-- Sample Out Fields dialog -->
+    <string name="sample_out_fields_title">सैंपल आउट फ़ील्ड्स</string>
+    <string name="label_date">तारीख</string>
+    <string name="label_return_date">रिटर्न तारीख</string>
+    <string name="label_description">विवरण</string>
+    <string name="placeholder_select_date">तारीख चुनें</string>
+    <string name="placeholder_select_return_date">रिटर्न तारीख चुनें</string>
+
+    <string name="msg_select_date_return">कृपया तारीख और रिटर्न तारीख चुनें</string>
+    <string name="cd_sample_out_fields_icon">सैंपल आउट फ़ील्ड्स आइकन</string>
+
+
+    <!-- Custom Order / Sample Out dialog -->
+    <string name="title_custom_order_fields">कस्टम ऑर्डर फ़ील्ड्स</string>
+    <string name="cd_custom_order_icon">कस्टम ऑर्डर आइकन</string>
+    <string name="cd_product_image">प्रोडक्ट इमेज</string>
+
+    <string name="label_product_name">प्रोडक्ट नाम</string>
+    <string name="label_item_code">आइटम कोड</string>
+    <string name="label_sku">एसकेयू</string>
+
+    <string name="label_total_weight">कुल वज़न</string>
+    <string name="label_packing_weight">पैकिंग वज़न</string>
+    <string name="label_gross_weight">सकल वज़न</string>
+    <string name="label_stone_weight">स्टोन वज़न</string>
+    <string name="label_diamond_weight">हीरा वज़न</string>
+    <string name="label_net_weight">नेट वज़न</string>
+    <string name="label_size">साइज़</string>
+    <string name="label_length">लंबाई</string>
+    <string name="label_type_color">रंग का प्रकार</string>
+    <string name="label_screw_type">स्क्रू प्रकार</string>
+    <string name="label_polish_type">पॉलिश प्रकार</string>
+    <string name="label_rate_per_gram">दर/ग्राम</string>
+    <string name="label_fine_percent">फाइन %</string>
+    <string name="label_wastage_percent">वेेस्टेज %</string>
+    <string name="label_quantity">मात्रा</string>
+    <string name="label_hallmark_amount">हॉलमार्क राशि</string>
+    <string name="label_mrp">एमआरपी</string>
+
+
+    <string name="btn_save">सेव करें</string>
+
+    <string name="msg_no_item_selected">कोई आइटम चयनित नहीं है</string>
+
+    <!-- Delivery Challan List -->
+    <string name="title_delivery_challan_list">डिलिवरी चालान सूची</string>
+
+
+    <!-- Table headers -->
+
+    <string name="header_challan_no">चालान नं.</string>
+
+    <string name="header_qty">मात्रा</string>
+
+    <string name="header_net_weight">नेट वज़न</string>
+    <string name="header_fine_plus_weight">फाइन+वज़न</string>
+    <string name="header_tax_amount">टैक्स राशि</string>
+    <string name="header_total_amount">कुल राशि</string>
+    <string name="header_branch">शाखा</string>
+
+
+    <!-- Search bar -->
+    <string name="hint_search_challan_or_customer">
+        चालान नंबर या ग्राहक नाम से खोजें
+    </string>
+
+
+    <!-- Messages -->
+    <string name="error_loading_challans">चालान लोड करते समय त्रुटि</string>
+    <string name="toast_editing_challan">चालान %1$s संपादित हो रहा है</string>
+    <string name="label_challan">चालान</string>
+
+    <!-- Icon descriptions -->
+    <string name="cd_edit_challan">चालान एडिट करें</string>
+    <string name="cd_print_challan">चालान प्रिंट करें</string>
+
+    <!-- Invoice Fields Dialog -->
+    <string name="title_invoice_fields">इनवॉइस फ़ील्ड्स</string>
+    <string name="cd_invoice_fields">इनवॉइस फ़ील्ड्स आइकन</string>
+
+    <string name="label_select_branch">शाखा चुनें</string>
+
+    <string name="label_wastage">वेस्टेज</string>
+    <string name="label_salesman">सेल्समैन</string>
+
+
+
+    <string name="error_select_branch_date">कृपया शाखा और तारीख चुनें</string>
+    <string name="error_load_salesman">सेल्समैन लोड करने में त्रुटि</string>
+
+    <string name="cd_dropdown">ड्रॉपडाउन खोलें</string>
+
+
+    <string name="product_name">प्रोडक्ट नाम</string>
+    <string name="itemcode">आइटम कोड</string>
+    <string name="t_wt">टी वजन</string>
+    <string name="g_wt">जी. वजन</string>
+    <string name="s_wt">एस. वजन</string>
+    <string name="d_wt">डी. वजन</string>
+    <string name="n_wt">एन. वजन</string>
+    <string name="fw_wt">एफ+डब्ल्यू वजन</string>
+    <string name="qty">मात्रा</string>
+    <string name="pcs">पीस</string>
+    <string name="action">क्रिया</string>
+    <string name="total">कुल</string>
+    <string name="delete">हटाएँ</string>
+
+    <string name="product_name_short">प्रोडक्ट नाम</string>
+
+    <string name="s_amt">स्टोन राशि</string>
+    <string name="d_amt">डायमंड राशि</string>
+    <string name="item_amt">आइटम राशि</string>
+    <string name="rfid_code">आरएफआईडी कोड</string>
+
+    <!-- जीएसटी 3.00% -->
+    <string name="gst_with_percent">जीएसटी %1$.2f%%</string>
+
+    <!-- कुल राशि -->
+    <string name="total_amount">कुल राशि</string>
+
+    <!-- ₹ 1,234.56 -->
+    <string name="currency_amount">₹ %1$,.2f</string>
 
 </resources>

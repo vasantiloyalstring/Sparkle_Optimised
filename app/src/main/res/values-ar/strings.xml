@@ -180,4 +180,155 @@
     <string name="delete_failed_message">❌ فشل حذف العنصر</string>
 
 
+    <string name="sample_out_list_title">قائمة عينات الخروج</string>
+    <string name="search_hint_sample_out">ابحث برقم العينة أو اسم العميل</string>
+    <string name="error_loading_list">خطأ في تحميل القائمة</string>
+
+    <string name="header_s_no">م.</string>
+    <string name="header_so_no">رقم العينة</string>
+    <string name="header_customer_name">اسم العميل</string>
+    <string name="header_date">التاريخ</string>
+    <string name="header_return_date">تاريخ الإرجاع</string>
+    <string name="header_description">الوصف</string>
+    <string name="header_product_name">اسم المنتج</string>
+    <string name="header_total_weight">الوزن الكلي</string>
+    <string name="header_gross_weight">الوزن الإجمالي</string>
+    <string name="header_stone_weight">وزن الحجر</string>
+    <string name="header_diamond_weight">وزن الماس</string>
+    <string name="header_quantity">الكمية</string>
+    <string name="header_action">إجراء</string>
+    <string name="header_actions">إجراءات</string>
+
+    <string name="cd_back">رجوع</string>
+    <string name="cd_search">بحث</string>
+    <string name="cd_clear">مسح البحث</string>
+    <string name="cd_edit">تعديل</string>
+    <string name="cd_print">طباعة</string>
+
+    <!-- Sample Out Fields dialog -->
+    <string name="sample_out_fields_title">حقول العينة الخارجة</string>
+    <string name="label_date">التاريخ</string>
+    <string name="label_return_date">تاريخ الإرجاع</string>
+    <string name="label_description">الوصف</string>
+    <string name="placeholder_select_date">اختر التاريخ</string>
+    <string name="placeholder_select_return_date">اختر تاريخ الإرجاع</string>
+
+    <string name="msg_select_date_return">يرجى اختيار التاريخ وتاريخ الإرجاع</string>
+    <string name="cd_sample_out_fields_icon">أيقونة حقول العينة الخارجة</string>
+
+    <!-- Custom Order / Sample Out dialog -->
+    <string name="title_custom_order_fields">حقول الطلب المخصص</string>
+    <string name="cd_custom_order_icon">أيقونة الطلب المخصص</string>
+    <string name="cd_product_image">صورة المنتج</string>
+
+    <string name="label_product_name">اسم المنتج</string>
+    <string name="label_item_code">رمز الصنف</string>
+    <string name="label_sku">رمز المخزون (SKU)</string>
+
+    <string name="label_total_weight">الوزن الكلي</string>
+    <string name="label_packing_weight">وزن التغليف</string>
+    <string name="label_gross_weight">الوزن الإجمالي</string>
+    <string name="label_stone_weight">وزن الأحجار</string>
+    <string name="label_diamond_weight">وزن الألماس</string>
+    <string name="label_net_weight">الوزن الصافي</string>
+    <string name="label_size">المقاس</string>
+    <string name="label_length">الطول</string>
+    <string name="label_type_color">نوع اللون</string>
+    <string name="label_screw_type">نوع القفل</string>
+    <string name="label_polish_type">نوع التلميع</string>
+    <string name="label_rate_per_gram">السعر/غرام</string>
+    <string name="label_fine_percent">نقاوة %</string>
+    <string name="label_wastage_percent">هالك %</string>
+    <string name="label_quantity">الكمية</string>
+    <string name="label_hallmark_amount">قيمة الختم</string>
+    <string name="label_mrp">السعر النهائي (MRP)</string>
+
+
+    <string name="btn_save">حفظ</string>
+
+    <string name="msg_no_item_selected">لم يتم اختيار أي صنف</string>
+
+    <!-- Delivery Challan List -->
+    <string name="title_delivery_challan_list">قائمة سندات التسليم</string>
+
+    <!-- Table headers -->
+
+    <string name="header_challan_no">رقم السند</string>
+
+    <string name="header_qty">العدد</string>
+
+    <string name="header_net_weight">الوزن الصافي</string>
+    <string name="header_fine_plus_weight">وزن الفاين+</string>
+    <string name="header_tax_amount">قيمة الضريبة</string>
+    <string name="header_total_amount">إجمالي المبلغ</string>
+    <string name="header_branch">الفرع</string>
+
+
+    <!-- Search bar -->
+    <string name="hint_search_challan_or_customer">
+        ابحث برقم السند أو اسم الزبون
+    </string>
+
+
+    <!-- Messages -->
+    <string name="error_loading_challans">حدث خطأ أثناء تحميل السندات</string>
+    <string name="toast_editing_challan">يتم تعديل السند %1$s</string>
+    <string name="label_challan">السند</string>
+
+    <!-- Icon descriptions -->
+    <string name="cd_edit_challan">تعديل السند</string>
+    <string name="cd_print_challan">طباعة السند</string>
+
+    <!-- Invoice Fields Dialog -->
+    <string name="title_invoice_fields">حقول الفاتورة</string>
+    <string name="cd_invoice_fields">أيقونة حقول الفاتورة</string>
+
+    <string name="label_select_branch">اختر الفرع</string>
+
+    <string name="label_wastage">الهالك</string>
+    <string name="label_salesman">مندوب المبيعات</string>
+
+
+
+    <string name="error_select_branch_date">يرجى اختيار الفرع والتاريخ</string>
+    <string name="error_load_salesman">فشل في تحميل مندوبي المبيعات</string>
+
+    <string name="cd_dropdown">فتح قائمة الاختيار</string>
+
+
+
+    <string name="product_name">اسم المنتج</string>
+    <string name="itemcode">رمز الصنف</string>
+    <string name="t_wt">الوزن الكلي</string>
+    <string name="g_wt">الوزن الإجمالي</string>
+    <string name="s_wt">وزن الأحجار</string>
+    <string name="d_wt">وزن الألماس</string>
+    <string name="n_wt">الوزن الصافي</string>
+    <string name="fw_wt">وزن الصافي + الهالك</string>
+    <string name="qty">الكمية</string>
+    <string name="pcs">القطع</string>
+    <string name="action">الإجراء</string>
+    <string name="total">الإجمالي</string>
+    <string name="delete">حذف</string>
+
+    <string name="product_name_short">اسم المنتج</string>
+
+    <string name="s_amt">مبلغ الحجر</string>
+    <string name="d_amt">مبلغ الألماس</string>
+    <string name="item_amt">مبلغ الصنف</string>
+    <string name="rfid_code">رمز RFID</string>
+
+    <!-- ضريبة GST 3.00% (you can adjust wording if you want another style) -->
+    <string name="gst_with_percent">ضريبة GST %1$.2f%%</string>
+
+    <!-- إجمالي المبلغ -->
+    <string name="total_amount">إجمالي المبلغ</string>
+
+    <!-- ₹ 1,234.56 (Android will auto-handle RTL layout) -->
+    <string name="currency_amount">₹ %1$,.2f</string>
+
+
+
+
+
 </resources>

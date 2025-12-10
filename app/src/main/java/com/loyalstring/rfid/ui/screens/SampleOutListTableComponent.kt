@@ -1,6 +1,8 @@
+// File: SampleOutListTableComponent.kt
 package com.loyalstring.rfid.ui.screens
 
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +28,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +39,7 @@ import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun SampleOutListTableComponent(
@@ -48,18 +54,27 @@ fun SampleOutListTableComponent(
     var selectedItem by remember { mutableStateOf<SampleOutDetails?>(null) }
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
     var showDialog by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
 
     val branchList = singleProductViewModel.branches
     val salesmanList by orderViewModel.empListFlow.collectAsState()
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     // 🔹 Header titles & dynamic widths (MUST be same size)
     val headerTitles = listOf(
-        "Itemcode", "T Wt", "G.Wt",
-        "S.Wt", "D Wt", "N.Wt",
-        "F+W Wt", "Qty", "Pcs"
+        localizedContext.getString(R.string.itemcode),
+        localizedContext.getString(R.string.t_wt),
+        localizedContext.getString(R.string.g_wt),
+        localizedContext.getString(R.string.s_wt),
+        localizedContext.getString(R.string.d_wt),
+        localizedContext.getString(R.string.n_wt),
+        localizedContext.getString(R.string.fw_wt),
+        localizedContext.getString(R.string.qty),
+        localizedContext.getString(R.string.pcs)
     )
 
     val columnWidths = listOf(
@@ -91,7 +106,7 @@ fun SampleOutListTableComponent(
         ) {
             // Fixed first column: Product Name
             Text(
-                text = "Product Name",
+                text = localizedContext.getString(R.string.product_name),
                 modifier = Modifier
                     .width(110.dp)
                     .padding(horizontal = 2.dp),
@@ -123,7 +138,7 @@ fun SampleOutListTableComponent(
 
             // Fixed last column: Action
             Text(
-                text = "Action",
+                text = localizedContext.getString(R.string.action),
                 modifier = Modifier
                     .width(40.dp)
                     .padding(horizontal = 1.dp),
@@ -151,12 +166,12 @@ fun SampleOutListTableComponent(
                         )
 
                         .padding(vertical = 3.dp)
-                    .clickable {
-                    selectedItem = item
-                    selectedIndex = index
-                    showDialog = true
-                    Log.d("SampleOut", "Row clicked index=$index item=${item.ItemCode}")
-                },
+                        .clickable {
+                            selectedItem = item
+                            selectedIndex = index
+                            showDialog = true
+                            Log.d("SampleOut", "Row clicked index=$index item=${item.ItemCode}")
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Fixed Product Name
@@ -203,7 +218,6 @@ fun SampleOutListTableComponent(
                     }
 
                     // Fixed Action column (Delete – Edit agar chahiye to yahan add karo)
-                    // Fixed Action column (Delete – Edit agar chahiye to yahan add karo)
                     Row(
                         modifier = Modifier
                             .width(40.dp)
@@ -214,7 +228,7 @@ fun SampleOutListTableComponent(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_delete), // 🔹 tumhara delete icon
-                            contentDescription = "Delete",
+                            contentDescription = localizedContext.getString(R.string.delete),
                             modifier = Modifier
                                 .size(18.dp)
                                 .clickable {
@@ -246,7 +260,7 @@ fun SampleOutListTableComponent(
             ) {
                 // Fixed label
                 Text(
-                    text = "Total",
+                    text = localizedContext.getString(R.string.total),
                     modifier = Modifier
                         .width(110.dp)
                         .padding(horizontal = 2.dp),
@@ -313,3 +327,22 @@ fun SampleOutListTableComponent(
     }
 }
 
+/*
+ Add the following strings to res/values/strings.xml
+
+ <resources>
+     <string name="product_name">Product Name</string>
+     <string name="itemcode">Itemcode</string>
+     <string name="t_wt">T Wt</string>
+     <string name="g_wt">G.Wt</string>
+     <string name="s_wt">S.Wt</string>
+     <string name="d_wt">D Wt</string>
+     <string name="n_wt">N.Wt</string>
+     <string name="fw_wt">F+W Wt</string>
+     <string name="qty">Qty</string>
+     <string name="pcs">Pcs</string>
+     <string name="action">Action</string>
+     <string name="total">Total</string>
+     <string name="delete">Delete</string>
+ </resources>
+*/

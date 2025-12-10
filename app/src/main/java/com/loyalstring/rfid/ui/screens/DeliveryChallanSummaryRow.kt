@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,19 +11,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun DeliveryChallanSummaryRow(
     gstPercent: Double = 3.0,
     totalAmount: Double,
     onGstCheckedChange: (Boolean) -> Unit = {},
-    // ✅ extra callback agar parent ko GST aur final total chahiye ho
+    // ✅ parent ko GST & final total dene ke liye
     onAmountsChange: (gstAmount: Double, finalAmount: Double) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
     var isGstChecked by remember { mutableStateOf(true) }
 
     // ✅ GST amount & final total calculate based on checkbox
@@ -35,6 +41,10 @@ fun DeliveryChallanSummaryRow(
     LaunchedEffect(isGstChecked, totalAmount, gstPercent) {
         onAmountsChange(gstAmount, finalAmount)
     }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     Row(
         modifier = Modifier
@@ -64,8 +74,12 @@ fun DeliveryChallanSummaryRow(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
+
+                // 🔹 GST XX.XX%
                 Text(
-                    text = "GST ${"%.2f".format(gstPercent)}%",
+                    text =localizedContext.getString( R.string.gst_with_percent,
+                        gstPercent
+                    ),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.Black
@@ -75,14 +89,14 @@ fun DeliveryChallanSummaryRow(
 
         // 🔹 Total Amount Label
         Text(
-            text = "Total Amount",
+            text =      localizedContext.getString( R.string.total_amount),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.Black,
             textAlign = TextAlign.Center
         )
 
-        // 🔹 Amount Box (✅ yaha ab FINAL amount dikh raha hai – base + GST if checked)
+        // 🔹 Amount Box (FINAL amount – base + GST if checked)
         Box(
             modifier = Modifier
                 .background(Color.White, RoundedCornerShape(6.dp))
@@ -90,7 +104,9 @@ fun DeliveryChallanSummaryRow(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "₹ ${"%,.2f".format(finalAmount)}",
+                text =      localizedContext.getString(R.string.currency_amount,
+                    finalAmount
+                ),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1565C0)
