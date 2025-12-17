@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -71,6 +73,8 @@ import com.loyalstring.rfid.viewmodel.ImportExcelViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -114,6 +118,10 @@ fun ProductManagementScreen(
     val isImportDone by importViewModel.isImportDone.collectAsStateWithLifecycle(initialValue = false)
 
     var isError by remember { mutableStateOf(false) }
+
+    val syncTotal by viewModel.syncTotalCount.collectAsState()
+    val syncSynced by viewModel.syncSyncedCount.collectAsState()
+    val skipped by viewModel.syncSkippedItemCodes.collectAsState()
 
 
     var dialogMessage by remember { mutableStateOf<String?>(null) }
@@ -263,8 +271,17 @@ fun ProductManagementScreen(
         }
     }
 
-    if (showSuccessDialog) {
+  /*  if (showSuccessDialog) {
         SyncSuccessDialog(onDismiss = { showSuccessDialog = false })
+    }*/
+
+    if (showSuccessDialog) {
+        SyncSuccessDialog(
+            totalCount = syncTotal,
+            syncedCount = syncSynced,
+            skippedItemCodes = skipped,
+            onDismiss = { showSuccessDialog = false }
+        )
     }
 
 
@@ -487,7 +504,7 @@ fun ProductManagementScreen(
 
 }
 
-@Composable
+/*@Composable
 fun SyncSuccessDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -552,7 +569,120 @@ fun SyncSuccessDialog(onDismiss: () -> Unit) {
         containerColor = Color.White,
         shape = RoundedCornerShape(16.dp)
     )
+}*/
+
+@Composable
+fun SyncSuccessDialog(
+    totalCount: Int,
+    syncedCount: Int,
+    skippedItemCodes: List<String>,
+    onDismiss: () -> Unit
+) {
+
+    val showList = skippedItemCodes.take(10)   // ✅ optional: show only 10
+    val more = (skippedItemCodes.size - showList.size).coerceAtLeast(0)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        title = {},
+        text = {
+            Box {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(20.dp)
+                        .clickable { onDismiss() }
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(top = 32.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.sucsess),
+                        contentDescription = null,
+                        modifier = Modifier.size(120.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Data Sync Successfully!",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // ✅ NEW line
+                    Text(
+                        text = "Synced $syncedCount / $totalCount items",
+                        fontSize = 13.sp,
+                        color = Color.DarkGray
+                    )
+
+                    // ✅ NEW: show not synced item codes
+                    if (skippedItemCodes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Not Synced (${skippedItemCodes.size}):",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFE82E5A)
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 160.dp)
+                        ) {
+                            items(showList) { code ->
+                                Text(text = "• $code", fontSize = 12.sp, color = Color.Black)
+                                Spacer(modifier = Modifier.height(2.dp))
+                            }
+                        }
+
+                        if (more > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = "+ $more more...", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Spacer(modifier = Modifier.height(25.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF3053F0), Color(0xFFE82E5A))
+                                )
+                            )
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Done",
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
+
 
 @Composable
 fun ProductGridCard(

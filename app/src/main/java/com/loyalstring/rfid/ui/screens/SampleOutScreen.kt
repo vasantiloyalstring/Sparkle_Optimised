@@ -47,6 +47,8 @@ import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
@@ -55,6 +57,8 @@ import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutIssueItem
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintData
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintItem
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutUpdateRequest
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
@@ -66,9 +70,12 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.SampleOutPdfGenerator
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlin.text.orEmpty
 
 @SuppressLint("UnrememberedMutableState")
@@ -723,6 +730,9 @@ fun SampleOutScreen(
     val addSampleOut by sampleOutViewModel.addResult.collectAsState()
     val updateSampleOut by sampleOutViewModel.updateResult.collectAsState()
 
+    var printData by remember { mutableStateOf<SampleOutPrintData?>(null) }
+    var openPdfTrigger by remember { mutableStateOf(false) }
+
     LaunchedEffect(addSampleOut) {
         // 👉 initial emptyList / clear ke baad emptyList ko ignore karo
         val result = addSampleOut ?: return@LaunchedEffect
@@ -732,9 +742,57 @@ fun SampleOutScreen(
             Toast.LENGTH_SHORT
         ).show()
 
+
+        // ✅ 1) Build data for PDF (use your current UI values / productList)
+        val sampleNo = result.SampleOutNo ?: SampleOutNo ?: ""   // ✅ apne response field ke hisab se
+        val date = productList.firstOrNull()?.Date ?: ""
+        val returnDate = productList.firstOrNull()?.ReturnDate ?: ""
+
+        val items = productList.map { it ->
+            SampleOutPrintItem(
+                itemDetails = "${it.CategoryName} - ${it.ProductName} - ${it.DesignName} - ${it.Purity}",
+                grossWt = it.GrossWt,
+                stoneWt = it.StoneAmt,
+                diamondWt = it.DiamondWt,
+                netWt = it.NetWt,
+                pieces = it.Pieces,
+                status = "Sample Out",
+               // imageUrl = it.Image // optional
+            )
+        }
+
+        printData = SampleOutPrintData(
+            companyName =  UserPreferences.getInstance(context).getOrganization().toString(), // or from branch/company api
+            customerName = customerName,
+            addressCity = result.Customer.CurrAddTown.toString(), // map from customer if you have
+            contactNo =  result.Customer.Mobile,    // map from customer
+            sampleOutNo = sampleNo,
+            date = date,
+            returnDate = returnDate,
+            items = items
+        )
+
+        // ✅ 2) trigger open
+        openPdfTrigger = true
+
+
         sampleOutViewModel.clearAddResult()   // yaha pe emptyList set karo
         viewModel.resetProductScanResults()
         kotlinx.coroutines.delay(500)
+
+
+
+
+    }
+
+    LaunchedEffect(openPdfTrigger, printData) {
+        if (!openPdfTrigger) return@LaunchedEffect
+        val data = printData ?: return@LaunchedEffect
+
+        // generate + open (main thread ok, but heavy work ho to IO me split kar sakte)
+        generateSampleOutPrintPdf(context, data)
+
+        openPdfTrigger = false
     }
 
     LaunchedEffect(updateSampleOut) {

@@ -34,7 +34,7 @@ data class BulkItem(
     val sku: String?,
     var epc: String?,
     val vendor: String?,
-    val tid: String?,
+    var tid: String?,
     val box: String?,
     val designCode: String?,
     val productCode: String?,

@@ -119,10 +119,11 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 userPrefs.saveEmployee(response.employee)
                 userPrefs.setLoggedIn(true)
                 userPrefs.saveClient(response.employee?.clients!!)
+                userPrefs.saveOrganization(response.employee?.clients!!.organisationName.toString())
 
                 response.employee.empEmail?.let { scanDisplayViewModel.saveEmail(it) }
 
-                userPrefs.saveLoginCredentials(username, password, rememberMe,response.employee.clients.rfidType.toString(),response.employee.id,response.employee.defaultBranchId)
+                userPrefs.saveLoginCredentials(username, password, rememberMe,response.employee.clients.rfidType.toString(),response.employee.id,response.employee.defaultBranchId,response.employee.clients.organisationName.toString())
 
                 response.employee.clientCode?.let {
                     userPermissionViewModel.loadPermissions(it, response.employee.id)
@@ -229,7 +230,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                         }
 
                         viewModel.login(LoginRequest(username, password), rememberMe)
-                        userPrefs.saveLoginCredentials(username, password, rememberMe,"",0,0)
+                        userPrefs.saveLoginCredentials(username, password, rememberMe,"",0,0,"")
 
                     },
                 contentAlignment = Alignment.Center

@@ -258,6 +258,20 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var currentProduct by rememberSaveable { mutableStateOf<String?>(null) }
     var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
 
+    val scannedFiltered by bulkViewModel.scannedFilteredItems
+    val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
+
+    val summaryItems by remember(navFilteredItems, matchedEpcs) {
+        derivedStateOf {
+            navFilteredItems.map { original ->
+                val keyEpc = original.epc?.trim()?.uppercase()
+                val status =
+                    if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                original.copy(scannedStatus = status)
+            }
+        }
+    }
+
 
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
@@ -292,15 +306,15 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
-    val scannedFiltered by bulkViewModel.scannedFilteredItems
-    val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
+  //  val scannedFiltered by bulkViewModel.scannedFilteredItems
+    //val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
     val currentPage by bulkViewModel.currentPage.collectAsState()
     val pageSize by bulkViewModel.pageSize.collectAsState()
     val totalItems by bulkViewModel.totalItems.collectAsState()
     val isLoadingPage by bulkViewModel.isLoadingPage.collectAsState()
 
     // scopeItems overlay scanned status on filtered base set
-    val scopeItems by remember(
+ /*   val scopeItems by remember(
         navFilteredItems,
         selectedCategoriesKey,
         selectedProductsKey,
@@ -322,10 +336,37 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 }
             }
         }
+    }*/
+    val scopeItems by remember(
+        navFilteredItems,
+        selectedCategoriesKey,
+        selectedProductsKey,
+        selectedDesignsKey,
+        matchedEpcs,           // ✅ ADD THIS
+        scannedFiltered
+    ) {
+        derivedStateOf {
+            if (navFilteredItems.isEmpty()) emptyList()
+            else {
+                navFilteredItems.mapNotNull { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status =
+                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+
+                    val withScan = original.copy(scannedStatus = status)
+
+                    if ((selectedCategoriesKey.isEmpty() || withScan.category in selectedCategoriesKey) &&
+                        (selectedProductsKey.isEmpty() || withScan.productName in selectedProductsKey) &&
+                        (selectedDesignsKey.isEmpty() || withScan.design in selectedDesignsKey)
+                    ) withScan else null
+                }
+            }
+        }
     }
 
+
     // displayItems respects selectedMenu and sticky unmatched ids (existing logic preserved)
-    val displayItems = remember(scopeItems, selectedMenu, bulkViewModel.filteredUnmatchedIds.collectAsState().value) {
+  /*  val displayItems = remember(scopeItems, selectedMenu, bulkViewModel.filteredUnmatchedIds.collectAsState().value) {
         if (scopeItems.isEmpty()) {
             emptyList()
         } else {
@@ -339,6 +380,29 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     }
                     (unmatchedNow + sticky).distinctBy { it.epc }
                 }
+                else -> scopeItems
+            }
+        }
+    }
+*/
+
+    val stickyUnmatchedIds by bulkViewModel.filteredUnmatchedIds.collectAsState()
+
+    val displayItems by remember(scopeItems, selectedMenu, stickyUnmatchedIds) {
+        derivedStateOf {
+            if (scopeItems.isEmpty()) emptyList()
+            else when (selectedMenu) {
+                MENU_MATCHED -> scopeItems.filter { it.scannedStatus == "Matched" }
+
+                MENU_UNMATCHED -> {
+                    val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
+                    val sticky = scopeItems.filter {
+                        val id = it.epc?.trim()?.uppercase()
+                        id != null && stickyUnmatchedIds.contains(id)
+                    }
+                    (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                }
+
                 else -> scopeItems
             }
         }
@@ -465,6 +529,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         },
         bottomBar = {
             Column {
+
+              //  SummaryRow(currentLevel, displayItems, selectedMenu)
                 SummaryRow(currentLevel, displayItems, selectedMenu)
                 ScanBottomBarInventory(
                     onSave = { /* save */ },
@@ -883,6 +949,24 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
     // Menu (Matched/Unmatched/etc.)
+/*
+    val summaryItems by remember(navFilteredItems, matchedEpcs) {
+        derivedStateOf {
+            navFilteredItems.map { original ->
+                val keyEpc = original.epc?.trim()?.uppercase()
+                val status =
+                    if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                original.copy(scannedStatus = status)
+            }
+        }
+    }*/
+   /* var matchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Matched" } }
+    var unmatchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Unmatched" } }
+    val totalCount = remember(scopeItems) { scopeItems.size }*/
+    val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
+    val unmatchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Unmatched" } }
+    val totalCount = remember(summaryItems) { summaryItems.size }   // ✅ THIS LINE FIXED
+
     if (showMenu) {
         Box(
             modifier = Modifier
@@ -900,19 +984,40 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 shadowElevation = 8.dp,
                 color = Color.White
             ) {
-                VerticalMenu { menuItem ->
-                    when (menuItem.title) {
-                        "UnMatched Items" -> {
-                            scope.launch {
-                                bulkViewModel.setLoading(true)
-                                delay(1000)
-                                bulkViewModel.loadUnmatchedFast(scopeItems)
-                                selectedMenu = MENU_UNMATCHED
-                                currentLevel = "DesignItems"
-                            }
+                VerticalMenu(
+                    matchedCount = matchedCount,
+                    unmatchedCount = unmatchedCount,
+                    totalCount = totalCount
+                ) { menuItem ->
+                        when (menuItem.title) {
+                            "UnMatched Items" -> {
+                                scope.launch {
+                                   /* bulkViewModel.setLoading(true)
+                                    delay(1000)
+                                    bulkViewModel.loadUnmatchedFast(scopeItems)
+                                    selectedMenu = MENU_UNMATCHED
+                                    currentLevel = "DesignItems"*/
+                                    selectedMenu = MENU_UNMATCHED
+                                   /* currentLevel = "DesignItems"
 
-                            // Compute unmatched ids off the main thread to avoid freezing UI on large lists
-                            /*bulkViewModel.setLoading(true)
+                                    currentCategory = null
+                                    currentProduct = null
+                                    currentDesign = null
+                                    selectedCategories.clear()
+                                    selectedProducts.clear()
+                                    selectedDesigns.clear()*/
+
+                                    // optional: sticky ids set (agar tumhe sticky behaviour chahiye)
+                                    val ids = scopeItems.asSequence()
+                                        .filter { it.scannedStatus.equals("Unmatched", true) }
+                                        .mapNotNull { it.epc?.trim()?.uppercase() }
+                                        .distinct()
+                                        .toList()
+                                    bulkViewModel.rememberUnmatchedIds(ids)
+                                }
+
+                                // Compute unmatched ids off the main thread to avoid freezing UI on large lists
+                                /*bulkViewModel.setLoading(true)
                             scope.launch(Dispatchers.IO) {
                                 val ids = withContext(Dispatchers.Default) {
                                     scopeItems.asSequence()
@@ -938,65 +1043,76 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 }
                             }*/
 
-                        }
-
-                        "Matched Items" -> {
-                            selectedMenu = MENU_MATCHED
-                            bulkViewModel.clearStickyUnmatched()
-
-                            // ✅ Always show items when matched mode
-                            currentLevel = "DesignItems"
-                            currentCategory = null
-                            currentProduct = null
-                            currentDesign = null
-
-                            selectedCategories.clear()
-                            selectedProducts.clear()
-                            selectedDesigns.clear()
-                        }
-
-                        "Unlabelled Items" -> {
-                            selectedMenu = MENU_ALL
-                            bulkViewModel.clearStickyUnmatched()
-                        }
-                        // In ScanDisplayScreen
-                        "Search" -> {
-                            scope.launch {
-                                bulkViewModel.setLoading(true)
-                                // Remove artificial delay
-                                // delay(1000)
-
-                                val latestUnmatched = withContext(Dispatchers.Default) {
-                                    scopeItems
-                                        .filter { it.scannedStatus.equals("Unmatched", true) }
-                                        .distinctBy { it.epc?.trim()?.uppercase() }
-                                }
-
-                                if (latestUnmatched.isNotEmpty()) {
-                                    navController.currentBackStackEntry?.savedStateHandle?.set(
-                                        "unmatchedItems",
-                                        ArrayList(latestUnmatched)
-                                    )
-                                    navController.navigate("search_screen/unmatched") {
-                                        // This is the callback from SearchScreen
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                } else {
-                                    navController.navigate("search_screen/normal") {
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-
-
-                                }
-                                //delay(1000)
-                                bulkViewModel.setLoading(false)
-                                //showToast(context, "End")
                             }
 
+                            "Matched Items" -> {
+                               /* selectedMenu = MENU_MATCHED
+                                bulkViewModel.clearStickyUnmatched()
+
+                                // ✅ Always show items when matched mode
+                                currentLevel = "DesignItems"
+                                currentCategory = null
+                                currentProduct = null
+                                currentDesign = null
+
+                                selectedCategories.clear()
+                                selectedProducts.clear()
+                                selectedDesigns.clear()*/
+                                selectedMenu = MENU_MATCHED
+                                bulkViewModel.clearStickyUnmatched()
+
+                               /* currentLevel = "DesignItems"
+                                currentCategory = null
+                                currentProduct = null
+                                currentDesign = null
+                                selectedCategories.clear()
+                                selectedProducts.clear()
+                                selectedDesigns.clear()*/
+                            }
+
+                            "Unlabelled Items" -> {
+                                selectedMenu = MENU_ALL
+                                bulkViewModel.clearStickyUnmatched()
+                            }
+                            // In ScanDisplayScreen
+                            "Search" -> {
+                                scope.launch {
+                                    bulkViewModel.setLoading(true)
+                                    // Remove artificial delay
+                                    // delay(1000)
+
+                                    val latestUnmatched = withContext(Dispatchers.Default) {
+                                        scopeItems
+                                            .filter { it.scannedStatus.equals("Unmatched", true) }
+                                            .distinctBy { it.epc?.trim()?.uppercase() }
+                                    }
+
+                                    if (latestUnmatched.isNotEmpty()) {
+                                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                                            "unmatchedItems",
+                                            ArrayList(latestUnmatched)
+                                        )
+                                        navController.navigate("search_screen/unmatched") {
+                                            // This is the callback from SearchScreen
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    } else {
+                                        navController.navigate("search_screen/normal") {
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+
+
+                                    }
+                                    //delay(1000)
+                                    bulkViewModel.setLoading(false)
+                                    //showToast(context, "End")
+                                }
+
+                            }
                         }
-                    }
+
                     showMenu = false
                 }
             }
@@ -1305,7 +1421,7 @@ fun FilterSelectionDialog(
 /* -----------------------
    Summary row (simplified)
    ----------------------- */
-@Composable
+/*@Composable
 fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
 
     val totalQty = items.size
@@ -1355,7 +1471,77 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
             }
         }
     }
+}*/
+
+@Composable
+fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
+
+    val totals = remember(items) {
+        val totalQty = items.size
+        val totalWt = items.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
+
+        val matched = items.filter { it.scannedStatus == "Matched" }
+        val matchedQty = matched.size
+        val matchedWt = matched.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
+
+        val unmatchedQty = totalQty - matchedQty
+        val unmatchedWt = totalWt.subtract(matchedWt)
+
+        Triple(
+            Triple(totalQty, totalWt, matchedQty),
+            Triple(matchedWt, unmatchedQty, unmatchedWt),
+            Unit
+        )
+    }
+
+    val totalQty = totals.first.first
+    val totalWtBD = totals.first.second
+    val matchedQty = totals.first.third
+    val matchedWtBD = totals.second.first
+    val unmatchedQty = totals.second.second
+    val unmatchedWtBD = totals.second.third
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF3B363E))
+            .padding(vertical = 4.dp)
+    ) {
+
+        // ✅ DesignItems view: show Total + Matched + Unmatched (filterwise)
+        if (currentLevel == "DesignItems" || selectedMenu == MENU_MATCHED || selectedMenu == MENU_UNMATCHED) {
+            TableHeaderCell("Total", colDesignNameWidth)
+            TableHeaderCell("$totalQty", colRfidWidth)
+
+            // 2-line info in same cell (M + U)
+            Box(
+                modifier = Modifier.width(colItemCodeWidth).padding(horizontal = 2.dp, vertical = 3.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "M:$matchedQty\nU:$unmatchedQty",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    lineHeight = 11.sp,
+                    maxLines = 2
+                )
+            }
+
+            TableHeaderCell(formatTo3Decimals(totalWtBD), colGWtWidth)
+            TableHeaderCell("", colStatusIconWidth)
+        } else {
+            // ✅ Category/Product/Design summary (same as before but now always filterwise)
+            TableHeaderCell("Total", colCategoryWidth)
+            TableHeaderCell("$totalQty", colQtyWidth)
+            TableHeaderCell(formatTo3Decimals(totalWtBD), colWeightWidth)
+            TableHeaderCell("$matchedQty", colMatchedQtyWidth)
+            TableHeaderCell(formatTo3Decimals(matchedWtBD), colMatchedWtWidth)
+            TableHeaderCell("", colStatusWidth)
+        }
+    }
 }
+
 
 
 @Composable
@@ -1469,13 +1655,16 @@ fun StatusIconCell(status: String?, width: Dp) {
 }
 
 @Composable
-fun VerticalMenu(onMenuClick: (MenuItem) -> Unit) {
+fun VerticalMenu( matchedCount: Int,
+                  unmatchedCount: Int,
+                  totalCount: Int,
+                  onMenuClick: (MenuItem) -> Unit) {
     val menuItems = listOf(
-        MenuItem("Matched Items", R.drawable.ic_list_matched),
-        MenuItem("UnMatched Items", R.drawable.ic_list_unmatched),
-        MenuItem("Unlabelled Items", R.drawable.ic_list_unlabelled),
-        MenuItem("Resume Scan", R.drawable.ic_resume_scan),
-        MenuItem("Search", R.drawable.search_gr_svg)
+        MenuItem("Matched Items", R.drawable.ic_list_matched, matchedCount),
+        MenuItem("UnMatched Items", R.drawable.ic_list_unmatched, unmatchedCount),
+        MenuItem("Unlabelled Items", R.drawable.ic_list_unlabelled, totalCount),
+        MenuItem("Resume Scan", R.drawable.ic_resume_scan, null),
+        MenuItem("Search", R.drawable.search_gr_svg, unmatchedCount)
     )
 
     Column(
@@ -1538,5 +1727,5 @@ fun formatTo3Decimals(b: BigDecimal): String {
     return b.setScale(3, RoundingMode.HALF_UP).toPlainString()
 }
 
-data class MenuItem(val title: String, val iconRes: Int)
+data class MenuItem(val title: String, val iconRes: Int,val count: Int? = null)
 data class TableRow(val label: String, val items: List<BulkItem>)

@@ -39,6 +39,7 @@ class UserPreferences @Inject constructor(
         const  val KEY_LOCATION_SYNC = "location_sync"
         const val KEY_USER_ID="user_id"
         const val KEY_BRANCH_ID="branch_id"
+        const val KEY_ORG="organisation_name"
 
         private val gson = Gson()
 
@@ -86,7 +87,7 @@ class UserPreferences @Inject constructor(
     }
 
     //---------------- LOGIN / LOGOUT ----------------
-    fun saveLoginCredentials(username: String, password: String, rememberMe: Boolean,rfidtype:String, userId: Int, branchId: Int) {
+    fun saveLoginCredentials(username: String, password: String, rememberMe: Boolean,rfidtype:String, userId: Int, branchId: Int, organisationName: String) {
         prefs.edit().apply {
             putBoolean(KEY_REMEMBER_ME, rememberMe)
             if (rememberMe){
@@ -95,12 +96,14 @@ class UserPreferences @Inject constructor(
                 putString(KEY_RFIDTYPE,rfidtype)
                 putInt(KEY_USER_ID,userId)
                 putInt(KEY_BRANCH_ID,branchId)
+                putString(KEY_ORG,organisationName)
             }else {
                 remove(KEY_USERNAME)
                 remove(KEY_PASSWORD)
                 remove(KEY_RFIDTYPE)
                 remove(KEY_USER_ID)
                 remove(KEY_BRANCH_ID)
+                remove(KEY_ORG)
 
             /*    putString(KEY_USERNAME, username)
                 putString(KEY_PASSWORD, password)
@@ -213,6 +216,22 @@ class UserPreferences @Inject constructor(
         val value = prefs.getString("app_language", "en") ?: "en"
         Log.d("LocaleDebug", "getAppLanguage -> $value")
         return value
+    }
+
+    fun saveOrganization(org: String) {
+        val json = gson.toJson(org)
+        prefs.edit { putString(KEY_ORG, json) }
+    }
+
+    // ✅ Get Organization
+    fun getOrganization(): String? {
+        val json = prefs.getString(KEY_ORG, null)
+        return if (json != null) gson.fromJson(json, String()::class.java) else null
+    }
+
+    // (optional) clear
+    fun clearOrganization() {
+        prefs.edit { remove(KEY_ORG) }
     }
 }
 

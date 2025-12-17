@@ -3,10 +3,13 @@ package com.loyalstring.rfid.ui.screens
 import android.content.Context
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -19,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +43,7 @@ import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /*----------------------------------------------------------
@@ -251,7 +256,7 @@ fun CustomerNameInputData(
 /*----------------------------------------------------------
    ADD CUSTOMER DIALOG (Localized)
 -----------------------------------------------------------*/
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AddCustomerDialog(
     localizedContext: Context,
@@ -281,6 +286,9 @@ fun AddCustomerDialog(
         "Kerala", "Maharashtra", "Rajasthan", "Tamil Nadu", "Telangana")
     val countryOptions = listOf("India", "USA", "UK", "Canada")
 
+    val scope = rememberCoroutineScope()
+    val cityBiv = remember { BringIntoViewRequester() }
+
     Popup(alignment = Alignment.Center, properties = PopupProperties(focusable = true)) {
         Box(
             modifier = Modifier
@@ -294,6 +302,8 @@ fun AddCustomerDialog(
                     .background(Color.White, RoundedCornerShape(12.dp))
                     .fillMaxWidth(0.95f)
                     .heightIn(min = 300.dp, max = 600.dp)
+                    .imePadding()                      // ✅ pushes content above keyboard
+
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // 🔹 Header
@@ -321,6 +331,7 @@ fun AddCustomerDialog(
                             .weight(1f)
                             .verticalScroll(scrollState)
                             .padding(16.dp)
+                            .imePadding()
                     ) {
                         fun fieldModifier() = Modifier
                             .fillMaxWidth()
@@ -366,7 +377,22 @@ fun AddCustomerDialog(
                         }
 
                         Spacer(Modifier.height(10.dp))
-                        CenteredTextField(city, { city = it }, localizedContext.getString(R.string.hint_city), fieldModifier())
+                        CenteredTextField(
+                            value = city,
+                            onValueChange = { city = it },
+                            placeholder = localizedContext.getString(R.string.hint_city),
+                            modifier = fieldModifier()
+                                .bringIntoViewRequester(cityBiv)
+                                .onFocusEvent { state ->
+                                    if (state.isFocused) {
+                                        scope.launch {
+                                            delay(250) // keyboard open hone do
+                                            cityBiv.bringIntoView() // ✅ scroll up so user can see typing
+                                        }
+                                    }
+                                }
+                        )
+                       // CenteredTextField(city, { city = it }, localizedContext.getString(R.string.hint_city), fieldModifier())
                     }
 
                     // 🔹 Footer Buttons
@@ -400,9 +426,9 @@ fun AddCustomerDialog(
                                     gst.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[A-Z]{1}[0-9]{1}$".toRegex())
 
                                 when {
-                                    name.isEmpty() -> showToast(context, context.getString(R.string.msg_enter_name))
-                                    phone.isEmpty() && email.isEmpty() && pan.isEmpty() && gst.isEmpty()
-                                            && street.isEmpty() && city.isEmpty() && state.isEmpty() && country.isEmpty() -> {
+                                    name.trim().isEmpty() -> showToast(context, context.getString(R.string.msg_enter_name))
+                                    phone.trim().isEmpty() && email.trim().isEmpty() && pan.trim().isEmpty() && gst.trim().isEmpty()
+                                            && street.trim().isEmpty() && city.trim().isEmpty() && state.trim().isEmpty() && country.trim().isEmpty() -> {
                                         val req = AddEmployeeRequest(name, "", "", "", "", "", "",
                                             0, 0, 0, "", "Active", "", "0", "0", "", "", "", "", "",
                                             "", "", "", "", "", "", "", "0", "0", "", "0", "0", "",

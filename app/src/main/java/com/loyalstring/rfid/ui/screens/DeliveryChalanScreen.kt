@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -52,6 +53,8 @@ import com.loyalstring.rfid.data.local.entity.DeliveryChallanItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.AddDeliveryChallanRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import com.loyalstring.rfid.data.model.login.Employee
@@ -69,6 +72,15 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.os.Build
+import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+
+import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @SuppressLint("UnrememberedMutableState")
 @Composable
@@ -278,12 +290,12 @@ fun DeliveryChalanScreen(
 
 
 
-    LaunchedEffect(shouldNavigateBack) {
+  /*  LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
             kotlinx.coroutines.delay(50)
             onBack()
         }
-    }
+    }*/
 
     val customerSuggestions by orderViewModel.empListFlow.collectAsState(UiState.Loading)
 
@@ -714,7 +726,7 @@ fun DeliveryChalanScreen(
                 ChallanId = 0,
                 MRP = matchedItem.mrp?.toString() ?: "0.0",
                 CategoryName = matchedItem.category.orEmpty(),
-                ChallanStatus = "Pending",
+                ChallanStatus = "Sold",
                 ProductName = matchedItem.productName.orEmpty(),
                 Quantity = (matchedItem.totalQty ?: matchedItem.pcs ?: 1).toString(),
                 HSNCode = "",
@@ -1251,7 +1263,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             ChallanId = 0,
             MRP = matchedItem.mrp?.toString() ?: "0.0",
             CategoryName = matchedItem.category.orEmpty(),
-            ChallanStatus = "Pending",
+            ChallanStatus = "Sold",
             ProductName = matchedItem.productName.orEmpty(),
             Quantity = (matchedItem.totalQty ?: matchedItem.pcs ?: 1).toString(),
             HSNCode = "",
@@ -1380,8 +1392,74 @@ MakingPerGram=${touchMatch.MakingPerGram}
             // Optional: clear after short delay so toast doesn’t miss it
             kotlinx.coroutines.delay(500)
             //deliveryChallanViewModel.clearAddChallanResponse()
+
+            // Prepare print data from your screen state
+            val itemsForPrint = productList.map { detail ->
+                DeliveryChallanItemPrint(
+                    itemName = detail.ProductName ?: "",
+                    purity = detail.Purity ?: "",
+                    pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
+                    grossWt = detail.GrossWt ?: "0.000 gm",
+                    stoneWt = detail.TotalStoneWeight ?: "0 gm",
+                    netWt = detail.NetWt ?: "0.000 gm",
+                    ratePerGram = detail.MetalRate ?: "0",
+                    wastage = detail.FineWastageWt ?: "0%",
+                    itemAmount = detail.ItemAmount ?: "0.00"
+                )
+            }
+
+            val printData = DeliveryChallanPrintData(
+                branchName = "QA",
+                city = "PUNE",
+                createdDateTime = response.CreatedOn,
+                customerName = customerName,
+                quotationNo = (response.InvoiceNo ?: "0").toString(),
+                phone =response.ChallanDetails.get(0).DesignName,
+                items = itemsForPrint,
+                taxableAmount = String.format("%.2f", baseTotal),
+                cgstPercent = 1.5,
+                cgstAmount = String.format("%.2f", baseTotal * 0.015),
+                sgstPercent = 1.5,
+                sgstAmount = String.format("%.2f", baseTotal * 0.015),
+                totalNetAmount = String.format("%.2f", totalWithGst)
+            )
+
+            val uri = generateDeliveryChallanPdf(context, printData)
+
+            if (uri != null) {
+                openPdfPreview(context, uri)
+                // or:
+                // sharePdfOnWhatsApp(context, uri)
+            }
+
+            //val activity = LocalContext.current.findActivity()
+
+            ensureBluetoothPermissions(context) {
+                CoroutineScope(Dispatchers.IO).launch {
+
+                    BluetoothThermalPrinterHelper.printDeliveryChallan(
+                        context = context,
+                        data = printData,
+                        printerName = "4B-2043PB-B799"
+                    )
+                }
+            }
+            Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
         }
+        resetAllFields(   onResetCustomerName = { customerName = it },
+            onResetCustomerId = { customerId = it },
+            onResetSelectedCustomer = { selectedCustomer = it },
+            onResetExpandedCustomer = { expandedCustomer = it },
+            onResetItemCode = { itemCode = it },
+            onResetSelectedItem = { selectedItem = it },
+            onResetDropdownItemcode = { showDropdownItemcode = it },
+            onResetProductList = { productList.clear() },
+            onResetScanning = { isScanning = it },
+            viewModel = viewModel,
+            deliveryChallanViewModel = deliveryChallanViewModel)
     }
+
+
 
 // 🔹 Handle error messages
     LaunchedEffect(deliveryChallanViewModel.error) {
@@ -1761,7 +1839,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             ChallanId = 0,
             MRP = matchedItem.mrp?.toString() ?: "0.0",
             CategoryName = matchedItem.category.orEmpty(),
-            ChallanStatus = "Pending",
+            ChallanStatus = "Sold",
             ProductName = matchedItem.productName.orEmpty(),
             Quantity = (matchedItem.totalQty ?: matchedItem.pcs ?: 1).toString(),
             HSNCode = "",
@@ -1921,7 +1999,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                             Qty = productList.size.toString(),
                             GST = "3.0",
                             ReceivedAmount = "0.0",
-                            ChallanStatus = "Open",
+                            ChallanStatus = "Sold",
                             Visibility = "1",
                             MRP = productList.sumOf { it.MRP?.toDoubleOrNull() ?: 0.0 }.toString(),
                             GrossWt = productList.sumOf { it.GrossWt?.toDoubleOrNull() ?: 0.0 }.toString(),
@@ -2245,6 +2323,34 @@ MakingPerGram=${touchMatch.MakingPerGram}
 
     }
 
+fun ensureBluetoothPermissions(context: Context, onGranted: () -> Unit) {
+    val activity = context.findActivity() ?: run {
+        Log.e("@BT", "❌ Cannot get Activity from context")
+        return
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val permissions = arrayOf(
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN
+        )
+
+        val missing = permissions.any {
+            ActivityCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missing) {
+            ActivityCompat.requestPermissions(activity, permissions, 777)
+        } else {
+            onGranted()
+        }
+    } else {
+        onGranted()
+    }
+}
+
+
+
 fun resetAllFields(
     onResetCustomerName: (String) -> Unit,
     onResetCustomerId: (Int?) -> Unit,
@@ -2290,7 +2396,7 @@ fun DeliveryChallanItem.toChallanDetails(): ChallanDetails {
         ChallanId = 0,
         MRP = this.mrp ?: "0.0",
         CategoryName = this.categoryName ?: "",
-        ChallanStatus = "Pending",
+        ChallanStatus = "Sold",
         ProductName = this.productName ?: "",
         Quantity = this.qty ?: "1",
         HSNCode = "",
@@ -2423,5 +2529,19 @@ fun BulkItem.toItemCodeResponse(): ItemCodeResponse {
         ProductName = this.productName.orEmpty()
     )
 
+}
+
+@Composable
+fun getActivity(): Activity? {
+    var activity: Activity? = null
+    var context = LocalContext.current
+    while (context is android.content.ContextWrapper) {
+        if (context is Activity) {
+            activity = context
+            break
+        }
+        context = context.baseContext
+    }
+    return activity
 }
 

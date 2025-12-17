@@ -37,6 +37,8 @@ import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutListResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintData
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintItem
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
@@ -315,7 +317,8 @@ fun SampleOutTable(
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
                                     val sampleOutNoSafe = challan.SampleOutNo ?: ""
-                                    // TODO: Integrate PDF print logic here
+                                    val data = challan.toSampleOutPrintData(context)
+                                    generateSampleOutPrintPdf(context, data)
                                     Log.d("Print", "PRINT Screen $sampleOutNoSafe challan.Id ${challan.Id}")
                                 }
                             }) {
@@ -334,6 +337,37 @@ fun SampleOutTable(
             }
         }
     }
+}
+
+fun SampleOutListResponse.toSampleOutPrintData(context: Context): SampleOutPrintData {
+    val org = UserPreferences.getInstance(context).getOrganization()
+    val companyName = org?.toString().orEmpty() // agar model me Name field hai to use karo
+
+    val items = (this.IssueItems ?: emptyList()).map { it ->
+        SampleOutPrintItem(
+            itemDetails = listOfNotNull(it.CategoryName, it.ProductName, it.DesignName, it.PurityName)
+                .filter { s -> s.isNotBlank() }
+                .joinToString(" - "),
+            grossWt = it.GrossWt ?: "0.000",
+            stoneWt = it.StoneWeight ?: "0.000",
+            diamondWt = it.DiamondWeight ?: "0.000",
+            netWt = it.NetWt ?: "0.000",
+            pieces = it.Pieces ?: "1",
+            status = "Sample Out",
+            //imageUrl = it.Image // agar backend me image aa raha hai
+        )
+    }
+
+    return SampleOutPrintData(
+        companyName = companyName,
+        customerName = listOfNotNull(this.Customer?.FirstName, this.Customer?.LastName).joinToString(" ").trim(),
+        addressCity = this.Customer?.CurrAddTown.orEmpty(),
+        contactNo = this.Customer?.Mobile.orEmpty(),
+        sampleOutNo = this.SampleOutNo.orEmpty(),
+        date = formatCreatedOn(this.CreatedOn), // tumhara existing fn
+        returnDate = this.ReturnDate.orEmpty(),
+        items = items
+    )
 }
 
 @Composable
