@@ -1018,17 +1018,22 @@ class BulkViewModel @Inject constructor(
                     if (alreadyInScanned) {
                         if (!alreadyInDuplicates) {
                             duplicateTags.add(tag)
+                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
+                            setLastEpc(epc)
                             _duplicateItems.value = duplicateTags.toList()
                         }
                     } else {
                         _allScannedTags.value += tag
                         if (exists && !alreadyInDuplicates) {
                             existingTags.add(tag)
+                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
+                            setLastEpc(epc)
                             _existingItems.value = existingTags.toList()
                         }
                     }
                 }
                 Log.d("RFID", "Processed EPC: $epc")
+
             }
         }
     }
@@ -1817,6 +1822,13 @@ class BulkViewModel @Inject constructor(
         _clearSuccess.value = false
         _deletedRecords.value = 0
         _clearError.value = null
+    }
+
+    private val _lastEpc = MutableStateFlow("")
+    val lastEpc: StateFlow<String> = _lastEpc
+
+    fun setLastEpc(epc: String) {
+        _lastEpc.value = epc
     }
 }
 

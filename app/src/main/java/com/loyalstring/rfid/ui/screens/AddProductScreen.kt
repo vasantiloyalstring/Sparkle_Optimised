@@ -294,6 +294,20 @@ fun AddProductScreen(
         }
     }
 
+    val lastEpc by bulkViewModel.lastEpc.collectAsState()
+
+    LaunchedEffect(lastEpc) {
+        if (lastEpc.isNotBlank()) {
+            updateField("EPC", lastEpc)
+        }
+    }
+
+    LaunchedEffect(items) {
+        if (items.isNotEmpty()) {
+            updateField("EPC", items.first().toString())
+        }
+    }
+
 
 
     val cameraLauncher = rememberLauncherForActivityResult(
