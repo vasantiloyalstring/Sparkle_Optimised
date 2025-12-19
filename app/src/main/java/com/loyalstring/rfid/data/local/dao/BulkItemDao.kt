@@ -99,4 +99,12 @@ interface BulkItemDao {
     @Query("SELECT COUNT(*) FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs)")
     suspend fun getItemCountByEpcs(epcs: List<String>): Int
 
+
+   /* @Query("SELECT * FROM bulk_items WHERE UPPER(TRIM(epc)) = UPPER(TRIM(:epc)) LIMIT 1")
+    suspend fun getItemByEpc(epc: String): BulkItem?*/
+
+    // ✅ NEW: batch fetch (fast)
+    @Query("SELECT * FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs)")
+    suspend fun getItemsByEpcs(epcs: List<String>): List<BulkItem>
+
 }

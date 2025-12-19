@@ -1,7 +1,6 @@
 // ScanDisplayScreen.kt
 package com.loyalstring.rfid.ui.screens
 
-import android.R.bool
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
@@ -75,6 +74,7 @@ import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.model.stockVerification.Item
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.GradientButton
@@ -121,6 +121,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val context: Context = LocalContext.current
     var shouldNavigateBack by remember { mutableStateOf(false) }
     val emailStatus by scanDisplayViewModel.emailStatus.collectAsState()
+
+    val loading by scanDisplayViewModel.loading.collectAsState()
+    val error by scanDisplayViewModel.error.collectAsState()
+    val successMsg by scanDisplayViewModel.successMsg.collectAsState()
+
 
 
 
@@ -312,6 +317,21 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val pageSize by bulkViewModel.pageSize.collectAsState()
     val totalItems by bulkViewModel.totalItems.collectAsState()
     val isLoadingPage by bulkViewModel.isLoadingPage.collectAsState()
+
+    // ✅ show toast ONLY once
+    LaunchedEffect(successMsg) {
+        successMsg?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+           // scanDisplayViewModel.clearSuccessMsg()
+        }
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+           // scanDisplayViewModel.clearError()
+        }
+    }
 
     // scopeItems overlay scanned status on filtered base set
  /*   val scopeItems by remember(
@@ -533,7 +553,23 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
               //  SummaryRow(currentLevel, displayItems, selectedMenu)
                 SummaryRow(currentLevel, displayItems, selectedMenu)
                 ScanBottomBarInventory(
-                    onSave = { /* save */ },
+                    onSave = { /* save */
+
+                        val clientCode = employee?.clientCode       // 🔁 replace
+
+                        val scannedItems = buildItemsForUpload(scopeItems)
+
+                        Log.d("SAVE_DEBUG", "scopeItems=${scopeItems.size} " +
+                                "matched=${scopeItems.count { it.scannedStatus == "Matched" }} " +
+                                "unmatched=${scopeItems.count { it.scannedStatus == "Unmatched" }}")
+
+                        Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
+                                "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
+                                "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
+                        //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
+                        //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
+                        scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 500)
+                    },
                     onList = { showMenu = true },
                     onScan = {
                         if (!isScanning) {
@@ -1222,6 +1258,71 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 }
+
+typealias StockItem = com.loyalstring.rfid.data.model.stockVerification.Item
+
+private fun String.normalizeTagKey(): String? =
+    this.trim().uppercase().takeIf { it.isNotBlank() }
+
+private fun BulkItem.tagKey(): String? =
+    (this.epc ?: this.rfid)?.normalizeTagKey()
+
+private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
+    return all
+        .distinctBy { it.epc?.trim()?.uppercase() ?: it.itemCode ?: it.hashCode().toString() }
+        .map { b ->
+            val status = when (b.scannedStatus?.trim()?.lowercase()) {
+                "matched" -> "match"
+                "unmatched" -> "unmatch"
+                "match" -> "match"
+                "unmatch" -> "unmatch"
+                else -> "unmatch"
+            }
+
+            Log.d("@@","status"+status)
+            b.toItem(status)
+        }
+        .filter { !it.itemCode.isNullOrBlank() }
+}
+
+
+/*
+private fun buildItemsForUpload(all: List<BulkItem>): List<com.loyalstring.rfid.data.model.stockVerification.Item> {
+    return all
+        .distinctBy { it.epc?.trim()?.uppercase() ?: it.itemCode ?: it.hashCode().toString() }
+        .map { it.toItem() }
+        .filter { !it.itemCode.isNullOrBlank() }
+}
+*/
+
+
+private fun BulkItem.toItem(status1: String): Item {
+    return Item(
+        itemCode = this.itemCode ?: "",
+        status = status1,
+
+        grossWeight = this.grossWeight?.toDoubleOrNull() ?: 0.0,
+        netWeight = this.netWeight?.toDoubleOrNull() ?: 0.0,
+        quantity = 1, // agar BulkItem me qty hai to yaha use kar dena
+
+        counterName = this.counterName,
+        categoryName = this.category,          // ✅ aapke BulkItem me category field hai (use ho rahi)
+        productName = this.productName,
+        designName = this.design,
+        purityName = this.purity,          // agar purityName nahi hai to this.purity use karo
+        companyName = "",
+        branchName = this.branchName,
+
+        counterId = this.counterId,
+        categoryId = this.categoryId,
+        productId = this.productId,
+        designId = this.designId,
+        purityId = 0,
+        companyId =0,
+        branchId = this.branchId
+    )
+}
+
 
 @Composable
 fun FilterRow(

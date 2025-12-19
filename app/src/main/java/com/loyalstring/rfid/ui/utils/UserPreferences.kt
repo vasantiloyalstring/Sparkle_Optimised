@@ -40,6 +40,7 @@ class UserPreferences @Inject constructor(
         const val KEY_USER_ID="user_id"
         const val KEY_BRANCH_ID="branch_id"
         const val KEY_ORG="organisation_name"
+        const val DEVICE_ID="device_id"
 
         private val gson = Gson()
 
@@ -232,6 +233,14 @@ class UserPreferences @Inject constructor(
     // (optional) clear
     fun clearOrganization() {
         prefs.edit { remove(KEY_ORG) }
+    }
+
+    fun saveDeviceId(deviceId: String) {
+        prefs.edit { putString(DEVICE_ID, deviceId) }
+    }
+
+    fun getDeviceId(): String? {
+        return prefs.getString(DEVICE_ID, "")
     }
 }
 

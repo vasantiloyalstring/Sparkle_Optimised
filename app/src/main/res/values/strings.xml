@@ -205,6 +205,9 @@
     <string name="header_action">Action</string>
     <string name="header_actions">Actions</string>
 
+    <!--Sample List In-->
+
+
     <!-- Content descriptions / generic -->
     <string name="cd_back">Back</string>
     <string name="cd_search">Search</string>
@@ -334,6 +337,9 @@
 
     <!-- Currency + amount (uses rupee sign + grouping + 2 decimals) -->
     <string name="currency_amount">₹ %1$,.2f</string>
+
+<!--    SampleIn-->
+    <string name="sample_in_list_title">Sample In List</string>
 
 
 

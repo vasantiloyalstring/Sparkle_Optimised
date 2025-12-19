@@ -780,6 +780,18 @@ fun SampleOutScreen(
         viewModel.resetProductScanResults()
         kotlinx.coroutines.delay(500)
 
+        resetAllFields(   onResetCustomerName = { customerName = it },
+            onResetCustomerId = { customerId = it },
+            onResetSelectedCustomer = { selectedCustomer = it },
+            onResetExpandedCustomer = { expandedCustomer = it },
+            onResetItemCode = { itemCode = it },
+            onResetSelectedItem = { selectedItem = it },
+            onResetDropdownItemcode = { showDropdownItemcode = it },
+            onResetProductList = { productList.clear() },
+            onResetScanning = { isScanning = it },
+            viewModel = viewModel,
+            deliveryChallanViewModel = deliveryChallanViewModel)
+
 
 
 
@@ -1201,98 +1213,6 @@ fun SampleOutScreen(
 
 
             ScanBottomBar(
-           /*     onSave = {
-                    val clientCode = employee?.clientCode.orEmpty()
-                    val branchId = employee?.defaultBranchId ?: 1   // ya jahan se bhi branchId le raha hai
-                    val custId = customerId ?: 0
-
-                    if (clientCode.isBlank()) {
-                        Log.e("SampleOut", "ClientCode missing")
-                        return@ScanBottomBar
-                    }
-
-                    if (custId == 0) {
-                        Log.e("SampleOut", "Customer not selected")
-                        return@ScanBottomBar
-                    }
-
-                    if (productList.isEmpty()) {
-                        Log.e("SampleOut", "No items in productList")
-                        return@ScanBottomBar
-                    }
-
-                    // ✅ ViewModel ko bolo full flow handle karne ko
-                    sampleOutViewModel.saveSampleOutWithAutoNumber(
-                        clientCode = clientCode,
-                        branchId = branchId
-                    ) { sampleOutNo ->
-
-                        // Yahan tu SampleOutAddRequest bana, jisme SampleOutNo = sampleOutNo (e.g. "C13")
-                        SampleOutAddRequest(
-                            ClientCode = clientCode,
-                            BranchId = branchId,
-                            CustomerId = custId,
-                            SampleOutNo = sampleOutNo,
-                            ReturnDate = "2025-12-05", // ya UI se selected date
-                            Description = "",
-                            SampleStatus = "SampleOut",
-                            Quantity = productList.size, // ya sum of qty
-                            TotalDiamondWeight = productList.sumOf { it.DiamondWt.toDoubleOrNull() ?: 0.0 }.toString(),
-                            TotalGrossWt = productList.sumOf { it.GrossWt.toDoubleOrNull() ?: 0.0 }.toString(),
-                            TotalNetWt = productList.sumOf { it.NetWt.toDoubleOrNull() ?: 0.0 }.toString(),
-                            TotalStoneWeight = productList.sumOf { it.StoneAmt.toDoubleOrNull() ?: 0.0 }.toString(),
-                            TotalWt = productList.sumOf { it.TotalWt.toDoubleOrNull() ?: 0.0 }.toString(),
-
-                            IssueItems = productList.map { challan ->
-                                SampleOutIssueItem(
-                                    ItemCode         = challan.ItemCode,
-                                    SKU              = challan.SKU,
-                                    SKUId            = challan.SKUId ?: 0,
-                                    CategoryId       = challan.CategoryId ?: 0,
-                                    ProductId        = challan.ProductId ?: 0,
-                                    DesignId         = challan.DesignId ?: 0,
-                                    PurityId         = challan.PurityId ?: 0,
-                                    Quantity         = challan.qty ?: 1,
-                                    GrossWt          = challan.GrossWt,
-                                    NetWt            = challan.NetWt,
-                                    TotalWt          = challan.TotalWt ?: challan.NetWt,
-                                    FinePercentage   = challan.FinePer,
-                                    WastegePercentage= challan.StoneLessPercent,
-                                    StoneWeight      = challan.TotalStoneWeight ?: "0.000",
-                                    DiamondWeight    = challan.TotalDiamondWeight ?: "0.000",
-                                    FineWastageWt    = challan.FineWastageWt ?: "0.000",
-                                    RatePerGram      = challan.MetalRate,
-                                    MetalAmount      = challan.MetalAmount,
-                                    Description      = challan.Description ?: "",
-                                    SampleStatus     = "SampleOut",
-                                    ClientCode       = clientCode,
-                                    StoneAmount      = challan.StoneAmt ?: "0.00",
-                                    SampleOutNo      = sampleOutNo,
-                                    DiamondAmount    = challan.DiamondAmt ?: "",
-                                    Pieces           = challan.Pieces ?: "0",
-                                    CategoryName     = challan.CategoryName ?: "",
-                                    ProductName      = challan.ProductName ?: "",
-                                    PurityName       = challan.Purity ?: "",
-                                    DesignName       = challan.DesignName ?: "",
-                                    Id               = challan.LabelledStockId ?: 0,
-                                    CustomerId       = custId,
-                                    VendorId         = 0,
-                                    BranchId         = branchId,
-                                    LabelledStockId  = challan.LabelledStockId ?: 0,
-                                    CustomerName = customerName,
-                                    SampleInDate = "2025-12-06",
-                                    CreatedOn = "2025-12-06",
-                                    Customer = null
-
-                                )
-
-
-                            }
-
-                        )
-                    }
-
-                },*/
 
                 onSave = {
                     if (isEditMode) {

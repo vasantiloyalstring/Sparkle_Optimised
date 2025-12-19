@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.MainActivity
+import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
@@ -57,14 +58,17 @@ import com.loyalstring.rfid.viewmodel.BulkViewModel
 fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     val viewModel: BulkViewModel = hiltViewModel()
     val context = LocalContext.current
-    // Observe barcode and tag data
+
     val tags by viewModel.scannedTags.collectAsState()
     val items by viewModel.scannedItems.collectAsState()
     val rfidMap by viewModel.rfidMap.collectAsState()
+
     var firstPress by remember { mutableStateOf(false) }
-    var selectedPower by remember { mutableStateOf(UserPreferences.getInstance(context).getInt(
-        UserPreferences.KEY_PRODUCT_COUNT)) }
-    remember { mutableStateOf("5") }
+    var selectedPower by remember {
+        mutableStateOf(
+            UserPreferences.getInstance(context).getInt(UserPreferences.KEY_PRODUCT_COUNT)
+        )
+    }
     var shouldNavigateBack by remember { mutableStateOf(false) }
 
     LaunchedEffect(shouldNavigateBack) {
@@ -79,22 +83,32 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     var isScanning by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
 
+    val loading by viewModel.clearLoading.collectAsState()
+    val success by viewModel.clearSuccess.collectAsState()
+    val deleted by viewModel.deletedRecords.collectAsState()
+    val error by viewModel.clearError.collectAsState()
+    val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+    var showClearDialog by remember { mutableStateOf(false) }
 
+    // ✅ IMPORTANT: whenever tags change → auto fill RFID from DB
+    LaunchedEffect(tags) {
+        if (tags.isNotEmpty()) {
+            viewModel.autoFillRfidFromDb(tags)
+        }
+    }
 
     DisposableEffect(Unit) {
         val listener = object : ScanKeyListener {
             override fun onBarcodeKeyPressed() {
-
-
                 viewModel.startBarcodeScanning(context)
             }
 
             override fun onRfidKeyPressed() {
                 if (isScanning) {
-                    viewModel.stopScanning()   // ⛔ stop reader + sound
+                    viewModel.stopScanning()
                     isScanning = false
                 } else {
-                    viewModel.startScanning(selectedPower) // ▶️ start reader
+                    viewModel.startScanning(selectedPower)
                     isScanning = true
                 }
             }
@@ -107,26 +121,40 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
-    // ✅ Set barcode scan callback ONCE
+    // ✅ Barcode scan callback
     LaunchedEffect(Unit) {
         viewModel.barcodeReader.openIfNeeded()
         viewModel.barcodeReader.setOnBarcodeScanned { scanned ->
             viewModel.onBarcodeScanned(scanned)
             clickedIndex?.let { index ->
-                viewModel.assignRfidCode(index, scanned)
+                viewModel.assignRfidCode(index, scanned) // manual override
+                clickedIndex = null
             }
-
         }
     }
-//    LaunchedEffect(reloadTrigger) {
-//      navController.navigate(Screens.ProductManagementScreen.route)
-//    }
 
-//    LaunchedEffect(tags) {
-//        itemCodes = List(tags.size) { index ->
-//            itemCodes.getOrNull(index) ?: ""
-//        }
-//    }
+
+
+    // ✅ success / error message show once
+    LaunchedEffect(success, error) {
+        when {
+            success -> {
+                ToastUtils.showToast(context, "✅ Cleared ${deleted} records successfully")
+                viewModel.clearClearStockResult()  // reset so it won’t re-toast
+            }
+            error != null -> {
+                ToastUtils.showToast(context, "❌ ${error}")
+                viewModel.clearClearStockResult()
+            }
+        }
+    }
+
+    val androidId = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ANDROID_ID
+    )
+    val userPreferences = UserPreferences.getInstance(context)
+    userPreferences.saveDeviceId(androidId)
 
     Scaffold(
         topBar = {
@@ -141,70 +169,56 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                         )
                     }
                 },
-                actions = {
-
-                },
+                actions = {},
                 showCounter = true,
                 selectedCount = selectedPower,
-                onCountSelected = {
-                    selectedPower = it
-                }
+                onCountSelected = { selectedPower = it }
             )
         },
         bottomBar = {
-
-            ScanBottomBar(
+            ScanBottomBarDesktop(
                 onSave = {
                     viewModel.barcodeReader.close()
                     Log.d("save scanned items", "CLICKED")
-                    val androidId = Settings.Secure.getString(
-                        context.contentResolver,
-                        Settings.Secure.ANDROID_ID
-                    )
-                    if (rfidMap.isNotEmpty()) {
-                        viewModel.sendScannedData(tags, androidId, context)
 
+
+
+                    // ✅ Better check: tags exist + at least one RFID mapped
+                    if (tags.isNotEmpty() && rfidMap.isNotEmpty()) {
+                        viewModel.sendScannedData(tags, shortSerial(userPreferences.getDeviceId().toString()), context)
+                        viewModel.resetScanResults()
+                        viewModel.stopBarcodeScanner()
+                        viewModel.resetProductScanResults()
                     } else {
-                        ToastUtils.showToast(context, "Please scan RFID tag")
+                        ToastUtils.showToast(context, "Please scan RFID tag / RFID not found in DB")
                     }
                 },
-                onList = { navController.navigate(Screens.ProductListScreen.route) },
-                onScan = { //viewModel.startScanning(20)
-                    viewModel.startSingleScan(20)
+                onClear = {
+                    showClearDialog = true
+                    viewModel.resetScanResults()
+                    viewModel.stopBarcodeScanner()
+                    viewModel.resetProductScanResults()
                 },
+                onScan = { viewModel.startSingleScan(20) },
                 onGscan = {
-                    /*if (!firstPress && !isScanning) {
-                        firstPress = true
-                        isScanning = true
-                        viewModel.startScanning(selectedPower = selectedCount)
-                        //   viewModel.startBarcodeScanning()
-                    } else {
-                        viewModel.stopScanning()
-                        isScanning = false
-                        //     viewModel.startBarcodeScanning()
-                    }*/
                     if (isScanning) {
                         viewModel.stopScanning()
                         isScanning = false
                     } else {
                         viewModel.startScanning(selectedPower)
                         isScanning = true
-
-
                     }
                 },
-
                 onReset = {
                     firstPress = false
-                    isScanning=false
+                    isScanning = false
                     viewModel.resetScanResults()
                     viewModel.stopBarcodeScanner()
                     viewModel.resetProductScanResults()
-
                 },
                 isScanning = isScanning,
-                isEditMode=isEditMode,
-                isScreen=false
+                isEditMode = isEditMode,
+                isScreen = false
             )
         }
     ) { innerPadding ->
@@ -253,16 +267,13 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                 modifier = Modifier
                     .weight(1f)
                     .background(Color(0xFFF0F0F0))
-
             ) {
                 itemsIndexed(tags) { index, item ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-
-
-                            }) {
+                            .clickable { }
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -270,45 +281,45 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
                             Text(
                                 "${index + 1}",
-                                Modifier
-                                    .width(100.dp)
-                                    .background(Color.Transparent),
-                                color = Color.DarkGray,
-                                fontFamily = poppins,
-                                fontSize = 11.sp
-                            )
-                            Text(
-                                item.epc,
-                                Modifier
-                                    .width(100.dp)
-                                    .background(Color.Transparent),
+                                Modifier.width(100.dp).background(Color.Transparent),
                                 color = Color.DarkGray,
                                 fontFamily = poppins,
                                 fontSize = 11.sp
                             )
 
+                            Text(
+                                item.epc,
+                                Modifier.width(100.dp).background(Color.Transparent),
+                                color = Color.DarkGray,
+                                fontFamily = poppins,
+                                fontSize = 11.sp
+                            )
+
+                            // ✅ AUTO-FILLED FROM DB (via viewModel.autoFillRfidFromDb)
                             val rfid = rfidMap[index]
-                            val isScanned = rfid != null
+                            val isScanned = !rfid.isNullOrBlank()
                             val displayText = rfid ?: "scan here"
                             val textColor = if (!isScanned) Color.Blue else Color.DarkGray
-                            val style =
-                                if (!isScanned) TextDecoration.Underline else TextDecoration.None
+                            val style = if (!isScanned) TextDecoration.Underline else TextDecoration.None
 
                             Text(
                                 " $displayText",
                                 Modifier
                                     .width(100.dp)
                                     .clickable {
+                                        // manual override
                                         clickedIndex = index
                                         viewModel.startBarcodeScanning(context)
-                                    }, color = textColor, textDecoration = style,
+                                    },
+                                color = textColor,
+                                textDecoration = style,
                                 fontFamily = poppins,
                                 fontSize = 11.sp
                             )
                         }
+
                         Spacer(
                             modifier = Modifier
                                 .height(1.dp)
@@ -330,7 +341,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
             ) {
                 Text("", color = Color.White, fontFamily = poppins)
                 Text(
-                    "Total Items: ${items.size}",
+                    "Total Items: ${tags.size}",
                     color = Color.White,
                     fontFamily = poppins,
                     fontSize = 12.sp
@@ -338,4 +349,48 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }
+
+    // ✅ Confirm Popup
+    if (showClearDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Confirm") },
+            text = { Text("Are you sure you want to clear/delete the stock data from server?") },
+            confirmButton = {
+                Text(
+                    "OK",
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .clickable {
+                            showClearDialog = false
+                            val clientCode = employee?.clientCode ?: return@clickable
+
+                            val deviceId = shortSerial(
+                                userPreferences.getDeviceId()?.toString()
+                            )
+
+                            viewModel.clearStockData(clientCode, deviceId)
+                        },
+                    color = Color.Red
+                )
+            },
+            dismissButton = {
+                Text(
+                    "Cancel",
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .clickable { showClearDialog = false }
+                )
+            }
+        )
+    }
 }
+
+fun shortSerial(serial: String?): String {
+    if (serial.isNullOrBlank()) return "A"
+    if (serial.length < 2) return "A$serial"
+    val lastTwo = serial.takeLast(2)
+    return "A$lastTwo"
+}
+
+

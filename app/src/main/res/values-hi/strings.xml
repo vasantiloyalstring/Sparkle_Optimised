@@ -329,4 +329,7 @@
     <!-- ₹ 1,234.56 -->
     <string name="currency_amount">₹ %1$,.2f</string>
 
+    <!--    SampleIn-->
+    <string name="sample_in_list_title">Sample In List</string>
+
 </resources>

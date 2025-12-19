@@ -34,6 +34,7 @@ import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.sampleIn.SampleInResponse
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddResponse
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutLastNoReq
@@ -57,12 +58,16 @@ import com.loyalstring.rfid.data.remote.data.DeleteOrderResponse
 import com.loyalstring.rfid.data.remote.data.ProductDeleteModelReq
 import com.loyalstring.rfid.data.remote.data.ProductDeleteResponse
 import com.loyalstring.rfid.data.model.stockTransfer.StockTransferResponse
+import com.loyalstring.rfid.data.model.stockVerification.ScanSessionResponse
+import com.loyalstring.rfid.data.model.stockVerification.StockVerificationRequestData
+import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.data.EditDataRequest
 import com.loyalstring.rfid.data.remote.data.StockTransferRequest
 import com.loyalstring.rfid.data.remote.data.UserPermissionRequest
 import com.loyalstring.rfid.data.remote.data.UserPermissionResponse
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
+import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -273,8 +278,14 @@ interface RetrofitInterface {
     @POST("api/Transaction/UpdateCustomerIssue")
     suspend fun updateSampleOut(@Body request: SampleOutUpdateRequest): Response<SampleOutAddResponse>
 
+    @POST("api/Transaction/GetAllIssueItemDetails")
+    suspend fun getAllSampleIn(@Body request: SampleOutListRequest): Response<List<SampleInResponse>>
 
+    @POST("api/ProductMaster/AddStockVerificationBySession")
+    suspend  fun stockVarificationNew(@Body stockVerificationRequestData: StockVerificationRequestData): Response<ScanSessionResponse>
 
+    @POST("/api/RFIDDevice/DeleteRFIDByClientAndDevice")
+    suspend fun clearStockData(@Body req: ClearStockDataModelReq): Response<ClearStockDataModelResponse>
 
 
 }

@@ -26,6 +26,7 @@ import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
+import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.DropdownRepository
 import com.loyalstring.rfid.ui.utils.ToastUtils
@@ -193,17 +194,31 @@ class BulkViewModel @Inject constructor(
     private val _syncTotalCount = MutableStateFlow(0)
     val syncTotalCount = _syncTotalCount.asStateFlow()
 
+    private val _syncSkippedItemCodes = MutableStateFlow<List<String>>(emptyList())
+    val syncSkippedItemCodes: StateFlow<List<String>> = _syncSkippedItemCodes
+
     private val _syncSyncedCount = MutableStateFlow(0)
     val syncSyncedCount = _syncSyncedCount.asStateFlow()
 
-    private val _syncSkippedItemCodes = MutableStateFlow<List<String>>(emptyList())
-    val syncSkippedItemCodes: StateFlow<List<String>> = _syncSkippedItemCodes
+    private val _clearLoading = MutableStateFlow(false)
+    val clearLoading: StateFlow<Boolean> = _clearLoading
+
+    private val _clearSuccess = MutableStateFlow(false)
+    val clearSuccess: StateFlow<Boolean> = _clearSuccess
+
+    private val _deletedRecords = MutableStateFlow(0)
+    val deletedRecords: StateFlow<Int> = _deletedRecords
+
+    private val _clearError = MutableStateFlow<String?>(null)
+    val clearError: StateFlow<String?> = _clearError
 
     fun setBulkMode(value: Boolean) {
         _isBulkMode.value = value
     }
     private val _pendingSingleIndex = MutableStateFlow<Int?>(null)
     val pendingSingleIndex = _pendingSingleIndex.asStateFlow()
+
+
 
     // 🔸 add this
     @Volatile
@@ -1569,7 +1584,7 @@ class BulkViewModel @Inject constructor(
                 val response = apiService.addAllScannedData(data)
                 if (response.isSuccessful) {
                     response.body() ?: emptyList()
-                    ToastUtils.showToast(context, "Items scanned successfully")
+                    ToastUtils.showToast(context, "Items Saved successfully")
                     _reloadTrigger.value = !_reloadTrigger.value // triggers recomposition
                     Log.d("API_SUCCESS", "Received response: ${response.body()}")
 
@@ -1717,5 +1732,94 @@ class BulkViewModel @Inject constructor(
         return map.entries.firstOrNull { it.value.isNullOrEmpty() }?.key
     }
 
+    // ✅ NEW: auto-fill RFIDCode from local Room DB by EPC and update rfidMap(index->rfid)
+    private val autoFillMutex = Mutex()
 
+    fun autoFillRfidFromDb(tags: List<UHFTAGInfo>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            autoFillMutex.withLock {
+                if (tags.isEmpty()) {
+                    _rfidMap.value = emptyMap()
+                    return@withLock
+                }
+
+                val currentMap = _rfidMap.value.toMutableMap()
+
+                // Collect EPCs
+                val epcs = tags.mapNotNull { it.epc?.trim()?.uppercase() }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+
+                if (epcs.isEmpty()) return@withLock
+
+                // ✅ single DB call (batch)
+                val dbItems = bulkItemDao.getItemsByEpcs(epcs)
+
+                // Map by EPC
+                val byEpc = dbItems.associateBy { it.epc?.trim()?.uppercase().orEmpty() }
+
+                // Fill rfidMap only if index empty (do not override manual barcode edits)
+                tags.forEachIndexed { index, tag ->
+                    val already = currentMap[index]
+                    if (!already.isNullOrBlank()) return@forEachIndexed
+
+                    val key = tag.epc?.trim()?.uppercase().orEmpty()
+                    if (key.isBlank()) return@forEachIndexed
+
+                    val db = byEpc[key]
+                    val rfid = db?.rfid?.trim().orEmpty()
+
+                    if (rfid.isNotBlank()) {
+                        // avoid duplicate assignment
+                        if (!currentMap.containsValue(rfid)) {
+                            currentMap[index] = rfid
+                        }
+                    }
+                }
+
+                _rfidMap.value = currentMap
+            }
+        }
+    }
+
+    fun clearStockData(clientCode: String, deviceId: String) {
+        viewModelScope.launch {
+            _clearLoading.value = true
+            _clearSuccess.value = false
+            _deletedRecords.value = 0
+            _clearError.value = null
+
+            try {
+                val res = bulkRepository.clearStockData(
+                    ClearStockDataModelReq(
+                        clientCode = clientCode,
+                        deviceId = deviceId
+                    )
+                )
+
+                // response: {"success":true,"deletedRecords":11}
+                _clearSuccess.value = res.success
+                _deletedRecords.value = res.deletedRecords
+
+                if (!res.success) {
+                    _clearError.value = "Failed to clear stock data"
+                }
+            } catch (e: Exception) {
+                _clearError.value = e.message ?: "API error"
+            } finally {
+                _clearLoading.value = false
+            }
+        }
+    }
+
+    fun clearClearStockResult() {
+        _clearLoading.value = false
+        _clearSuccess.value = false
+        _deletedRecords.value = 0
+        _clearError.value = null
+    }
 }
+
+
+
+

@@ -8,7 +8,9 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
+import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
+import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
 import kotlinx.coroutines.flow.Flow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -87,6 +89,17 @@ class BulkRepositoryImpl @Inject constructor(
 
     override suspend fun getPacketIdFromName(name: String): Int? {
         return bulkItemDao.getPacketIdNamePairs().find { it.name.equals(name, true) }?.id
+    }
+
+    override suspend fun clearStockData(req: ClearStockDataModelReq): ClearStockDataModelResponse {
+        val res = apiService.clearStockData(req)
+        val body = res.body()
+
+        if (res.isSuccessful && body != null) return body
+
+        // helpful debug
+        val err = res.errorBody()?.string()
+        throw Exception("API Error: ${res.code()} ${res.message()} | $err")
     }
 
 
@@ -177,6 +190,8 @@ class BulkRepositoryImpl @Inject constructor(
     suspend fun getItemCountByEpcs(epcs: List<String>): Int {
         return bulkItemDao.getItemCountByEpcs(epcs)
     }
+
+
 }
 
 

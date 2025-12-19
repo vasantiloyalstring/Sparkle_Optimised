@@ -19,11 +19,16 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.CustomerEmailEntity
 import com.loyalstring.rfid.data.model.DetailedItem
 import com.loyalstring.rfid.data.model.SummaryItem
+import com.loyalstring.rfid.data.model.stockVerification.Item
+import com.loyalstring.rfid.data.model.stockVerification.ScanSessionResponse
+import com.loyalstring.rfid.data.model.stockVerification.StockVerificationRequestData
+import com.loyalstring.rfid.repository.CommonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -46,11 +51,26 @@ import com.itextpdf.layout.Document as PdfLayoutDocument
 
 @HiltViewModel
 class ScanDisplayViewModel @Inject constructor(
-    private val customerEmailDao: CustomerEmailDao
+    private val customerEmailDao: CustomerEmailDao,
+    private val repository: CommonRepository
 ) : ViewModel() {
 
     private val _emailStatus = MutableStateFlow<String?>(null)
     val emailStatus: StateFlow<String?> = _emailStatus
+
+    // ✅ last response store karega (last batch)
+    private val _scanSession = MutableStateFlow<ScanSessionResponse?>(null)
+    val scanSession: StateFlow<ScanSessionResponse?> = _scanSession.asStateFlow()
+
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    // ✅ final success message (Compose me show dialog/snackbar)
+    private val _successMsg = MutableStateFlow<String?>(null)
+    val successMsg: StateFlow<String?> = _successMsg.asStateFlow()
 
     fun saveEmail(email: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -640,5 +660,71 @@ class ScanDisplayViewModel @Inject constructor(
         )
     }
 
+    /**
+         * ✅ 500 items at a time upload
+         * ✅ end me single success msg
+         */
+        fun uploadStockVerification(
+            clientCode: String,
+            items: List<Item>,
+            batchSize: Int = 500
+        ) {
+            viewModelScope.launch {
+                _loading.value = true
+                _error.value = null
+                _successMsg.value = null
+                _scanSession.value = null
 
-}
+                try {
+                    if (clientCode.isBlank()) {
+                        _error.value = "ClientCode is missing"
+                        return@launch
+                    }
+                    if (items.isEmpty()) {
+                        _error.value = "Item list is empty"
+                        return@launch
+                    }
+
+                    val batches = items.chunked(batchSize)
+
+                    var lastResponse: ScanSessionResponse? = null
+
+                    for (batch in batches) {
+                        val req = StockVerificationRequestData(
+                            clientCode = clientCode,
+                            items = batch
+                        )
+
+                        val result = repository.stockVarificationNew(req)
+
+                        var failed = false
+
+                        result.onSuccess { res ->
+                            lastResponse = res
+                        }.onFailure { e ->
+                            failed = true
+                            _error.value = e.message ?: "Stock upload failed"
+                        }
+
+                        if (failed) return@launch
+                    }
+
+                    // ✅ all batches success
+                    _scanSession.value = lastResponse
+                    _successMsg.value = "Stock status has been updated to the server"
+
+                } catch (e: Exception) {
+                    _error.value = e.message ?: "Unexpected error"
+                } finally {
+                    _loading.value = false
+                }
+            }
+        }
+
+        fun clearMessages() {
+            _successMsg.value = null
+            _error.value = null
+        }
+    }
+
+

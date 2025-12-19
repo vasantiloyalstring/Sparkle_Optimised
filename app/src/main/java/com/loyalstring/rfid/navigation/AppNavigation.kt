@@ -356,6 +356,21 @@ fun AppNavigation(
                     SampleOutNo = sampleOutNo   // ✅ isko String? hi rakho
                 )
             }
+
+            composable(Screens.SampleInScreen.route) {
+                SampleInScreen(
+                    onBack = { navController.popBackStack() },
+                    navController = navController
+
+                )
+            }
+
+            composable(Screens.SampleInListScreen.route) {
+                SampleInListScreen(
+                    onBack = { navController.popBackStack() },
+                    navController,
+                )
+            }
         }
     }
 }
