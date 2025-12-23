@@ -40,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -105,10 +104,7 @@ fun OrderDetailsDialogEditAndDisplay(
     selectedItem: OrderItem?,
     branchList: List<BranchModel>,
     onDismiss: () -> Unit,
-   // onSave: (OrderDetailsData) -> Unit,
-    viewModel: SingleProductViewModel = hiltViewModel(),
-    edit: Int,
-    onSave: (OrderItem) -> Unit
+    onSave: (OrderItem) -> Unit,
 ) {
     Log.e("TAG", "RFID Code: ${selectedItem?.rfidCode+" image url"+selectedItem?.image.toString()}")
     val orderViewModel: OrderViewModel = hiltViewModel()
@@ -1467,7 +1463,8 @@ fun OrderDetailsDialogEditAndDisplay(
                                             set(Calendar.SECOND, 0)
                                             set(Calendar.MILLISECOND, 0)
                                         }
-                                        datePicker.minDate = today.timeInMillis  // ✅ safe for today & future dates
+                                        datePicker.minDate =
+                                            today.timeInMillis  // ✅ safe for today & future dates
                                     }.show()
 
                                 },

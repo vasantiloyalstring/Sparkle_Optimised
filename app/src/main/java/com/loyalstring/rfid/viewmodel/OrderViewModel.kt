@@ -84,6 +84,9 @@ class OrderViewModel @Inject constructor(
     private val _getAllDailyRate = MutableStateFlow<List<DailyRateResponse>>(emptyList())
     val getAllDailyRate: StateFlow<List<DailyRateResponse>> = _getAllDailyRate
 
+    private val _nextOrderNo = MutableStateFlow(0)
+    val nextOrderNo: StateFlow<Int> = _nextOrderNo
+
 //    private val _orderPlaced = mutableStateOf(false)
 //    val orderPlaced: State<Boolean> = _orderPlaced
 

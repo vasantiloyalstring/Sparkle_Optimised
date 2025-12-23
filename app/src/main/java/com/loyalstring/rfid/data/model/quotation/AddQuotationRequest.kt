@@ -1,0 +1,87 @@
+package com.loyalstring.rfid.data.model.quotation
+
+data class AddQuotationRequest(
+    val ClientCode: String? = null,
+    val CustomerId: String? = null,
+    val VendorId: String? = null,
+    val CategoryId: Int? = null,
+    val Date: String? = null,
+    val MRP: String? = null,
+    val CuttingNetWt: String? = null,
+    val Billedby: String? = null,
+    val SaleType: String? = null,
+    val Soldby: String? = null,
+    val CustomerName: String? = null,
+    val FinancialYear: String? = null,
+    val BaseCurrency: String? = null,
+    val PurchaseStatus: String? = null,
+    val CompanyId: Int? = null,
+    val BranchId: Int? = null,
+    val CounterId: Int? = null,
+    val EmployeeId: Int? = null,
+    val TotalQuotationCount: String? = null,
+    val QuotationCount: String? = null,
+    val MobileNo: String? = null,
+    val Email: String? = null,
+    val FirstName: String? = null,
+    val LastName: String? = null,
+    val DeliveryAddress: String? = null,
+    val AdvanceAmt: String? = null,
+    val LabelledStockId: Int? = null,
+    val PaymentMode: String? = null,
+    val UrdPurchaseAmt: String? = null,
+    val GST: String? = null,
+    val TDS: String? = null,
+    val ReceivedAmount: String? = null,
+    val QuotationStatus: String? = null,
+    val Visibility: String? = null,
+    val Offer: String? = null,
+    val CourierCharge: String? = null,
+    val TotalAmount: String? = null,
+    val BillType: String? = null,
+    val QuotationDate: String? = null,
+    val QuotationNo: String? = null,
+    val BalanceAmt: String? = null,
+    val CreditAmount: String? = null,
+    val CreditGold: String? = null,
+    val CreditSilver: String? = null,
+    val GrossWt: String? = null,
+    val NetWt: String? = null,
+    val StoneWt: String? = null,
+    val Qty: String? = null,
+    val TotalDiamondAmount: String? = null,
+    val TotalDiamondPieces: String? = null,
+    val TotalDiamondWeight: String? = null,
+    val TotalSaleGold: String? = null,
+    val TotalSaleSilver: String? = null,
+    val TotalSaleUrdGold: String? = null,
+    val TotalSaleUrdSilver: String? = null,
+    val TotalStoneAmount: String? = null,
+    val TotalStonePieces: String? = null,
+    val TotalStoneWeight: String? = null,
+    val BalanceGold: String? = null,
+    val BalanceSilver: String? = null,
+
+    val QuotationItem: List<QuotationItem> = emptyList(),
+
+    val TotalNetAmount: String? = null,
+    val TotalFineMetal: String? = null,
+    val TotalBalanceMetal: String? = null,
+    val GSTApplied: String? = null,
+    val AdditionTaxApplied: String? = null,
+    val TotalGSTAmount: String? = null,
+    val Discount: String? = null,
+    val TotalPurchaseAmount: String? = null,
+    val BalanceAmount: String? = null,
+
+    val QuotationStoneDetails: List<QuotationStoneDetail>? = emptyList(),
+    val QuotationDiamondDetails: List<QuotationDiamondDetail>? = emptyList()
+)
+
+data class QuotationStoneDetail(
+    val Dummy: String? = null
+)
+
+data class QuotationDiamondDetail(
+    val Dummy: String? = null
+)

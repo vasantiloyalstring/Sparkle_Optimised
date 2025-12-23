@@ -341,6 +341,12 @@
 <!--    SampleIn-->
     <string name="sample_in_list_title">Sample In List</string>
 
+    <!--Quotation-->
+    <string name="Quotation_no">Q.No</string>
+    <string name="order_date">Order Date</string>
+    <string name="delivery_date">Delivery Date</string>
+
+
 
 
 

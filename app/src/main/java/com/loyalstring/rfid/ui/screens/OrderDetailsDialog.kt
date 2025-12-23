@@ -79,7 +79,9 @@ data class OrderDetails(
     val screwType: String,
     val polishType: String,
     val finePercentage: String,
-    val wastage: String
+    val wastage: String,
+    val orderDate: String,
+    val deliverDate: String
 )
 
 @Composable
@@ -724,7 +726,7 @@ fun OrderDetailsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (deliverDate.isEmpty()) "Enter Deliver Date" else orderDate,
+                                    text = if (deliverDate.isEmpty()) "Enter Deliver Date" else deliverDate,
                                     fontSize = 13.sp,
                                     color = if (deliverDate.isEmpty()) Color.Gray else Color.Black,
                                     modifier = Modifier.weight(1f),
@@ -770,7 +772,7 @@ fun OrderDetailsDialog(
                         text = "OK",
 
                         onClick = {
-                            val orderItem = OrderItem(
+                         /*   val orderItem = OrderItem(
                                 branchId = "1",
                                 branchName = branch,
                                 exhibition = exhibition,
@@ -822,12 +824,29 @@ fun OrderDetailsDialog(
                                 makingPercentage = selectedItem?.MakingPercentage?.toString() ?: "0",
                                 makingFixedAmt = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
-                                makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0"
+                                makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0"*/
 
 
-
+                            val details = OrderDetails(
+                                branch = branch,
+                                exhibition = exhibition,
+                                remark = remark,
+                                purity = purity,
+                                size = size,
+                                length = length,
+                                typeOfColors = typeOfColors,
+                                screwType = screwType,
+                                polishType = polishType,
+                                finePercentage = finePercentage,
+                                wastage = wastage,
+                                orderDate = orderDate,
+                                deliverDate = deliverDate
                             )
-                            orderViewModel.insertOrderItemToRoomORUpdate(orderItem)
+
+
+
+                            onSave(details)
+                            // orderViewModel.insertOrderItemToRoomORUpdate(details)
                             onDismiss()
 
                         },

@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "orderItem", indices = [Index(value = ["rfidCode"], unique = true)])
 data class OrderItem(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val rfidCode: String,
     val branchId: String,
     val branchName: String,
     val exhibition: String,
@@ -23,7 +23,6 @@ data class OrderItem(
     val deliverDate: String,
     val productName: String,
     val itemCode: String,
-    val rfidCode: String= "" ,
     val grWt: String?,
     val nWt: String?,
     val stoneAmt: String?,

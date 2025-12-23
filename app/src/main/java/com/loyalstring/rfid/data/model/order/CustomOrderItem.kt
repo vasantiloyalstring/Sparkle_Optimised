@@ -80,7 +80,7 @@ data class CustomOrderItem(
     val OrderStatus: String?,
     val DueDate: String?,
     val Remark: String?,
-    val Id: Int,
+
     val PurchaseInvoiceNo: String?,
     val Purity: String,
     val Status: String?,

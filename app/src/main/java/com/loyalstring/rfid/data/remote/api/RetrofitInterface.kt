@@ -34,6 +34,12 @@ import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.quotation.AddQuotationRequest
+import com.loyalstring.rfid.data.model.quotation.LastQuotationNoResponse
+import com.loyalstring.rfid.data.model.quotation.QuotationListRequest
+import com.loyalstring.rfid.data.model.quotation.QuotationListResponse
+import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
+import com.loyalstring.rfid.data.model.quotation.UpdateQuotationResponse
 import com.loyalstring.rfid.data.model.sampleIn.SampleInResponse
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddResponse
@@ -286,6 +292,18 @@ interface RetrofitInterface {
 
     @POST("/api/RFIDDevice/DeleteRFIDByClientAndDevice")
     suspend fun clearStockData(@Body req: ClearStockDataModelReq): Response<ClearStockDataModelResponse>
+
+    @POST("api/Order/GetAllQuotation")
+    suspend fun getAllQuotation(@Body req: QuotationListRequest): Response<List<QuotationListResponse>>
+
+    @POST("api/Order/AddQuotation")
+    suspend fun saveQuotation(@Body req: AddQuotationRequest): Response<QuotationListResponse>
+
+    @POST("api/Order/LastQuotationNo")
+    suspend fun getLastQuotationNo(@Body req: ClientCodeRequest): Response<LastQuotationNoResponse>
+
+    @POST("api/Order/UpadateQuotation")
+    suspend fun updateQuotation(@Body req: UpdateQuotationRequest): Response<UpdateQuotationResponse>
 
 
 }

@@ -371,6 +371,24 @@ fun AppNavigation(
                     navController,
                 )
             }
-        }
+
+            composable(Screens.QuotationScreen.route) {
+                QuotationScreen(
+                    onBack = { navController.popBackStack() },
+                    navController = navController
+
+                )
+            }
+
+            composable(Screens.QuotationListScreen.route) {
+                QuotationListScreen(
+                    onBack = { navController.popBackStack() },
+                    navController,
+                )
+            }
+
+
+
+            }
     }
 }
