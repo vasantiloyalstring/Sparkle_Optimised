@@ -387,8 +387,24 @@ fun AppNavigation(
                 )
             }
 
+            composable(
+                route = "updateQuotationScreen/{Id}/{QuotationNo}",
+                arguments = listOf(
+                    navArgument("Id") { type = NavType.IntType },
+                    navArgument("QuotationNo") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getInt("Id")
+                val QuotationNo = backStackEntry.arguments?.getString("QuotationNo")
+                Log.d("@@","ID"+id +"   QuotationNo "+QuotationNo)
 
-
+                QuotationScreen(
+                    onBack = { navController.popBackStack() },
+                    navController = navController,
+                    Id = id,
+                    QuotationNo = QuotationNo   // ✅ isko String? hi rakho
+                )
             }
+        }
     }
 }

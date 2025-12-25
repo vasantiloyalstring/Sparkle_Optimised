@@ -39,6 +39,8 @@ import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.quotation.QuotationListResponse
+import com.loyalstring.rfid.data.model.quotation.QuotationPrintData
+import com.loyalstring.rfid.data.model.quotation.QuotationPrintItem
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
@@ -111,7 +113,7 @@ fun QuotationListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         GradientTopBar(
-            title = localizedContext.getString(R.string.sample_out_list_title),
+            title = localizedContext.getString(R.string.quotation_List),
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -299,12 +301,12 @@ fun QuotationTable(
                             // Edit Button
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
-                                    val sampleOutNoSafe = challan.quotationNo ?: ""
+                                    val QuotationNo = challan.quotationNo ?: ""
                                     Log.d(
                                         "Edit",
-                                        "EDIT Screen $sampleOutNoSafe challan.Id ${challan.id}"
+                                        "EDIT Screen $QuotationNo challan.Id ${challan.id}"
                                     )
-                                    navController.navigate("updateSampleOutScreen/${challan.id}/$sampleOutNoSafe")
+                                    navController.navigate("updateQuotationScreen/${challan.id}/$QuotationNo")
                                 }
                             }) {
                                 Icon(
@@ -319,8 +321,8 @@ fun QuotationTable(
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
                                     val sampleOutNoSafe = challan.quotationNo ?: ""
-                                   // val data = challan.toSampleOutPrintData(context)
-                                    //generateSampleOutPrintPdf(context, data)
+                                   val data = challan.toQuotationPrintData(context)
+                                    GenerateQuotationPdf(context, data)
                                     Log.d("Print", "PRINT Screen $sampleOutNoSafe challan.Id ${challan.id}")
                                 }
                             }) {
@@ -340,6 +342,63 @@ fun QuotationTable(
         }
     }
 }
+
+
+// ✅ Replace "QuotationListItem" with your challan model class name
+fun QuotationListResponse.toQuotationPrintData(context: Context): QuotationPrintData {
+
+    // ✅ date safe format (if you already have date string, directly use it)
+    fun formatDateSafe(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        // if raw = "2025-12-24T10:20:30" -> take 2025-12-24
+        return raw.take(10)
+    }
+
+    // ✅ Build print items from quotationItem list
+    val printItems: List<QuotationPrintItem> =
+        (this.quotationItem ?: emptyList()).filterNotNull().map { itItem ->
+
+            QuotationPrintItem(
+                imageUrl = itItem.Image ?: "",
+                particulars = "${itItem.ProductName.orEmpty()} ${itItem.DesignName.orEmpty()}".trim(),
+                grossWt = itItem.GrossWt ?: "0.0",
+                netWt = itItem.NetWt ?: "0.0",
+                qty = (itItem.qty ?: itItem.Quantity?.toIntOrNull() ?: 1).toString(),
+                ratePerGm = itItem.MetalRate ?: itItem.totayRate ?: "0.0",
+                makingPerGm = itItem.MakingPerGram ?: itItem.makingPercent ?: "0.0",
+                amount = itItem.TotalItemAmount ?: itItem.itemAmt ?: itItem.TotalAmount ?: "0.00"
+            )
+        }
+
+    val total = printItems.sumOf { it.amount?.toDoubleOrNull() ?: 0.0 }.toString()
+
+    return QuotationPrintData(
+        ownerName = "VTjewellers_Rajapur",          // ✅ or fetch from prefs/branch/company
+        ownerAddress = "VT jewellers Near old MG road",
+        ownerContact = "9342232444",
+
+        quotationNo = this.quotationNo?.toString() ?: "",
+        date = formatDateSafe(this.date),           // ✅ replace this.date with your field
+       // salesMan = this.salesMan ?: "",
+        //remark = this.remark ?: "",
+
+        customerName = "${this.customer?.FirstName.orEmpty()} ${this.lastName.orEmpty()}".trim(),
+        customerMobile = this.customer?.Mobile ?: "",
+        customerAddress = this.customer?.CurrAddTown ?: "",
+
+        items = printItems,
+        totalAmount = total,
+
+      /*  cgst = this.cgst ?: "0.00",
+        sgst = this.sgst ?: "0.00",
+        igst = this.igst ?: "0.00"*/
+    )
+}
+
+/*private fun QuotationListResponse.toQuotationPrintData(
+    context: Context
+) {
+}*/
 
 /*fun SampleOutListResponse.toSampleOutPrintData(context: Context): SampleOutPrintData {
     val org = UserPreferences.getInstance(context).getOrganization()

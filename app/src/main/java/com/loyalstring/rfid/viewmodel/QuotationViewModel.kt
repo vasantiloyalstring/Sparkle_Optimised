@@ -3,12 +3,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.quotation.AddQuotationRequest
-import com.loyalstring.rfid.data.model.quotation.AddQuotationResponse
 import com.loyalstring.rfid.data.model.quotation.LastQuotationNoResponse
 import com.loyalstring.rfid.data.model.quotation.QuotationListRequest
 import com.loyalstring.rfid.data.model.quotation.QuotationListResponse
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationResponse
+import com.loyalstring.rfid.data.model.sampleOut.SampleOutListResponse
 import com.loyalstring.rfid.repository.QuotationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -39,6 +39,13 @@ class QuotationViewModel  @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _selectedQuotation = MutableStateFlow<QuotationListResponse?>(null)
+    val selectedQuotation: StateFlow<QuotationListResponse?> = _selectedQuotation
+
+    fun setSelectedQuotation(challan: QuotationListResponse?) {
+        _selectedQuotation.value = challan
+    }
 
     fun loadQuotationList(clientCode: String) {
         viewModelScope.launch {

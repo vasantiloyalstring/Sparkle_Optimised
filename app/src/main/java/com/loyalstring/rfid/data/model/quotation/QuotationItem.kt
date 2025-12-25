@@ -117,5 +117,19 @@ data class QuotationItem(
     val Quotationid: Int? = null,
     val MetalName: String? = null,
     val Stones: List<Any>? = null,
+    val RFIDCode:String?=null,
+    val DiamondWt: String? = null,
+    val StoneAmt: String? = null,
+    val DiamondAmt: String? = null,
+    val FinePer: String? = null,
+    val FineWt: String? = null,
+    val qty: Int? = null,
+    val tid: String? = null,
+    val totayRate: String? = null,
+    val makingPercent: String? = null,
+    val fixMaking: String? = null,
+    val fixWastage: String? = null,
+    val itemAmt: String? = null,
+    val ItemGSTAmount:String?=null
 
 )
