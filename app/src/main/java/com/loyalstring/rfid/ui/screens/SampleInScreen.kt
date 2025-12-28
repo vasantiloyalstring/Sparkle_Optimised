@@ -46,6 +46,7 @@ import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.sampleOut.IssueItemDto
@@ -67,6 +68,8 @@ import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.collections.forEach
 
 @SuppressLint("UnrememberedMutableState")
@@ -120,6 +123,19 @@ fun SampleInScreen(
 
     var isReturnMode by remember { mutableStateOf(false) }
     var selectedReturnCodes by remember { mutableStateOf(setOf<String>()) }
+
+    LaunchedEffect(employee?.clientCode) {
+        employee?.clientCode?.let { clientCode ->
+            withContext(Dispatchers.IO) {
+                orderViewModel.getAllEmpList(clientCode)
+                orderViewModel.getAllItemCodeList(ClientCodeRequest(clientCode))
+                singleProductViewModel.getAllBranches(ClientCodeRequest(clientCode))
+                singleProductViewModel.getAllPurity(ClientCodeRequest(clientCode))
+                singleProductViewModel.getAllSKU(ClientCodeRequest(clientCode))
+                orderViewModel.getDailyRate(ClientCodeRequest(employee?.clientCode))
+            }
+        }
+    }
 
 
     val errorMsg by sampleOutViewModel.error.collectAsState()
@@ -1057,7 +1073,7 @@ fun SampleInScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Invoice Fields",
+                            text = "Sample In",
                             fontSize = 13.sp,
                             color = Color.Gray
                         )

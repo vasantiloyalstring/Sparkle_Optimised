@@ -1402,7 +1402,7 @@ fun SampleOutScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Invoice Fields",
+                            text = "Sample Out",
                             fontSize = 13.sp,
                             color = Color.Gray
                         )

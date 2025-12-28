@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -250,6 +251,7 @@ fun QuotationListTableComponent(
         val totalNet = productList.sumOf { it.NetWt?.toDoubleOrNull() ?: 0.0 }
         val totalFinePlusWastage = productList.sumOf { it.FineWastageWt?.toDoubleOrNull() ?: 0.0 }
         val totalPcs = productList.sumOf { it.Pieces?.toDoubleOrNull() ?: 0.0 }
+        val totalAmt = productList.sumOf { it.itemAmt?.toDoubleOrNull() ?: 0.0 }
 
         Column {
             Row(
@@ -325,6 +327,14 @@ fun QuotationListTableComponent(
                 }
             )
         }
+        Spacer(modifier = Modifier.height(5.dp))
+
+        DeliveryChallanSummaryRow(
+            totalAmount = totalAmt,
+            onAmountsChange = { gst, final ->
+                onTotalsChange(totalAmt, gst, final)
+            }
+        )
     }
 }
 

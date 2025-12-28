@@ -100,6 +100,8 @@ fun OrderListTable(
                     }
                 }
 
+
+
                 // Data rows
                 items(productList.size) { index ->
                     val item = productList[index]
@@ -123,7 +125,7 @@ fun OrderListTable(
                             item.finePlusWt ?: "",
                             item.stoneAmt ?: "",
                             item.diamondAmt ?: "",
-                            item.itemAmt ?: "",
+                            (item.itemAmt) ?: "",
                             item.rfidCode ?: ""
                         ).forEach { value ->
                             Text(

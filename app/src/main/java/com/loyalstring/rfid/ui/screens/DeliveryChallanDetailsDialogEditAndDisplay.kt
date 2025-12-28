@@ -30,7 +30,6 @@ import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
 import com.loyalstring.rfid.data.model.login.Employee
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
@@ -43,12 +42,13 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * DeliveryChallanDialogEditAndDisplay
- * A Delivery Challan dialog with the same fields & functionality as the Order details dialog.
- *
- * Usage: call it with the selected OrderItem, branch list and an onSave callback to persist changes.
- */
+/* ============================
+   Helpers (same as first dialog)
+   ============================ */
+private fun asDouble(v: String?): Double = v?.trim()?.toDoubleOrNull() ?: 0.0
+private fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
+private fun fmt2(v: Double): String = String.format(Locale.getDefault(), "%.2f", v)
+
 @Composable
 fun DeliveryChallanDialogEditAndDisplay(
     selectedItem: ChallanDetails?,
@@ -61,30 +61,33 @@ fun DeliveryChallanDialogEditAndDisplay(
     singleProductViewModel: SingleProductViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
     val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             try {
-                orderViewModel.getAllEmpList(employee?.clientCode.toString())
-                orderViewModel.getAllItemCodeList(ClientCodeRequest(employee?.clientCode.toString()))
-                singleProductViewModel.getAllBranches(ClientCodeRequest(employee?.clientCode.toString()))
-                singleProductViewModel.getAllPurity(ClientCodeRequest(employee?.clientCode.toString()))
-                singleProductViewModel.getAllSKU(ClientCodeRequest(employee?.clientCode.toString()))
-                orderViewModel.getDailyRate(ClientCodeRequest(employee?.clientCode))
+                val cc = employee?.clientCode.toString()
+                orderViewModel.getAllEmpList(cc)
+                orderViewModel.getAllItemCodeList(ClientCodeRequest(cc))
+                singleProductViewModel.getAllBranches(ClientCodeRequest(cc))
+                singleProductViewModel.getAllPurity(ClientCodeRequest(cc))
+                singleProductViewModel.getAllSKU(ClientCodeRequest(cc))
+                orderViewModel.getDailyRate(ClientCodeRequest(cc))
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
-    // ------------ state ------------
+    /* ============================
+       State
+       ============================ */
     var branch by remember { mutableStateOf("") }
     var exhibition by remember { mutableStateOf("") }
     var remark by remember { mutableStateOf("") }
@@ -101,52 +104,96 @@ fun DeliveryChallanDialogEditAndDisplay(
     var productName by remember { mutableStateOf("") }
     var itemCode by remember { mutableStateOf("") }
     var sku by remember { mutableStateOf("") }
-    var NetWt by remember { mutableStateOf("") }
+
+    // Weights
     var totalWt by remember { mutableStateOf("") }
     var packingWt by remember { mutableStateOf("") }
     var grossWT by remember { mutableStateOf("") }
     var stoneWt by remember { mutableStateOf("") }
     var dimondWt by remember { mutableStateOf("") }
+    var NetWt by remember { mutableStateOf("") }
+
+    // Pricing
     var ratePerGRam by remember { mutableStateOf("") }
     var hallMarkAmt by remember { mutableStateOf("") }
     var mrp by remember { mutableStateOf("") }
-    var qty by remember { mutableStateOf("") }
-    var stoneAmt by remember { mutableStateOf("") }
     var itemAmt by remember { mutableStateOf("") }
+
+    // Calculated
     var finePlusWt by remember { mutableStateOf("") }
+    var qty by remember { mutableStateOf("") }
 
-    // dropdown states
-    var expandedPurity by remember { mutableStateOf(false) }
-    var expandedColors by remember { mutableStateOf(false) }
-    var expandedScrew by remember { mutableStateOf(false) }
-    var expandedPolish by remember { mutableStateOf(false) }
+    // keep if needed elsewhere
+    var stoneAmt by remember { mutableStateOf("") }
 
-    val colorsList = listOf(
-        "Yellow Gold", "White Gold", "Rose Gold", "Green Gold",
-        "Black Gold", "Blue Gold", "Purple Gold"
-    )
-    val screwList = listOf("Type 1", "Type 2", "Type 3")
-    val polishList = listOf("High Polish", "Matte Finish", "Satin Finish", "Hammered")
-    val baseUrl = "https://rrgold.loyalstring.co.in/"
+    /* ============================
+       Calculation (same as first dialog)
+       GrossWt = TotalWt - PackingWt   (only if TotalWt exists)
+       NetWt   = GrossWt - StoneWt - DiamondWt
+       ItemAmt = (NetWt * RatePerGram) + HallMarkAmt  (unless MRP > 0)
+       FinePlusWt = NetWt * (Fine% + Wastage%) / 100
+       ============================ */
+    fun recalcAll() {
+        val totalParsed = totalWt.trim().toDoubleOrNull()
+        val useTotal = totalParsed != null && totalParsed > 0.0   // ✅ IMPORTANT (0 ko ignore)
 
-    val inputFormats = listOf(
-        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
-        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
-        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    )
-    fun formatDateSafe(dateString: String?): String {
-        if (dateString.isNullOrBlank() || dateString.equals("null", true)) return ""
-        for (format in inputFormats) {
-            try {
-                val parsed = format.parse(dateString)
-                if (parsed != null) return dateFormatter.format(parsed)
-            } catch (_: Exception) { }
+        val packing = asDouble(packingWt)
+        val grossFromField = asDouble(grossWT)
+
+        val gross = if (useTotal) {
+            (totalParsed!! - packing).coerceAtLeast(0.0)
+        } else {
+            grossFromField.coerceAtLeast(0.0)
         }
-        return ""
+
+        // ✅ Only overwrite grossWT if it is derived from total
+        if (useTotal) grossWT = fmt3(gross)
+
+        val stone = asDouble(stoneWt)
+        val diamond = asDouble(dimondWt)
+        val net = (gross - stone - diamond).coerceAtLeast(0.0)
+        NetWt = fmt3(net)
+
+        val fineP = asDouble(finePercentage)
+        val wastP = asDouble(wastage)
+        finePlusWt = fmt3((net * ((fineP + wastP) / 100.0)).coerceAtLeast(0.0))
+
+        val rate = asDouble(ratePerGRam)
+        val hallmark = asDouble(hallMarkAmt)
+        val baseAmt = (net * rate) + hallmark
+
+        val mrpVal = asDouble(mrp)
+        itemAmt = if (mrpVal > 0) fmt2(mrpVal) else fmt2(baseAmt)
     }
 
-    // ---------- init from selected item ----------
-    selectedItem?.let { s ->
+
+    // If user edits GrossWt manually: DON'T format/override grossWT while typing
+    fun recalcFromGrossOnly() {
+        val gross = asDouble(grossWT).coerceAtLeast(0.0)
+        val stone = asDouble(stoneWt)
+        val diamond = asDouble(dimondWt)
+        val net = (gross - stone - diamond).coerceAtLeast(0.0)
+        NetWt = fmt3(net)
+
+        val fineP = asDouble(finePercentage)
+        val wastP = asDouble(wastage)
+        finePlusWt = fmt3((net * ((fineP + wastP) / 100.0)).coerceAtLeast(0.0))
+
+        val rate = asDouble(ratePerGRam)
+        val hallmark = asDouble(hallMarkAmt)
+        val baseAmt = (net * rate) + hallmark
+
+        val mrpVal = asDouble(mrp)
+        itemAmt = if (mrpVal > 0) fmt2(mrpVal) else fmt2(baseAmt)
+    }
+
+    /* ============================
+       Init from selectedItem (FIXED)
+       - do NOT assign directly in composition, it breaks editing
+       ============================ */
+    LaunchedEffect(selectedItem) {
+        val s = selectedItem ?: return@LaunchedEffect
+
         productName = s.ProductName.orEmpty()
         itemCode = s.ItemCode.orEmpty()
         sku = s.SKU.orEmpty()
@@ -173,24 +220,22 @@ fun DeliveryChallanDialogEditAndDisplay(
         mrp = s.MRP.orEmpty()
         ratePerGRam = s.totayRate.orEmpty()
         stoneAmt = s.StoneAmount.orEmpty()
-        finePlusWt = s.FineWastageWt.orEmpty()
 
-        exhibition = ""
-        remark = ""
-
-        itemAmt = if (!s.MRP.isNullOrEmpty()) s.MRP else s.ItemAmount.orEmpty()
-        itemAmt = try { "%.2f".format(itemAmt.toDouble()) } catch (_: Exception) { itemAmt }
+        // initial calc
+        recalcAll()
     }
 
+    /* ============================
+       Daily Rate -> auto set rate by purity
+       ============================ */
     val dailyRates by orderViewModel.getAllDailyRate.collectAsState(initial = emptyList())
     LaunchedEffect(purity, dailyRates) {
         if (purity.isNotBlank() && dailyRates.isNotEmpty()) {
             val match = dailyRates.find { it.PurityName.equals(purity, ignoreCase = true) }
-            match?.Rate?.let { rate ->
-                ratePerGRam = rate
-                val net = NetWt.toDoubleOrNull() ?: 0.0
-                val totalRate = net * (rate.toDoubleOrNull() ?: 0.0)
-                itemAmt = "%.2f".format(totalRate)
+            val newRate = match?.Rate ?: ""
+            if (newRate.isNotBlank()) {
+                ratePerGRam = newRate
+                recalcAll()
             }
         }
     }
@@ -198,6 +243,20 @@ fun DeliveryChallanDialogEditAndDisplay(
     // purity list from vm
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
     val purityNames = purityList.map { it.PurityName ?: "" }
+
+    // dropdown states
+    var expandedPurity by remember { mutableStateOf(false) }
+    var expandedColors by remember { mutableStateOf(false) }
+    var expandedScrew by remember { mutableStateOf(false) }
+    var expandedPolish by remember { mutableStateOf(false) }
+
+    val colorsList = listOf(
+        "Yellow Gold", "White Gold", "Rose Gold", "Green Gold",
+        "Black Gold", "Blue Gold", "Purple Gold"
+    )
+    val screwList = listOf("Type 1", "Type 2", "Type 3")
+    val polishList = listOf("High Polish", "Matte Finish", "Satin Finish", "Hammered")
+    val baseUrl = "https://rrgold.loyalstring.co.in/"
 
     Dialog(onDismissRequest = { onDismiss() }) {
         Surface(
@@ -221,13 +280,13 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.order_edit_icon),
-                            contentDescription =  localizedContext.getString(R.string.cd_custom_order_icon),
+                            contentDescription = localizedContext.getString(R.string.cd_custom_order_icon),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text =  localizedContext.getString(R.string.title_custom_order_fields),
+                            text = localizedContext.getString(R.string.title_custom_order_fields),
                             color = Color.White,
                             fontSize = 18.sp,
                             fontFamily = poppins
@@ -255,7 +314,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     ) {
                         AsyncImage(
                             model = baseUrl + (selectedItem?.Image ?: ""),
-                            contentDescription =  localizedContext.getString(R.string.cd_product_image),
+                            contentDescription = localizedContext.getString(R.string.cd_product_image),
                             placeholder = painterResource(R.drawable.add_photo),
                             error = painterResource(R.drawable.add_photo),
                             modifier = Modifier.size(110.dp)
@@ -264,26 +323,17 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(8.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_product_name),
-                        value = productName
-                    ) { productName = it }
+                    FieldRow(localizedContext.getString(R.string.label_product_name), productName) { productName = it }
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_item_code),
-                        value = itemCode
-                    ) { itemCode = it }
+                    FieldRow(localizedContext.getString(R.string.label_item_code), itemCode) { itemCode = it }
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_sku),
-                        value = sku
-                    ) { sku = it }
+                    FieldRow(localizedContext.getString(R.string.label_sku), sku) { sku = it }
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
-                        label =  localizedContext.getString(R.string.label_purity),
+                        label = localizedContext.getString(R.string.label_purity),
                         list = purityNames,
                         selected = purity,
                         expanded = expandedPurity,
@@ -293,104 +343,45 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(6.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_total_weight),
-                        value = totalWt
-                    ) { newVal ->
-                        // existing logic...
+                    // TotalWt -> triggers full recalc (updates gross/net/amt)
+                    FieldRow(localizedContext.getString(R.string.label_total_weight), totalWt) { newVal ->
                         totalWt = newVal
-                        val totalValue = totalWt.toDoubleOrNull() ?: 0.0
-                        val pack = packingWt.toDoubleOrNull() ?: 0.0
-                        grossWT = String.format("%.3f", totalValue - pack)
-                        val stone = stoneWt.toDoubleOrNull() ?: 0.0
-                        val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        val stoneAmtVal = stoneAmt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format("%.3f", totalValue - (stone + diamond + stoneAmtVal))
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_packing_weight),
-                        value = packingWt
-                    ) { newVal ->
-                        // existing logic...
+                    // PackingWt -> triggers full recalc (updates gross/net/amt)
+                    FieldRow(localizedContext.getString(R.string.label_packing_weight), packingWt) { newVal ->
                         packingWt = newVal
-                        val totalValue = totalWt.toDoubleOrNull() ?: 0.0
-                        val pack = packingWt.toDoubleOrNull() ?: 0.0
-                        grossWT = String.format("%.3f", totalValue - pack)
-                        val stone = stoneWt.toDoubleOrNull() ?: 0.0
-                        val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format(
-                            "%.3f",
-                            (totalValue - pack) - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
-                        )
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_gross_weight),
-                        value = grossWT
-                    ) { newVal ->
+                    // GrossWt -> manual edit: do NOT call recalcAll (it formats/overwrites)
+                    FieldRow(localizedContext.getString(R.string.label_gross_weight), grossWT) { newVal ->
                         grossWT = newVal
-                        val g = grossWT.toDoubleOrNull() ?: 0.0
-                        val s = stoneWt.toDoubleOrNull() ?: 0.0
-                        val d = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = "%.3f".format(g - s - d)
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcFromGrossOnly()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_stone_weight),
-                        value = stoneWt
-                    ) { newVal ->
-                        // existing logic...
+                    FieldRow(localizedContext.getString(R.string.label_stone_weight), stoneWt) { newVal ->
                         stoneWt = newVal
-                        val total = grossWT.toDoubleOrNull() ?: 0.0
-                        val stone = stoneWt.toDoubleOrNull() ?: 0.0
-                        val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format(
-                            "%.3f",
-                            total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
-                        )
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(
-                        label =  localizedContext.getString(R.string.label_diamond_weight),
-                        value = dimondWt
-                    ) { newVal ->
-                        // existing logic...
+                    FieldRow(localizedContext.getString(R.string.label_diamond_weight), dimondWt) { newVal ->
                         dimondWt = newVal
-                        val total = grossWT.toDoubleOrNull() ?: 0.0
-                        val stone = stoneWt.toDoubleOrNull() ?: 0.0
-                        val diamond = dimondWt.toDoubleOrNull() ?: 0.0
-                        NetWt = String.format(
-                            "%.3f",
-                            total - (stone + diamond + (stoneAmt.toDoubleOrNull() ?: 0.0))
-                        )
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
+                    // NetWt display
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -399,7 +390,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text =  localizedContext.getString(R.string.label_net_weight),
+                            text = localizedContext.getString(R.string.label_net_weight),
                             modifier = Modifier.weight(0.4f),
                             fontSize = 12.sp,
                             color = Color.Black,
@@ -414,7 +405,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                text = if (NetWt.isBlank()) "0.000" else NetWt,
+                                text = if (NetWt.isBlank()) "" else NetWt,
                                 fontSize = 13.sp,
                                 fontFamily = poppins
                             )
@@ -423,14 +414,14 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(6.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_size), size) { size = it }
+                    FieldRow(localizedContext.getString(R.string.label_size), size) { size = it }
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_length), length) { length = it }
+                    FieldRow(localizedContext.getString(R.string.label_length), length) { length = it }
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
-                        label =  localizedContext.getString(R.string.label_type_color),
+                        label = localizedContext.getString(R.string.label_type_color),
                         list = colorsList,
                         selected = typeOfColors,
                         expanded = expandedColors,
@@ -441,7 +432,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
-                        label =  localizedContext.getString(R.string.label_screw_type),
+                        label = localizedContext.getString(R.string.label_screw_type),
                         list = screwList,
                         selected = screwType,
                         expanded = expandedScrew,
@@ -452,7 +443,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
-                        label =  localizedContext.getString(R.string.label_polish_type),
+                        label = localizedContext.getString(R.string.label_polish_type),
                         list = polishList,
                         selected = polishType,
                         expanded = expandedPolish,
@@ -462,49 +453,103 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_rate_per_gram), ratePerGRam) { newVal ->
+                    // Rate -> recalc
+                    FieldRow(localizedContext.getString(R.string.label_rate_per_gram), ratePerGRam) { newVal ->
                         ratePerGRam = newVal
-                        val net = NetWt.toDoubleOrNull() ?: 0.0
-                        val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                        itemAmt = "%.2f".format(net * rate)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_fine_percent), finePercentage) {
-                        finePercentage = it
+                    FieldRow(localizedContext.getString(R.string.label_fine_percent), finePercentage) { newVal ->
+                        finePercentage = newVal
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_wastage_percent), wastage) {
-                        wastage = it
+                    FieldRow(localizedContext.getString(R.string.label_wastage_percent), wastage) { newVal ->
+                        wastage = newVal
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_quantity), qty) { qty = it }
-
+                    FieldRow(localizedContext.getString(R.string.label_quantity), qty) { qty = it }
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_hallmark_amount), hallMarkAmt) { newVal ->
+                    // Hallmark -> recalc
+                    FieldRow(localizedContext.getString(R.string.label_hallmark_amount), hallMarkAmt) { newVal ->
                         hallMarkAmt = newVal
-                        val newHall = hallMarkAmt.toDoubleOrNull() ?: 0.0
-                        val baseAmt =
-                            (NetWt.toDoubleOrNull() ?: 0.0) * (ratePerGRam.toDoubleOrNull() ?: 0.0)
-                        itemAmt = String.format("%.2f", baseAmt + newHall)
+                        recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow( localizedContext.getString(R.string.label_mrp), mrp) { newVal ->
+                    // MRP -> recalc (MRP overrides itemAmt)
+                    FieldRow(localizedContext.getString(R.string.label_mrp), mrp) { newVal ->
                         mrp = newVal
-                        val mrpValue = mrp.toDoubleOrNull()
-                        if (mrpValue != null && mrpValue > 0) {
-                            itemAmt = String.format("%.2f", mrpValue)
+                        recalcAll()
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Optional display (same style as your order dialog)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+                            .padding(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Fine+Wastage Wt",
+                            modifier = Modifier.weight(0.4f),
+                            fontSize = 12.sp,
+                            color = Color.Black,
+                            fontFamily = poppins
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .height(35.dp)
+                                .background(Color.White, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(text = if (finePlusWt.isBlank()) "" else finePlusWt, fontSize = 13.sp, fontFamily = poppins)
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+                            .padding(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Item Amount",
+                            modifier = Modifier.weight(0.4f),
+                            fontSize = 12.sp,
+                            color = Color.Black,
+                            fontFamily = poppins
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .height(35.dp)
+                                .background(Color.White, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(text = if (itemAmt.isBlank()) "" else itemAmt, fontSize = 13.sp, fontFamily = poppins)
                         }
                     }
                 }
+
                 // ---------- BUTTONS ----------
                 Row(
                     Modifier
@@ -513,7 +558,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     GradientButtonIcon(
-                        text =   localizedContext.getString(R.string.btn_cancel),
+                        text = localizedContext.getString(R.string.btn_cancel),
                         onClick = { onDismiss() },
                         icon = painterResource(id = R.drawable.ic_cancel),
                         iconDescription = "Cancel",
@@ -524,7 +569,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     )
 
                     GradientButtonIcon(
-                        text =  localizedContext.getString(R.string.btn_save),
+                        text = localizedContext.getString(R.string.btn_save),
                         onClick = {
                             val s = selectedItem
                             if (s == null) {
@@ -537,77 +582,36 @@ fun DeliveryChallanDialogEditAndDisplay(
                                 return@GradientButtonIcon
                             }
 
-                            // same calc block you already had (shortened as-is)
-                            val gross = grossWT.toDoubleOrNull() ?: 0.0
-                            val stoneW = stoneWt.toDoubleOrNull() ?: 0.0
-                            val diamondW = dimondWt.toDoubleOrNull() ?: 0.0
-                            val rate = ratePerGRam.toDoubleOrNull() ?: 0.0
-                            val stoneAmtVal = stoneAmt.toDoubleOrNull() ?: 0.0
-                            val diamondAmtVal = (s.DiamondSellAmount.toDoubleOrNull()
-                                ?: s.DiamondSellAmount.toDoubleOrNull()
-                                ?: 0.0)
-
-                            val makingPerGramVal = (s.MakingPerGram.toDoubleOrNull() ?: 0.0)
-                            val makingPercentVal = (s.MakingPercentage.toDoubleOrNull() ?: 0.0)
-                            val fixMakingVal = (s.MakingFixedAmt.toDoubleOrNull() ?: 0.0)
-
-                            val wastageWtVal = wastage.toDoubleOrNull() ?: 0.0
-                            val finePercentVal = finePercentage.toDoubleOrNull() ?: 0.0
-
-                            val netWtCalc = gross - stoneW - diamondW
-                            val netWtStr = "%.3f".format(netWtCalc.coerceAtLeast(0.0))
-
-                            val metalAmtVal = netWtCalc * rate
-                            val metalAmtStr = "%.2f".format(metalAmtVal)
-
-                            val makingByGram = netWtCalc * makingPerGramVal
-                            val makingByPercent = metalAmtVal * (makingPercentVal / 100.0)
-                            val fixWastageAmt = wastageWtVal * rate
-
-                            val totalMakingVal =
-                                makingByGram + fixMakingVal + makingByPercent + fixWastageAmt
-                            val makingAmtStr = "%.2f".format(totalMakingVal)
-
-                            val fineWtVal = netWtCalc * (finePercentVal / 100.0)
-                            val fineWtStr = "%.3f".format(fineWtVal)
-
-                            val itemAmtVal =
-                                stoneAmtVal + diamondAmtVal + metalAmtVal + totalMakingVal
-                            val itemAmtStr = "%.2f".format(itemAmtVal)
-
-                            NetWt = netWtStr
-                            finePlusWt = fineWtStr
-                            itemAmt = itemAmtStr
+                            // final calculate before save
+                            recalcAll()
 
                             val updated = s.copy(
-                                GrossWt = grossWT,
-                                NetWt = netWtStr,
                                 TotalWt = totalWt,
                                 PackingWeight = packingWt,
+                                GrossWt = grossWT,
                                 TotalStoneWeight = stoneWt,
                                 DiamondWeight = dimondWt,
-                                StoneAmount = stoneAmt,
-                                TotalStoneAmount = stoneAmt,
+                                NetWt = NetWt,
+
+                                totayRate = ratePerGRam,
                                 RatePerGram = ratePerGRam,
                                 MetalRate = ratePerGRam,
-                                MetalAmount = metalAmtStr,
-                                MakingCharg = makingAmtStr,
+
                                 HallmarkAmount = hallMarkAmt,
                                 MRP = mrp,
-                                ItemAmount = itemAmtStr,
-                                TotalItemAmount = itemAmtStr,
-                                Amount = itemAmtStr,
-                                TotalAmount = itemAmtStr,
+                                ItemAmount = itemAmt,
+                                TotalItemAmount = itemAmt,
+                                Amount = itemAmt,
+                                TotalAmount = itemAmt,
+
+                                FineWastageWt = finePlusWt,
+                                FinePercentage = finePercentage,
+                                fixWastage = wastage,
+
                                 Purity = purity,
                                 Size = size,
-                                FineWastageWt = fineWtStr,
-                                FinePercentage = finePercentage,
                                 DiamondColour = typeOfColors,
                                 Description = remark,
-                                MakingPerGram = makingPerGramVal.toString(),
-                                MakingPercentage = makingPercentVal.toString(),
-                                MakingFixedAmt = fixMakingVal.toString(),
-                                fixWastage = wastage,
                                 Quantity = qty,
                                 qty = qty.toIntOrNull() ?: s.qty
                             )
@@ -628,9 +632,9 @@ fun DeliveryChallanDialogEditAndDisplay(
     }
 }
 
-
-
-
+/* ============================
+   UI Components (unchanged)
+   ============================ */
 
 @Composable
 fun FieldRow(label: String, value: String, onChange: (String) -> Unit) {

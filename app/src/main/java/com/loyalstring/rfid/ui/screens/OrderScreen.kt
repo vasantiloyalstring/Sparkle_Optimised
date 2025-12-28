@@ -483,13 +483,30 @@ fun OrderScreen(
 
             // Find rate from dailyRates if available
             val rate = if (!dailyRates.isNullOrEmpty()) {
-                dailyRates
-                    .firstOrNull { it.PurityName.equals(matchedItem.purity, ignoreCase = true) }
-                    ?.Rate?.toDoubleOrNull()
+
+
+                val matchedPurity = matchedItem.purity?.trim().orEmpty()
+
+                val computedRate  = dailyRates
+                    .firstOrNull { r ->
+                        val ratePurity = r.PurityName?.trim().orEmpty()
+
+                        Log.d("DAILY_RATE_MATCH", "ratePurity='$ratePurity'  matchedPurity='$matchedPurity'")
+
+                        ratePurity.equals(matchedPurity, ignoreCase = true)
+                    }
+                    ?.Rate
+                    ?.toString()
+                    ?.toDoubleOrNull()
                     ?: 0.0
+
+                Log.d("DAILY_RATE_MATCH", "FINAL matchedPurity='$matchedPurity'  rate=$computedRate")
+                computedRate
             } else {
                 0.0
             }
+
+            Log.d("@@","@@rate"+rate);
 
             val makingPerGramFinal = safeDouble(makingPerGram)
             val fixMaking = safeDouble(makingFixedAmt)
@@ -497,9 +514,14 @@ fun OrderScreen(
             val fixWastage = safeDouble(makingFixedWastage)
             val stoneAmt = safeDouble(matchedItem.stoneAmount)
             val diamondAmt = safeDouble(matchedItem.diamondAmount)
+            fun asDouble(v: Any?): Double = when (v) {
+                is Number -> v.toDouble()
+                is String -> v.trim().toDoubleOrNull() ?: 0.0
+                else -> 0.0
+            }
 
             // Metal Amount = NetWt * Rate
-            val metalAmt = netWt * rate
+            val metalAmt = netWt * asDouble(rate)
 
             // Making Amount = (MakingPerGram + FixMaking) + (Making% * NetWt / 100) + FixWastage
             val makingAmt =
