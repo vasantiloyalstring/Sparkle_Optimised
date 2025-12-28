@@ -559,7 +559,7 @@ fun AddProductScreen(
                             Log.d("AddProductScreen", "isStockAdded" + isStockAdded)
                             if (isStockAdded) {
                                 ToastUtils.showToast(context, "Stock Added Successfully!")
-                                bulkViewModel.syncItems()
+                                bulkViewModel.syncItems(context)
 
                             }else
                             {

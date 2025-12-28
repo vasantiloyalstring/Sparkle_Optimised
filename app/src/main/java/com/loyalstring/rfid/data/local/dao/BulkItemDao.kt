@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.remote.data.IdNamePair
@@ -15,18 +16,29 @@ interface BulkItemDao {
     @Query("DELETE FROM bulk_items")
     suspend fun clearAllItems()
 
+    /*@Insert(onConflict = OnConflictStrategy.IGNORE)
+    //@Transaction
+    suspend fun insertBulkItem(items: List<BulkItem>): List<Long>*/
+
+    /*@Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBulkItem(items: List<BulkItem>)*/
+
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertBulkItem(items: List<BulkItem>): List<Long>
+    suspend fun insertBulkItem(items: List<BulkItem>)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSingleItem(item: BulkItem): Long
 
     //@Query("SELECT * FROM bulk_items")
-    @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design FROM bulk_items")
+    @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, design FROM bulk_items")
     fun getMinimalItemsFlow(): Flow<List<BulkItem>>
 
+    @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, design FROM bulk_items")
+    suspend fun getMinimalItemFlow(): List<BulkItem>
+
     @Query("SELECT * FROM bulk_items")
-   // @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design, sku FROM bulk_items")
+   // @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, design, sku FROM bulk_items")
     fun getAllItemsFlow(): Flow<List<BulkItem>>
 
     @Query("SELECT * FROM bulk_items WHERE epc = :epc LIMIT 1")

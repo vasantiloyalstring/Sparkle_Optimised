@@ -1,8 +1,10 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.util.Log
+import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +77,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.DisposableEffect
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -100,6 +103,14 @@ fun ProductManagementScreen(
     val progress by viewModel.syncProgress.collectAsStateWithLifecycle(initialValue = 0f)
     val status by viewModel.syncStatusText.collectAsStateWithLifecycle(initialValue = "")
     val context: Context = LocalContext.current
+    DisposableEffect(Unit) {
+        val window = (context as Activity).window
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            viewModel.unblockTouch(context)
+        }
+    }
     val scaffoldState = rememberScaffoldState()
     var selectedCount by remember { mutableIntStateOf(1) }
     var selectedPower by remember { mutableIntStateOf(1) }
@@ -382,7 +393,7 @@ fun ProductManagementScreen(
                             when (selectedItem.label) {
                                 "Click to\nSync Data" -> {
                                     coroutineScope.launch {
-                                        viewModel.syncItems()
+                                        viewModel.syncItems(context)
                                     }
                                 }
 

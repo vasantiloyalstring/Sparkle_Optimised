@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.data.remote.network
 
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
+import com.loyalstring.rfid.di.NormalRetrofit
+import com.loyalstring.rfid.di.SyncRetrofit
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,59 +13,97 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetWorkRetrofitClient {
+
     @Provides
     fun provideBaseUrl() = "https://rrgold.loyalstring.co.in/"
 
-
-    @Provides
-    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-
-        }
-    }
-
-    @Provides
-    fun provideOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
-    ): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.NONE
-        }
-        return OkHttpClient.Builder()
-            .addInterceptor(logging)
-            .connectTimeout(5, java.util.concurrent.TimeUnit.MINUTES) // ⏱️ connection timeout
-            .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)    // ⏱️ server response read timeout
-            .writeTimeout(5, java.util.concurrent.TimeUnit.MINUTES)   // ⏱️ client request write timeout
-           // .addInterceptor(loggingInterceptor)
-            .build()
-    }
-
+    /* ---------------- NORMAL OKHTTP ---------------- */
 
     @Provides
     @Singleton
-    fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        baseUrl: String
-    ): Retrofit {
+    @NormalRetrofit
+    fun provideNormalOkHttp(): OkHttpClient =
+        OkHttpClient.Builder()
+            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .retryOnConnectionFailure(true)
+            .build()
 
-        return Retrofit.Builder()
-            .baseUrl(baseUrl) // replace with your URL
+    /* ---------------- SYNC OKHTTP (STREAMING) ---------------- */
+
+    @Provides
+    @Singleton
+    @SyncRetrofit
+    fun provideSyncOkHttp(): OkHttpClient =
+        OkHttpClient.Builder()
+            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(10, TimeUnit.MINUTES)
+            .retryOnConnectionFailure(true)
+            .build()
+
+    /* ---------------- NORMAL RETROFIT ---------------- */
+
+    @Provides
+    @Singleton
+    @NormalRetrofit
+    fun provideNormalRetrofit(
+        @NormalRetrofit okHttpClient: OkHttpClient,
+        baseUrl: String
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
             .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create()) // or MoshiConverterFactory.create()
+            .addConverterFactory(GsonConverterFactory.create())
             .client(okHttpClient)
             .build()
-    }
+
+    /* ---------------- SYNC RETROFIT (NO CONVERTERS) ---------------- */
 
     @Provides
     @Singleton
-    fun provideApiService(retrofit: Retrofit): RetrofitInterface {
-        return retrofit.create(RetrofitInterface::class.java)
-    }
+    @SyncRetrofit
+    fun provideSyncRetrofit(
+        @SyncRetrofit okHttpClient: OkHttpClient,
+        baseUrl: String
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(okHttpClient)
+            .build()
 
+    /* ---------------- API SERVICES ---------------- */
+
+    @Provides
+    @Singleton
+    @NormalRetrofit
+    fun provideNormalApi(
+        @NormalRetrofit retrofit: Retrofit
+    ): RetrofitInterface =
+        retrofit.create(RetrofitInterface::class.java)
+
+    @Provides
+    @Singleton
+    @SyncRetrofit
+    fun provideSyncApi(
+        @SyncRetrofit retrofit: Retrofit
+    ): RetrofitInterface =
+        retrofit.create(RetrofitInterface::class.java)
+
+    /* ---------------- DEFAULT API (CRITICAL FIX) ---------------- */
+
+    @Provides
+    @Singleton
+    fun provideDefaultApi(
+        @NormalRetrofit api: RetrofitInterface
+    ): RetrofitInterface = api
 }

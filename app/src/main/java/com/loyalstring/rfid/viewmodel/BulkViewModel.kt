@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.viewmodel
 
 import ScannedDataToService
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
@@ -27,8 +29,11 @@ import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
+import com.loyalstring.rfid.data.remote.response.AlllabelResponse
+import com.loyalstring.rfid.di.SyncScope
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.DropdownRepository
+import com.loyalstring.rfid.ui.screens.showToast
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.toBulkItem
@@ -61,6 +66,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
+import java.net.SocketException
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -75,7 +81,8 @@ class BulkViewModel @Inject constructor(
     private val bulkItemDao: BulkItemDao,
     private val bulkRepository: BulkRepositoryImpl,
     private val userPreferences: UserPreferences,
-    private val apiService: RetrofitInterface
+    private val apiService: RetrofitInterface,
+    private val syncScope: SyncScope
 ) : ViewModel() {
 
     //private val success = readerManager.initReader()
@@ -441,13 +448,13 @@ class BulkViewModel @Inject constructor(
                 isDataLoaded = true
             }
         }*/
-        viewModelScope.launch {
+        /*viewModelScope.launch {
             bulkRepository.getMinimalItemsFlow().collect { items ->
                 _allItems.value = items
                 preloadFilters(items)
                 _scannedFilteredItems.value = items
             }
-        }
+        }*/
     }
 
     // Call this method when user actually needs the data (e.g., when navigating to list screen)
@@ -1390,6 +1397,8 @@ class BulkViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
+        return@withContext //Unnecessary
+        /*Log.d("SYNC_ITEM", "Server API Called")
         if (syncedRFIDMap != null) return@withContext
 
         val employee = userPreferences.getEmployee(Employee::class.java)
@@ -1405,6 +1414,7 @@ class BulkViewModel @Inject constructor(
             { it.BarcodeNumber.orEmpty().trim().uppercase() },
             { it.TidValue.orEmpty().trim().uppercase() }
         )
+        Log.d("SYNC_ITEM", "Server API Called Finished")*/
     }
 
 
@@ -1418,7 +1428,7 @@ class BulkViewModel @Inject constructor(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    fun syncItems() {
+    /*fun syncItems() {
         val skippedItems = mutableListOf<String>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -1538,9 +1548,125 @@ class BulkViewModel @Inject constructor(
                 withContext(Dispatchers.Main) { _isLoading.value = false }
             }
         }
+    }*/
+
+    private fun blockTouch(context: Context) {
+        val window = (context as Activity).window
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
     }
 
+    fun unblockTouch(context: Context) {
+        val window = (context as Activity).window
+        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+    }
 
+    fun syncItems(context: Context) {
+        syncScope.scope.launch(Dispatchers.IO) {
+
+            val UI_UPDATE_INTERVAL = 700L
+            var lastUiUpdate = System.currentTimeMillis()
+
+            try {
+                withContext(Dispatchers.Main) {
+                    blockTouch(context)
+                    _isLoading.value = true
+                    _syncStatusText.value = "Downloading data..."
+                    _syncProgress.value = 0f
+                    _syncSyncedCount.value = 0
+                }
+
+                var totalItemsCount = 0
+                var totalSyncCount = 0
+                val clientCode = employee?.clientCode ?: return@launch
+                val tagType = userPreferences.getClient()?.rfidType
+                    ?.trim()
+                    ?.lowercase()
+                    ?: "webreusable"
+
+                // Clear old data first
+                bulkRepository.clearAllItems()
+
+                bulkRepository.syncBulkItemsFromServer(
+                    request = ClientCodeRequest(clientCode),
+                    tagType = tagType,
+
+                    // 🔹 Mapping stays in ViewModel (SAFE)
+                    mapItem = { serverItem ->
+                        mapServerItemToBulkItem(serverItem, tagType)
+                    },
+
+                    // 🔹 Progress callback (throttled)
+                    onProgress = { processed, synced, totalCount ->
+                        totalSyncCount = synced
+                        val now = System.currentTimeMillis()
+                        if (totalItemsCount == 0)
+                            totalItemsCount = totalCount
+                        if (now - lastUiUpdate > UI_UPDATE_INTERVAL) {
+                            val progress = processed.toFloat() / totalCount
+                            withContext(Dispatchers.Main) {
+                                //_syncSyncedCount.value = synced
+                                //_syncStatusText.value = "Processing $synced items"
+                                _syncProgress.value = progress
+                                _syncSyncedCount.value = synced
+                                _syncStatusText.value = "Processing $synced of $totalCount"
+                            }
+                            lastUiUpdate = now
+                        }
+                    }
+                )
+
+                withContext(Dispatchers.Main) {
+                    _syncTotalCount.value = totalItemsCount
+                    _syncSyncedCount.value = totalSyncCount
+                    _syncProgress.value = 1f
+                    _syncStatusText.value = "Sync completed"
+                    _toastMessage.emit("✅ Sync completed successfully")
+                }
+
+            } catch (e: SocketException) {
+                Log.e("SYNC", "Stream broke", e)
+                throw e // handled by retry layer
+            } catch (e: Exception) {
+                Log.e("SYNC_ERROR", "Sync failed", e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    unblockTouch(context)
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+
+    private fun mapServerItemToBulkItem(
+        serverItem: AlllabelResponse.LabelItem,
+        tagType: String
+    ): BulkItem? {
+
+        val item = serverItem.takeIf {
+            (it.status == "ApiActive" || it.status == "Active") &&
+                    (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
+        }?.toBulkItem() ?: return null
+
+        return when {
+            tagType == "webreusable" && !item.rfid.isNullOrBlank() -> {
+                if (item.epc.isNullOrBlank()) {
+                    item.epc = syncAndMapRow(item.rfid!!)   // ✅ stays here
+                }
+                item
+            }
+
+            tagType != "webreusable" && !item.itemCode.isNullOrBlank() -> {
+                val hex = item.itemCode.toByteArray()
+                    .joinToString("") { "%02X".format(it) }
+                item.copy(rfid = item.itemCode, epc = hex, tid = hex)
+            }
+
+            else -> null
+        }
+    }
 
     fun setRfidForAllTags(scanned: String) {
         val updatedMap = mutableMapOf<Int, String>()

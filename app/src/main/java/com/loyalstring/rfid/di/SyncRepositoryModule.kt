@@ -16,12 +16,14 @@ object SyncRepositoryModule {
 
     @Provides
     fun provideBulkRepository(
-        apiService: RetrofitInterface,
+        @SyncRetrofit syncApi: RetrofitInterface,
+        @NormalRetrofit normalApi: RetrofitInterface,
         bulkItemDao: BulkItemDao,
         epcDao: EpcDao
     ): BulkRepository {
         return BulkRepositoryImpl(
-            apiService = apiService,
+            syncApi = syncApi,
+            apiService = normalApi,
             bulkItemDao = bulkItemDao,
             epcDao = epcDao
         )

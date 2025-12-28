@@ -82,6 +82,7 @@ import retrofit2.http.Body
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Streaming
 
 interface RetrofitInterface {
     /*Login*/
@@ -128,6 +129,13 @@ interface RetrofitInterface {
     //Get all stock
     @POST("api/ProductMaster/GetAllStockAndroid")
     suspend fun getAllLabeledStock(@Body request: RequestBody): Response<List<AlllabelResponse.LabelItem>>
+
+    @POST("api/ProductMaster/GetAllStockAndroid")
+    @Streaming
+    suspend fun getAllLabeledStockNew(
+        @Body request: RequestBody
+    ): Response<ResponseBody>
+
 
     //Get all packets
     @POST("api/ProductMaster/GetAllPacketMaster")

@@ -7,6 +7,7 @@ data class AlllabelResponse(
 ) {
     data class LabelItem(
         @SerializedName("Id") val id: Int,
+        @SerializedName("TotalCount") val totalCount: Int,
         @SerializedName("ProductName") val productName: String,
         @SerializedName("SKUId") val skuId: Int,
         @SerializedName("ItemCode") val itemCode: String?,
