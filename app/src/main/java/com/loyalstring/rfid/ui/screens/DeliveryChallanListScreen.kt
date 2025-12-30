@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
@@ -34,6 +35,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.navigation.GradientTopBar
@@ -181,6 +185,7 @@ fun DeliveryChallanTable(
     localizedContext: Context
 ) {
     val sharedScrollState = rememberScrollState()
+    val viewModel: DeliveryChallanViewModel = hiltViewModel()
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Header Row
@@ -321,8 +326,12 @@ fun DeliveryChallanTable(
 
                             // ✏️ Print Button (right icon)
                             IconButton(onClick = {
-                                // TODO: Attach print/PDF logic
-                                navController.navigate("editDeliveryChallan/${challan.Id}")
+                                val printData: DeliveryChallanPrintData = challan.toDeliveryChallanPrintData(context)
+
+                                val uri = generateDeliveryChallanPdf(context, printData)
+                                if (uri != null) {
+                                    openPdfPreview(context, uri)
+                                }
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.print_svg),
@@ -340,6 +349,66 @@ fun DeliveryChallanTable(
         }
     }
 }
+
+
+private fun DeliveryChallanResponseList.toDeliveryChallanPrintData(
+    context: Context
+): DeliveryChallanPrintData {
+
+    // ✅ Safe numeric conversions
+    fun str(v: Any?): String = v?.toString()?.trim().orEmpty()
+    fun d(v: Any?, def: Double = 0.0): Double = str(v).toDoubleOrNull() ?: def
+
+    val taxable =0.0
+
+    // If your list row has CGST/SGST percent, use it; else default 1.5
+    val cgstPercent = d("", 1.5)
+    val sgstPercent = d("", 1.5)
+
+    // If amounts are present, use them; else compute
+    val cgstAmount = ""?.takeIf { it.isNotBlank() }
+        ?: String.format("%.2f", taxable * (cgstPercent / 100))
+
+    val sgstAmount = ""?.takeIf { it.isNotBlank() }
+        ?: String.format("%.2f", taxable * (sgstPercent / 100))
+
+
+ val    itemsForPrint =  this.ChallanDetails?.map { detail ->
+        DeliveryChallanItemPrint(
+            itemName = detail.ProductName ?: "",
+            purity = detail.Purity ?: "",
+            pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
+            grossWt = detail.GrossWt ?: "0.000 gm",
+            stoneWt = detail.TotalStoneWeight ?: "0 gm",
+            netWt = detail.NetWt ?: "0.000 gm",
+            ratePerGram = detail.MetalRate ?: "0",
+            wastage = detail.FineWastageWt ?: "0%",
+            itemAmount = detail.ItemAmount ?: "0.00"
+        )
+    }
+    return DeliveryChallanPrintData(
+        branchName = "" ?: "QA",
+        city = this.customer?.City?:"",
+        createdDateTime = this.CreatedOn ?: "",
+        customerName = this.CustomerName ?: "",
+        quotationNo = this.ChallanNo ?: (this.Id?.toString() ?: ""),
+        phone =this.customer?.Mobile?: "",
+
+        // ✅ List screen normally doesn't have items -> keep empty
+
+        items = itemsForPrint!!,
+
+        taxableAmount = "0.0",
+
+        cgstPercent = cgstPercent,
+        cgstAmount = cgstAmount,
+        sgstPercent = sgstPercent,
+        sgstAmount = sgstAmount,
+
+        totalNetAmount = this.TotalNetAmount ?: "0.00"
+    )
+}
+
 
 fun formatCreatedOn(createdOn: String?): String {
     if (createdOn.isNullOrBlank()) return ""

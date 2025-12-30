@@ -48,5 +48,8 @@ class DeliveryChallanRepositoryImpl @Inject constructor(
         return api.getAllCustomerTounch(request)
     }
 
+   /* override suspend fun getDeliveryChallanById(clientCode: String, challanId: Int) =
+        api.getDeliveryChallanById(clientCode, challanId)*/
+
 
 }

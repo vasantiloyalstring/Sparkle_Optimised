@@ -6,13 +6,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeRequest
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeResponse
 import com.google.gson.Gson
+import com.loyalstring.rfid.data.local.dao.PendingOrderDao
 import com.loyalstring.rfid.data.local.entity.OrderItem
+import com.loyalstring.rfid.data.local.entity.PendingOrderEntity
 import com.loyalstring.rfid.data.model.ClientCodeRequest
-import com.loyalstring.rfid.data.model.addSingleItem.PurityModel
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
@@ -21,8 +27,10 @@ import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.OrderRepository
+import com.loyalstring.rfid.worker.PendingOrderSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +45,8 @@ sealed class UiState<out T> {
 
 @HiltViewModel
 class OrderViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context1: Context,
+    private val pendingOrderDao: PendingOrderDao,
     private val repository: OrderRepository // or whatever your dependency is
 ) : ViewModel() {
     private val _addEmpResponse = MutableLiveData<Resource<EmployeeResponse>>()
@@ -84,8 +93,8 @@ class OrderViewModel @Inject constructor(
     private val _getAllDailyRate = MutableStateFlow<List<DailyRateResponse>>(emptyList())
     val getAllDailyRate: StateFlow<List<DailyRateResponse>> = _getAllDailyRate
 
-    private val _nextOrderNo = MutableStateFlow(0)
-    val nextOrderNo: StateFlow<Int> = _nextOrderNo
+  /*  private val _nextOrderNo = MutableStateFlow(0)
+    val nextOrderNo: StateFlow<Int> = _nextOrderNo*/
 
 //    private val _orderPlaced = mutableStateOf(false)
 //    val orderPlaced: State<Boolean> = _orderPlaced
@@ -842,6 +851,44 @@ class OrderViewModel @Inject constructor(
             }
         }
     }
+
+    fun saveOrderOffline(req: CustomOrderRequest, context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val localId = java.util.UUID.randomUUID().toString()
+            val json = Gson().toJson(req.copy(OrderNo = "LOCAL-$localId"))
+
+            pendingOrderDao.upsert(
+                PendingOrderEntity(
+                    localId = localId,
+                    clientCode = req.ClientCode.orEmpty(),
+                    customerId = req.CustomerId?.toIntOrNull() ?: 0,
+                    payloadJson = json,
+                    status = "PENDING",
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+
+            // ✅ network available hote hi sync worker chale
+            enqueuePendingSync(context)
+        }
+    }
+
+    fun enqueuePendingSync(context: Context) {
+        val request = OneTimeWorkRequestBuilder<PendingOrderSyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "pending_order_sync",
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
+
 }
 
 

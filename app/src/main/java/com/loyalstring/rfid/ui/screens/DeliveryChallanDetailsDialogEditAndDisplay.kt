@@ -323,13 +323,13 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(8.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_product_name), productName) { productName = it }
+                    FieldRow(localizedContext.getString(R.string.label_product_name), productName,enabled = false ) { productName = it}
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_item_code), itemCode) { itemCode = it }
+                    FieldRow(localizedContext.getString(R.string.label_item_code), itemCode ,enabled = false) { itemCode = it}
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_sku), sku) { sku = it }
+                    FieldRow(localizedContext.getString(R.string.label_sku), sku,enabled = false) { sku = it }
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
@@ -344,7 +344,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(6.dp))
 
                     // TotalWt -> triggers full recalc (updates gross/net/amt)
-                    FieldRow(localizedContext.getString(R.string.label_total_weight), totalWt) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_total_weight), totalWt,enabled = true) { newVal ->
                         totalWt = newVal
                         recalcAll()
                     }
@@ -352,7 +352,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     // PackingWt -> triggers full recalc (updates gross/net/amt)
-                    FieldRow(localizedContext.getString(R.string.label_packing_weight), packingWt) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_packing_weight), packingWt,enabled = true) { newVal ->
                         packingWt = newVal
                         recalcAll()
                     }
@@ -360,21 +360,21 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     // GrossWt -> manual edit: do NOT call recalcAll (it formats/overwrites)
-                    FieldRow(localizedContext.getString(R.string.label_gross_weight), grossWT) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_gross_weight), grossWT,enabled = true) { newVal ->
                         grossWT = newVal
                         recalcFromGrossOnly()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_stone_weight), stoneWt) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_stone_weight), stoneWt,enabled = true) { newVal ->
                         stoneWt = newVal
                         recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_diamond_weight), dimondWt) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_diamond_weight), dimondWt,enabled = true) { newVal ->
                         dimondWt = newVal
                         recalcAll()
                     }
@@ -414,10 +414,10 @@ fun DeliveryChallanDialogEditAndDisplay(
 
                     Spacer(Modifier.height(6.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_size), size) { size = it }
+                    FieldRow(localizedContext.getString(R.string.label_size), size,enabled = true) { size = it }
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_length), length) { length = it }
+                    FieldRow(localizedContext.getString(R.string.label_length), length,enabled = true) { length = it }
                     Spacer(Modifier.height(4.dp))
 
                     DropdownRow(
@@ -454,32 +454,32 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     // Rate -> recalc
-                    FieldRow(localizedContext.getString(R.string.label_rate_per_gram), ratePerGRam) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_rate_per_gram), ratePerGRam,enabled = true) { newVal ->
                         ratePerGRam = newVal
                         recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_fine_percent), finePercentage) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_fine_percent), finePercentage,enabled = true) { newVal ->
                         finePercentage = newVal
                         recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_wastage_percent), wastage) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_wastage_percent), wastage,enabled = true) { newVal ->
                         wastage = newVal
                         recalcAll()
                     }
 
                     Spacer(Modifier.height(4.dp))
 
-                    FieldRow(localizedContext.getString(R.string.label_quantity), qty) { qty = it }
+                    FieldRow(localizedContext.getString(R.string.label_quantity), qty,enabled = true) { qty = it }
                     Spacer(Modifier.height(4.dp))
 
                     // Hallmark -> recalc
-                    FieldRow(localizedContext.getString(R.string.label_hallmark_amount), hallMarkAmt) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_hallmark_amount), hallMarkAmt,enabled = true) { newVal ->
                         hallMarkAmt = newVal
                         recalcAll()
                     }
@@ -487,7 +487,7 @@ fun DeliveryChallanDialogEditAndDisplay(
                     Spacer(Modifier.height(4.dp))
 
                     // MRP -> recalc (MRP overrides itemAmt)
-                    FieldRow(localizedContext.getString(R.string.label_mrp), mrp) { newVal ->
+                    FieldRow(localizedContext.getString(R.string.label_mrp), mrp,enabled = true) { newVal ->
                         mrp = newVal
                         recalcAll()
                     }
@@ -637,7 +637,7 @@ fun DeliveryChallanDialogEditAndDisplay(
    ============================ */
 
 @Composable
-fun FieldRow(label: String, value: String, onChange: (String) -> Unit) {
+fun FieldRow(label: String, value: String, enabled: Boolean,onChange: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -664,8 +664,10 @@ fun FieldRow(label: String, value: String, onChange: (String) -> Unit) {
         ) {
             BasicTextField(
                 value = value,
-                onValueChange = onChange,
+                onValueChange ={ if (enabled) onChange(it) },
                 singleLine = true,
+                enabled = enabled,
+                readOnly = !enabled,
                 textStyle = TextStyle(fontSize = 13.sp, color = Color.Black),
                 decorationBox = { inner ->
                     if (value.isEmpty())

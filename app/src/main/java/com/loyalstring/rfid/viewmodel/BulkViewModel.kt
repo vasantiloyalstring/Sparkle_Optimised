@@ -855,6 +855,7 @@ class BulkViewModel @Inject constructor(
             _matchedEpcSet.value = emptySet()
             // _matchedTidSet.value = emptySet() // TID matching disabled
             _scannedFilteredItems.value = _filteredSource
+
         }
     }
 

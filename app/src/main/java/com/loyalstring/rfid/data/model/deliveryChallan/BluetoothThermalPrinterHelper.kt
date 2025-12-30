@@ -93,14 +93,14 @@ object BluetoothThermalPrinterHelper {
         data: DeliveryChallanPrintData,
         printerName: String = "4B-2043PB-B799"
     ) = withContext(Dispatchers.IO) {
-        showToast(context, "Printed on  device1111$printerName")
+        //showToast(context, "Printed on  device1111$printerName")
         Log.d("@@","Printed on  device1111")
         // BluetoothAdapter
         val adapter = BluetoothAdapter.getDefaultAdapter()
-            ?: return@withContext showToast(context, "Bluetooth not supported")
+            ?: return@withContext //showToast(context, "Bluetooth not supported")
 
         if (!adapter.isEnabled) {
-            return@withContext showToast(context, "Please enable Bluetooth")
+            return@withContext //showToast(context, "Please enable Bluetooth")
         }
 
         // ❗ Must check permission but NOT request it (Context cannot request)
@@ -109,7 +109,7 @@ object BluetoothThermalPrinterHelper {
                 Manifest.permission.BLUETOOTH_CONNECT
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            showToast(context, "❌ Missing BLUETOOTH_CONNECT permission")
+            //showToast(context, "❌ Missing BLUETOOTH_CONNECT permission")
             Log.e("@BT", "BLUETOOTH_CONNECT permission not granted")
             return@withContext
         }
@@ -117,13 +117,13 @@ object BluetoothThermalPrinterHelper {
         // Now safe to access bonded devices
         val device = adapter.bondedDevices.firstOrNull {
             it.name.equals(printerName, ignoreCase = true)
-        } ?: return@withContext showToast(context, "Printer not paired")
+        } ?: return@withContext //showToast(context, "Printer not paired")
 
         var socket: BluetoothSocket? = null
 
         try {
             Log.d("@@","Printed on  device11112222")
-            showToast(context, "Printed on  device$printerName")
+          //  showToast(context, "Printed on  device$printerName")
             socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
             socket.connect()
 
@@ -178,10 +178,10 @@ object BluetoothThermalPrinterHelper {
             out.write(byteArrayOf(0x1D, 0x56, 0x01))
             out.flush()
 
-            showToast(context, "Printed on $printerName")
+           // showToast(context, "Printed on $printerName")
 
         } catch (e: Exception) {
-            showToast(context, "Print failed: ${e.message}")
+           // showToast(context, "Print failed: ${e.message}")
         } finally {
             try {
                 socket?.close()

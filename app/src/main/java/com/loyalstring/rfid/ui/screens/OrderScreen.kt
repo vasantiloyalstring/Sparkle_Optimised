@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -126,6 +127,8 @@ fun OrderScreen(
 // Customer input fields
     var customerName by remember { mutableStateOf("") }
     var customerId by remember { mutableStateOf<Int?>(null) }
+
+    Log.d("@@customerId","customerId"+customerId)
     var expandedCustomer by remember { mutableStateOf(false) }
 
     var itemCode by remember { mutableStateOf(TextFieldValue("")) }
@@ -135,6 +138,7 @@ fun OrderScreen(
     val productList = remember { mutableStateListOf<OrderItem>() }
     var selectedItem by remember { mutableStateOf<ItemCodeResponse?>(null) }
     val productListViewModel: ProductListViewModel = hiltViewModel()
+    var createRequested by remember { mutableStateOf(false) }
 
     var showOrderDetailsDialog by remember { mutableStateOf(false) }
     var lastOrderDetails by remember { mutableStateOf<OrderDetails?>(null) } // ✅ optional default for scans
@@ -404,9 +408,7 @@ fun OrderScreen(
 
     val tags by viewModel.scannedTags.collectAsState()
     val scanTrigger by viewModel.scanTrigger.collectAsState()
-    val isOnline = remember {
-        NetworkUtils.isNetworkAvailable(context)
-    }
+    val isOnline = NetworkUtils.isNetworkAvailable(context)
 
     val customerSuggestions by orderViewModel.empListFlow.collectAsState(UiState.Loading)
 
@@ -952,16 +954,21 @@ fun OrderScreen(
 
     // 🔹 When last item number updates → Add the item
     val lastOredrNo by orderViewModel.lastOrderNoresponse.collectAsState()
-    val nextNo by orderViewModel.nextOrderNo.collectAsState()
+    //val nextNo by orderViewModel.nextOrderNo.collectAsState()
 
-    LaunchedEffect(nextNo) {
+    LaunchedEffect(lastOredrNo,createRequested) {
 
         // Only run when a new value is emitted
-        if (nextNo <= 0) return@LaunchedEffect
+        if (!createRequested) return@LaunchedEffect
+
+        // ✅ 2) LastOrderNo must be non-empty
+        val lastNoStr = lastOredrNo.LastOrderNo?.trim()
+        if (lastNoStr.isNullOrBlank()) return@LaunchedEffect
 
         val clientCode = employee?.clientCode.orEmpty()
         val branchId = employee?.defaultBranchId ?: 1   // ya jahan se bhi branchId le raha hai
         val custId = customerId ?: 0
+        createRequested=false
 
         // ❌ 1) Client code missing → add API mat call karo
         if (clientCode.isBlank()) {
@@ -1000,7 +1007,8 @@ fun OrderScreen(
         }
 
         // ✅ Sab validation pass → abhi hi number generate karo + API call
-        val newLastOrderNo = nextNo
+        val lastNoInt = lastOredrNo.LastOrderNo.toString().toIntOrNull() ?: 0
+        val newLastOrderNo = lastNoInt+ 1
         Log.d("@@", "newOrderNo" + newLastOrderNo)
         val totalDiamondWeight = productList.sumOf { it.dimondWt.toDoubleOrNull() ?: 0.0 }.toString()
         val totalStoneWeight   = productList.sumOf { it.stoneAmt?.toDoubleOrNull() ?: 0.0 }.toString()
@@ -1280,7 +1288,22 @@ fun OrderScreen(
         if (isOnline) {
             orderViewModel.addOrderCustomer(customerObj)
         } else {
-            orderViewModel.saveOrder(customerObj)
+            Log.d( "@@"," selectedCustomer?.Id.toString()"+selectedCustomer?.Id)
+           // orderViewModel.saveOrder(customerObj)
+          //  orderViewModel.saveOrderOffline(customerObj,context)
+            val localOrderNo = "OFF-${System.currentTimeMillis()}"
+
+
+            val customerList: List<EmployeeList> =
+                (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
+
+            val selectedCustomerObj: EmployeeList? =
+                customerList?.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
+
+            Log.d( "@@##"," selectedCustomer?.Id.toString()"+selectedCustomerObj?.Id)
+            orderViewModel.saveOrderOffline(  buildOrderRequest(
+                orderNo = localOrderNo,
+                employee!!,productList, selectedCustomerObj,gstAmount,lastOrderDetails), context)
         }
 
     }
@@ -1303,6 +1326,8 @@ fun OrderScreen(
             orderViewModel.clearOrderResponse()
         }
     }
+
+
 
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
@@ -1606,18 +1631,60 @@ fun OrderScreen(
                                StatusType = true
                            )
                        )
+
                        if (isOnline) {
                            orderViewModel.updateOrderCustomer(request)
                        } else {
                            orderViewModel.saveOrder(request)
                        }
                     } else {
-
+                       createRequested = true
                         val clientCode = employee?.clientCode ?: return@ScanBottomBar
                         val branchId = employee.branchNo ?: 1
+                       val online = NetworkUtils.isNetworkAvailable(context)
 
                         // 🔹 Step 1: Fetch last item no
+                       if (!online) {
+
+                           // ✅ OFFLINE: local order no
+                           val localOrderNo = "OFF-${System.currentTimeMillis()}"
+                           val customerList: List<EmployeeList> =
+                               (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
+
+                           Log.d(
+                               "@@$$",
+                               " selectedCustomer?.Id.toString()" + customerList.toString()
+                           )
+
+
+                           if(customerId!=0) {
+
+                               val selectedCustomerObj: EmployeeList? =
+                                   customerList?.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
+
+
+                               Log.d(
+                                   "@@$$",
+                                   " selectedCustomer?.Id.toString()" + selectedCustomerObj.toString()
+                               )
+                               orderViewModel.saveOrderOffline(
+                                   buildOrderRequest(
+                                       orderNo = localOrderNo,
+                                       employee,
+                                       productList,
+                                       selectedCustomerObj,
+                                       gstAmount,
+                                       lastOrderDetails
+                                   ), // <-- same payload builder
+                                   context
+                               )
+                           }
+                           Toast.makeText(context, "Saved offline", Toast.LENGTH_SHORT).show()
+                           return@ScanBottomBar
+                       }else
+                       {
                         orderViewModel.fetchLastOrderNo(ClientCodeRequest(clientCode))
+                           }
                     }
                 },
                 onList = {  navController.navigate("order_list") },
@@ -1824,6 +1891,367 @@ fun OrderScreen(
 
 
 }
+
+fun buildOrderRequest(
+    orderNo: String,
+    employee: Employee,
+    productList: SnapshotStateList<OrderItem>,
+    selectedCustomer: EmployeeList?,
+    gstAmount: Double,
+    lastOrderDetails: OrderDetails?
+): CustomOrderRequest {
+
+    val IST: ZoneId = ZoneId.of("Asia/Kolkata")
+
+    fun nowIsoDateTime(): String =
+        OffsetDateTime.now(IST).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) // 2025-12-22T12:34:56+05:30
+
+    fun nowDateOnly(): String =
+        LocalDate.now(IST).format(DateTimeFormatter.ISO_LOCAL_DATE) // 2025-12-22
+
+    fun pickOrderDate(details: OrderDetails?): String {
+        val d = details?.orderDate?.trim()
+        return if (d.isNullOrEmpty() || d.equals("null", true)) nowIsoDateTime() else d
+    }
+
+    fun pickDeliverDate(details: OrderDetails?): String {
+        val d = details?.deliverDate?.trim()
+        return if (d.isNullOrEmpty() || d.equals("null", true)) nowDateOnly() else d
+    }
+
+
+    fun toIsoLocalDate(input: String?): String? {
+        val s = input?.trim().orEmpty()
+        if (s.isEmpty() || s.equals("null", true)) return null
+
+        // already ISO
+        if (Regex("""\d{4}-\d{2}-\d{2}""").matches(s)) return s
+
+        // dd/MM/yyyy -> yyyy-MM-dd
+        return try {
+            val inFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply { isLenient = false }
+            val d = inFmt.parse(s) ?: return null
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).format(d)
+        } catch (e: Exception) { null }
+    }
+
+    fun toIsoOffsetDateTime(input: String?): String? {
+        val s = input?.trim().orEmpty()
+        if (s.isEmpty() || s.equals("null", true)) return null
+
+        // already ISO offset
+        if (s.contains("T") && (s.endsWith("Z") || s.contains("+") || s.contains("-"))) return s
+
+        // if date-only ISO
+        if (Regex("""\d{4}-\d{2}-\d{2}""").matches(s)) {
+            val IST = ZoneId.of("Asia/Kolkata")
+            return LocalDate.parse(s).atStartOfDay(IST).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        }
+
+        // dd/MM/yyyy -> ISO offset datetime
+        return try {
+            val inFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply { isLenient = false }
+            val d = inFmt.parse(s) ?: return null
+            val IST = ZoneId.of("Asia/Kolkata")
+            d.toInstant().atZone(IST).toLocalDate().atStartOfDay(IST).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        } catch (e: Exception) { null }
+    }
+    val clientCode = employee?.clientCode.orEmpty()
+    val fallbackBranchId = employee?.defaultBranchId ?: 1
+    val custId = employee?.id ?: 0
+
+    val totalDiamondWeight = productList.sumOf { it.dimondWt?.toDoubleOrNull() ?: 0.0 }.toString()
+    val totalStoneWeight   = productList.sumOf { it.stoneWt?.toDoubleOrNull() ?: 0.0 }.toString()   // ✅ stoneWt
+    val totalDiamondAmount = productList.sumOf { it.diamondAmt?.toDoubleOrNull() ?: 0.0 }.toString()
+    val totalStoneAmount   = productList.sumOf { it.stoneAmt?.toDoubleOrNull() ?: 0.0 }.toString()
+    val totalAmount        = productList.sumOf { it.itemAmt?.toDoubleOrNull() ?: 0.0 }.toString()
+
+    val categoryId   = productList.firstOrNull()?.categoryId ?: 0
+    val categoryName = productList.firstOrNull()?.categoryName.orEmpty()
+    Log.d( "@@"," selectedCustomer?.Id.toString()"+selectedCustomer?.Id.toString())
+
+    return CustomOrderRequest(
+        CustomOrderId = 0,
+        CustomerId = selectedCustomer?.Id.toString(),
+        ClientCode = clientCode,
+        OrderId = 0,
+
+        TotalAmount = totalAmount,
+        PaymentMode = "",
+        Offer = null,
+        Qty = productList.size.toString(),
+        GST = "0",
+        OrderStatus = "Order Received",
+        MRP = null,
+        VendorId = null,
+        TDS = null,
+        PurchaseStatus = null,
+        GSTApplied = "false",
+        Discount = "0",
+        TotalNetAmount = totalAmount,
+        TotalGSTAmount = "0",
+        TotalPurchaseAmount = totalAmount,
+        ReceivedAmount = "0",
+
+        // ✅ MISSING REQUIRED
+        TotalBalanceMetal = "0",
+        BalanceAmount = totalAmount,
+        TotalFineMetal = "0",
+
+        CourierCharge = null,
+        SaleType = null,
+        OrderDate = pickOrderDate(lastOrderDetails),
+        OrderCount = productList.size.toString(),
+
+        // ✅ MISSING REQUIRED
+        AdditionTaxApplied = "false",
+
+        CategoryId = categoryId,
+        OrderNo = orderNo,
+        DeliveryAddress = null,
+        BillType = "SampleOut",
+        UrdPurchaseAmt = null,
+
+        // ✅ MISSING REQUIRED
+        BilledBy = employee?.firstName.orEmpty(),
+        SoldBy = employee?.firstName.orEmpty(),
+
+        CreditSilver = null,
+        CreditGold = null,
+        CreditAmount = null,
+        BalanceAmt = totalAmount,
+        BalanceSilver = null,
+        BalanceGold = null,
+        TotalSaleGold = null,
+        TotalSaleSilver = null,
+        TotalSaleUrdGold = null,
+        TotalSaleUrdSilver = null,
+        FinancialYear = "2025-26",
+        BaseCurrency = "INR",
+
+        TotalStoneWeight = totalStoneWeight,
+        TotalStoneAmount = totalStoneAmount,
+        TotalStonePieces = "0",
+        TotalDiamondWeight = totalDiamondWeight,
+        TotalDiamondPieces = "0",
+        TotalDiamondAmount = totalDiamondAmount,
+
+        // ✅ MISSING REQUIRED
+        FineSilver = "0",
+        FineGold = "0",
+
+        DebitSilver = null,
+        DebitGold = null,
+
+        // ✅ MISSING REQUIRED
+        PaidMetal = "0",
+        PaidAmount = "0",
+
+        TotalAdvanceAmt = null,
+        TaxableAmount = totalAmount,
+        TDSAmount = null,
+        CreatedOn = null,
+        StatusType = true,
+
+        // ✅ MISSING REQUIRED
+        FineMetal = "0",
+        BalanceMetal = "0",
+        AdvanceAmt = "0",
+        PaidAmt = "0",
+
+        TaxableAmt = totalAmount,
+        GstAmount = "0",
+        GstCheck = "false",
+        Category = categoryName,
+
+        // ✅ MISSING REQUIRED
+        TDSCheck = "false",
+
+        Remark = null,
+        OrderItemId = null,
+        StoneStatus = null,
+        DiamondStatus = null,
+        BulkOrderId = null,
+
+        CustomOrderItem = productList.map { item ->
+            CustomOrderItem(
+                CustomOrderId = 0,
+                RFIDCode = item.rfidCode.orEmpty(),
+                OrderDate   = toIsoOffsetDateTime(item.orderDate) ?: nowIsoDateTime(),
+                DeliverDate = toIsoLocalDate(item.deliverDate) ?: nowDateOnly(),
+
+                SKUId = item.skuId ?: 0,
+                SKU = item.sku.orEmpty(),
+
+                CategoryId = item.categoryId ?: 0,
+                VendorId = 0,
+
+                CategoryName = item.categoryName.orEmpty(),
+                CustomerName = employee?.firstName.orEmpty(),
+                VendorName = "",
+
+                ProductId = item.productId ?: 0,
+                ProductName = item.productName.orEmpty(),
+
+                DesignId = item.designid ?: 0,
+                DesignName = item.designName.orEmpty(),
+
+                PurityId = item.purityid ?: 0,
+                PurityName = item.purity.orEmpty(),
+
+                GrossWt = item.grWt ?: "0.0",
+                StoneWt = item.stoneWt ?: "0.0",
+                DiamondWt = item.dimondWt ?: "0.0",
+                NetWt = item.nWt ?: "0.0",
+
+                // ✅ REQUIRED
+                Size = item.size?.toString().orEmpty(),
+                Length = item.length?.toString().orEmpty(),
+                TypesOdColors = item.typeOfColor?.toString().orEmpty(),
+
+                Quantity = item.qty?.toString() ?: "1",
+
+                RatePerGram = item.todaysRate ?: "0.0",
+                MakingPerGram = item.makingPerGram ?: "0.0",
+                MakingFixed = item.makingFixedAmt ?: "0.0",
+                FixedWt = item.makingFixedWastage ?: "0.0",
+                MakingPercentage = item.makingPercentage ?: "0.0",
+
+                DiamondPieces = "0",
+                DiamondRate = "0",
+                DiamondAmount = item.diamondAmt ?: "0.0",
+                StoneAmount = item.stoneAmt ?: "0.0",
+
+                // ✅ REQUIRED
+                ScrewType = item.screwType?.toString().orEmpty(),
+                Polish = item.polishType?.toString().orEmpty(),
+                Rhodium = "",
+                SampleWt = "",
+
+                Image = item.image.orEmpty(),
+                ItemCode = item.itemCode.orEmpty(),
+                CustomerId = selectedCustomer!!.Id!!.toInt(),
+
+                // ✅ REQUIRED
+                MRP = item.mrp ?: "0.0",
+                HSNCode = "",
+                UnlProductId = 0,
+                OrderBy = "",
+                StoneLessPercent = "0",
+
+                ProductCode = item.productCode.orEmpty(),
+                TotalWt = item.totalWt ?: (item.netAmt ?: "0.0"),
+                BillType = "SampleOut",
+                FinePercentage = item.finePer ?: "0.0",
+                ClientCode = clientCode,
+
+                // ✅ REQUIRED
+                OrderId = null,
+
+                StatusType = true,
+                PackingWeight = item.packingWt ?: "0.0",
+
+                // ✅ REQUIRED
+                MetalAmount = "0.0",
+                OldGoldPurchase = false,
+
+                Amount = item.itemAmt ?: "0.0",
+                totalGstAmount = gstAmount.toString(),
+                finalPrice = item.itemAmt ?: "0.0",
+
+                // ✅ REQUIRED
+                MakingFixedWastage = item.makingFixedWastage ?: "0.0",
+                Description = item.remark.orEmpty(),
+
+                // ✅ REQUIRED
+                CompanyId = item.companyId ?: 0,
+                LabelledStockId = 0,
+                TotalStoneWeight = item.stoneWt ?: "0.0",
+
+                // ✅ Branch safe (string/int dono case me handle karna ho to yaha simple rakho)
+                BranchId = item.branchId?.toIntOrNull() ?: fallbackBranchId,
+                BranchName = item.branchName.orEmpty(),
+
+                // ✅ REQUIRED
+                Exhibition = item.exhibition.orEmpty(),
+
+                CounterId = (item.counterId ?: 0).toString(),
+                EmployeeId = employee?.id ?: 0,
+
+                OrderNo = orderNo,
+                OrderStatus = "Order Received",
+
+                // ✅ REQUIRED
+                DueDate = null,
+
+                Remark = item.remark,
+
+                // ✅ REQUIRED
+                PurchaseInvoiceNo = null,
+                Purity = item.purity.orEmpty(),
+                Status = null,
+                URDNo = null,
+                HallmarkAmt = item.hallmarkAmt,
+
+                Stones = emptyList(),
+                Diamond = emptyList()
+            )
+        },
+
+        Payments = emptyList(),
+        uRDPurchases = emptyList(),
+        Customer = Customer(
+            FirstName = selectedCustomer?.FirstName.orEmpty(),
+            LastName = selectedCustomer?.LastName.orEmpty(),
+            PerAddStreet = "",
+            CurrAddStreet = "",
+            Mobile = selectedCustomer?.Mobile.orEmpty(),
+            Email = selectedCustomer?.Email.orEmpty(),
+            Password = "",
+            CustomerLoginId = selectedCustomer?.Email.orEmpty(),
+            DateOfBirth = "",
+            MiddleName = "",
+            PerAddPincode = "",
+            Gender = "",
+            OnlineStatus = "",
+            CurrAddTown = selectedCustomer?.CurrAddTown.orEmpty(),
+            CurrAddPincode = "",
+            CurrAddState = selectedCustomer?.CurrAddState.orEmpty(),
+            PerAddTown = "",
+            PerAddState = "",
+            GstNo = selectedCustomer?.GstNo.orEmpty(),
+            PanNo = selectedCustomer?.PanNo.orEmpty(),
+            AadharNo = "",
+            BalanceAmount = "0",
+            AdvanceAmount = "0",
+            Discount = "0",
+            CreditPeriod = "",
+            FineGold = "0",
+            FineSilver = "0",
+            ClientCode = selectedCustomer?.ClientCode.orEmpty(),
+            VendorId = 0,
+            AddToVendor = false,
+            CustomerSlabId = 0,
+            CreditPeriodId = 0,
+            RateOfInterestId = 0,
+            Remark = "",
+            Area = "",
+            City = selectedCustomer?.City.orEmpty(),
+            Country = selectedCustomer?.Country.orEmpty(),
+            Id = selectedCustomer?.Id ?: 0,
+            CreatedOn = "2025-07-08",
+            LastUpdated = "2025-07-08",
+            StatusType = true
+        ),
+
+        syncStatus = false,
+        LastUpdated = null
+    )
+
+}
+
+
+
 fun toIsoLocalDate(input: String?): String? {
     val s = input?.trim().orEmpty()
     if (s.isEmpty() || s.equals("null", true)) return null

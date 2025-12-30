@@ -304,6 +304,10 @@ interface RetrofitInterface {
 
     @POST("api/Order/UpadateQuotation")
     suspend fun updateQuotation(@Body req: UpdateQuotationRequest): Response<UpdateQuotationResponse>
+/*
+    @POST("api/Order/UpadateQuotation")
+    suspend fun getDeliveryChallanById(clientCode: String, challanId: Int) :Response<UpdateQuotationResponse>*/
+
 
 
 }

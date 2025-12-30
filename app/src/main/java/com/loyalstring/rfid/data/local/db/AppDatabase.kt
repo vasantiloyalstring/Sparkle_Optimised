@@ -13,6 +13,7 @@ import com.loyalstring.rfid.data.local.dao.DropdownDao
 import com.loyalstring.rfid.data.local.dao.EpcDao
 import com.loyalstring.rfid.data.local.dao.LocationDao
 import com.loyalstring.rfid.data.local.dao.OrderItemDao
+import com.loyalstring.rfid.data.local.dao.PendingOrderDao
 import com.loyalstring.rfid.data.local.dao.TransferTypeDao
 import com.loyalstring.rfid.data.local.dao.UHFTAGDao
 import com.loyalstring.rfid.data.local.dao.UserPermissionDao
@@ -24,6 +25,7 @@ import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.local.entity.ModuleEntity
 import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.local.entity.PageControlEntity
+import com.loyalstring.rfid.data.local.entity.PendingOrderEntity
 import com.loyalstring.rfid.data.local.entity.Product
 import com.loyalstring.rfid.data.local.entity.TransferTypeEntity
 import com.loyalstring.rfid.data.local.entity.UHFTAGEntity
@@ -59,7 +61,8 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         LocationItem::class,
         UserPermissionEntity::class,
         ModuleEntity::class,
-        PageControlEntity::class
+        PageControlEntity::class,
+        PendingOrderEntity::class
 
     ],
     version = 1
@@ -74,6 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun customerEmailDao(): CustomerEmailDao
     abstract fun locationDao(): LocationDao
     abstract fun userPermissionDao(): UserPermissionDao
+    abstract fun pendingOrderDao(): PendingOrderDao
 
     companion object {
         @Volatile
