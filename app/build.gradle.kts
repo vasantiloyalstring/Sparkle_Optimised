@@ -17,8 +17,8 @@ android {
     defaultConfig {
         applicationId = "com.loyalstring.rfid"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 45
+        targetSdk = 36
+        versionCode = 46
         versionName = "1.45"
         resConfigs("en", "hi","ar")
 

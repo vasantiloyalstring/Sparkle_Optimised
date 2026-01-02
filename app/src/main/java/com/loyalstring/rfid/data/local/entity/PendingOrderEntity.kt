@@ -14,5 +14,9 @@ data class PendingOrderEntity(
     val lastError: String? = null,
     val attempts: Int = 0,
     val serverOrderNo: String? = null,
-    val serverOrderId: Int? = null
-)
+    val serverOrderId: Int? = null,
+    val op: String,
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false,
+
+    )

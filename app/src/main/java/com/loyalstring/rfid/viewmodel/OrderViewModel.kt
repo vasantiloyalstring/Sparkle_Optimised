@@ -15,18 +15,22 @@ import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeReques
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeResponse
 import com.google.gson.Gson
+import com.loyalstring.rfid.data.local.dao.PendingEmployeeDao
 import com.loyalstring.rfid.data.local.dao.PendingOrderDao
 import com.loyalstring.rfid.data.local.entity.OrderItem
+import com.loyalstring.rfid.data.local.entity.PendingEmployeeEntity
 import com.loyalstring.rfid.data.local.entity.PendingOrderEntity
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
+import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.OrderRepository
+import com.loyalstring.rfid.worker.PendingEmployeeSyncWorker
 import com.loyalstring.rfid.worker.PendingOrderSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.util.UUID
 import javax.inject.Inject
 
 sealed class UiState<out T> {
@@ -144,13 +150,16 @@ class OrderViewModel @Inject constructor(
                     if (body != null) {
                         _addEmpResponse.value = Resource.Success(body)
                     } else {
+                        saveEmployeeOffline(request)
                         _addEmpResponse.value = Resource.Error("Invalid response data")
                     }
                 } else {
+                    saveEmployeeOffline(request)
                     Log.d("orderViewModel", "Response Error: ${response.errorBody()?.string()}")
                     _addEmpResponse.value = Resource.Error("Server error: ${response.message()}")
                 }
             } catch (e: Exception) {
+                saveEmployeeOffline(request)
                 Log.e("orderViewModel", "Exception: ${e.message}")
                 _addEmpResponse.value = Resource.Error("Exception: ${e.message}")
             }
@@ -374,222 +383,116 @@ class OrderViewModel @Inject constructor(
 
     /*get All order list in list screen*/
     /*last order no*/
-    fun fetchAllOrderListFromApi(request: ClientCodeRequest) {
-        viewModelScope.launch {
+   /* fun fetchAllOrderListFromApi(request: ClientCodeRequest) {
+     *//*   viewModelScope.launch {
             try {
                 _isLoading.value = true
                 val response = repository.getAllOrderList(request)
                 if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()
                     _getAllOrderList.value = response.body()!!
-                    setLocalOrderList(_getAllOrderList.value) // ✅ Set the local list here
-
-                    //repository.clearLastOrderNo()
-                    for (order in response.body()!!) {
-                        order.toRequest()
-                        //4   repository.saveCustomerOrder(request)
+                    try {
+                        repository.saveCustomerOrder(body!!)
+                    } catch (e: Exception) {
+                        Log.d("OrderViewModel", "Error: ${e.printStackTrace()}")
                     }
                     Log.d("OrderViewModel", "get All order list: ${response.body()}")
                     _isLoading.value = false
                 } else {
                     Log.e("OrderViewModel", "Error: ${response.code()} ${response.message()}")
                     val localData = repository.getAllCustomerOrders(request.clientcode.toString())
-
-// Assuming you need to map CustomerOrderRequest to CustomerOrderResponse
-                    localData.map { customerOrderRequest ->
-                        CustomOrderResponse(
-                            CustomOrderId = customerOrderRequest.CustomOrderId,
-                            CustomerId = customerOrderRequest.CustomerId.toInt(),
-                            ClientCode = customerOrderRequest.ClientCode,
-                            OrderId = customerOrderRequest.OrderId,
-                            TotalAmount = customerOrderRequest.TotalAmount,
-                            PaymentMode = customerOrderRequest.PaymentMode,
-                            Offer = customerOrderRequest.Offer,
-                            Qty = customerOrderRequest.Qty,
-                            GST = customerOrderRequest.GST,
-                            OrderStatus = customerOrderRequest.OrderStatus,
-                            MRP = customerOrderRequest.MRP,
-                            VendorId = customerOrderRequest.VendorId,
-                            TDS = customerOrderRequest.TDS,
-                            PurchaseStatus = customerOrderRequest.PurchaseStatus,
-                            GSTApplied = customerOrderRequest.GSTApplied,
-                            Discount = customerOrderRequest.Discount,
-                            TotalNetAmount = customerOrderRequest.TotalNetAmount,
-                            TotalGSTAmount = customerOrderRequest.TotalGSTAmount,
-                            TotalPurchaseAmount = customerOrderRequest.TotalPurchaseAmount,
-                            ReceivedAmount = customerOrderRequest.ReceivedAmount,
-                            TotalBalanceMetal = customerOrderRequest.TotalBalanceMetal,
-                            BalanceAmount = customerOrderRequest.BalanceAmount?:"0.0",
-                            TotalFineMetal = customerOrderRequest.TotalFineMetal,
-                            CourierCharge = customerOrderRequest.CourierCharge,
-                            SaleType = customerOrderRequest.SaleType,
-                            OrderDate = customerOrderRequest.OrderDate,
-                            OrderCount = customerOrderRequest.OrderCount,
-                            AdditionTaxApplied = customerOrderRequest.AdditionTaxApplied,
-                            CategoryId = customerOrderRequest.CategoryId,
-                            OrderNo = customerOrderRequest.OrderNo,
-                            DeliveryAddress = customerOrderRequest.DeliveryAddress,
-                            BillType = customerOrderRequest.BillType,
-                            UrdPurchaseAmt = customerOrderRequest.UrdPurchaseAmt,
-                            BilledBy = customerOrderRequest.BilledBy,
-                            SoldBy = customerOrderRequest.SoldBy,
-                            CreditSilver = customerOrderRequest.CreditSilver,
-                            CreditGold = customerOrderRequest.CreditGold,
-                            CreditAmount = customerOrderRequest.CreditAmount,
-                            BalanceAmt = customerOrderRequest.BalanceAmt,
-                            BalanceSilver = customerOrderRequest.BalanceSilver,
-                            BalanceGold = customerOrderRequest.BalanceGold,
-                            TotalSaleGold = customerOrderRequest.TotalSaleGold,
-                            TotalSaleSilver = customerOrderRequest.TotalSaleSilver,
-                            TotalSaleUrdGold = customerOrderRequest.TotalSaleUrdGold,
-                            TotalSaleUrdSilver = customerOrderRequest.TotalSaleUrdSilver,
-                            FinancialYear = customerOrderRequest.FinancialYear,
-                            BaseCurrency = customerOrderRequest.BaseCurrency,
-                            TotalStoneWeight = customerOrderRequest.TotalStoneWeight,
-                            TotalStoneAmount = customerOrderRequest.TotalStoneAmount,
-                            TotalStonePieces = customerOrderRequest.TotalStonePieces,
-                            TotalDiamondWeight = customerOrderRequest.TotalDiamondWeight,
-                            TotalDiamondPieces = customerOrderRequest.TotalDiamondPieces,
-                            TotalDiamondAmount = customerOrderRequest.TotalDiamondAmount,
-                            FineSilver = customerOrderRequest.FineSilver,
-                            FineGold = customerOrderRequest.FineGold,
-                            DebitSilver = customerOrderRequest.DebitSilver,
-                            DebitGold = customerOrderRequest.DebitGold,
-                            PaidMetal = customerOrderRequest.PaidMetal,
-                            PaidAmount = customerOrderRequest.PaidAmount,
-                            TotalAdvanceAmt = customerOrderRequest.TotalAdvanceAmt,
-                            TaxableAmount = customerOrderRequest.TaxableAmount,
-                            TDSAmount = customerOrderRequest.TDSAmount,
-                            CreatedOn = customerOrderRequest.CreatedOn.toString(),
-                            LastUpdated = customerOrderRequest.LastUpdated.toString(),
-                            StatusType = customerOrderRequest.StatusType!!,
-                            FineMetal = customerOrderRequest.FineMetal,
-                            BalanceMetal = customerOrderRequest.BalanceMetal,
-                            AdvanceAmt = customerOrderRequest.AdvanceAmt,
-                            PaidAmt = customerOrderRequest.PaidAmt,
-                            TaxableAmt = customerOrderRequest.TaxableAmt,
-                            GstAmount = customerOrderRequest.GstAmount,
-                            GstCheck = customerOrderRequest.GstCheck,
-                            Category = customerOrderRequest.Category,
-                            TDSCheck = customerOrderRequest.TDSCheck,
-                            Remark = customerOrderRequest.Remark,
-                            OrderItemId = customerOrderRequest.OrderItemId!!.toInt(),
-                            StoneStatus = customerOrderRequest.StoneStatus,
-                            DiamondStatus = customerOrderRequest.DiamondStatus,
-                            BulkOrderId = customerOrderRequest.BulkOrderId,
-                            CustomOrderItem = customerOrderRequest.CustomOrderItem,
-                            Payments = customerOrderRequest.Payments,
-                            Customer = customerOrderRequest.Customer,
-                            syncStatus = customerOrderRequest.syncStatus,
-                            ProductName = ""
-                        )
-                    }
-
-                    // _getAllOrderList.value = mappedData
+                    //_getAllOrderList.value = mappedData
                     // _getAllOrderList.value = localData
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
                 Log.e("OrderViewModel", "Exception: ${e.message}")
                 repository.getAllCustomerOrders(request.clientcode.toString())
+                _isLoading.value = false
+            }
+        }*//*
 
-// Assuming you need to map CustomerOrderRequest to CustomerOrderResponse
-                /*
-                                val mappedData = localData.map { customerOrderRequest ->
-                                    CustomOrderResponse(
-                                        CustomOrderId = customerOrderRequest.CustomOrderId,
-                                        CustomerId = customerOrderRequest.CustomerId.toInt(),
-                                        ClientCode = customerOrderRequest.ClientCode,
-                                        OrderId = customerOrderRequest.OrderId,
-                                        TotalAmount = customerOrderRequest.TotalAmount,
-                                        PaymentMode = customerOrderRequest.PaymentMode,
-                                        Offer = customerOrderRequest.Offer,
-                                        Qty = customerOrderRequest.Qty,
-                                        GST = customerOrderRequest.GST,
-                                        OrderStatus = customerOrderRequest.OrderStatus,
-                                        MRP = customerOrderRequest.MRP,
-                                        VendorId = customerOrderRequest.VendorId,
-                                        TDS = customerOrderRequest.TDS,
-                                        PurchaseStatus = customerOrderRequest.PurchaseStatus,
-                                        GSTApplied = customerOrderRequest.GSTApplied,
-                                        Discount = customerOrderRequest.Discount,
-                                        TotalNetAmount = customerOrderRequest.TotalNetAmount,
-                                        TotalGSTAmount = customerOrderRequest.TotalGSTAmount,
-                                        TotalPurchaseAmount = customerOrderRequest.TotalPurchaseAmount,
-                                        ReceivedAmount = customerOrderRequest.ReceivedAmount,
-                                        TotalBalanceMetal = customerOrderRequest.TotalBalanceMetal,
-                                        BalanceAmount = customerOrderRequest.BalanceAmount?:"0.0",
-                                        TotalFineMetal = customerOrderRequest.TotalFineMetal,
-                                        CourierCharge = customerOrderRequest.CourierCharge,
-                                        SaleType = customerOrderRequest.SaleType,
-                                        OrderDate = customerOrderRequest.OrderDate,
-                                        OrderCount = customerOrderRequest.OrderCount,
-                                        AdditionTaxApplied = customerOrderRequest.AdditionTaxApplied,
-                                        CategoryId = customerOrderRequest.CategoryId,
-                                        OrderNo = customerOrderRequest.OrderNo,
-                                        DeliveryAddress = customerOrderRequest.DeliveryAddress,
-                                        BillType = customerOrderRequest.BillType,
-                                        UrdPurchaseAmt = customerOrderRequest.UrdPurchaseAmt,
-                                        BilledBy = customerOrderRequest.BilledBy,
-                                        SoldBy = customerOrderRequest.SoldBy,
-                                        CreditSilver = customerOrderRequest.CreditSilver,
-                                        CreditGold = customerOrderRequest.CreditGold,
-                                        CreditAmount = customerOrderRequest.CreditAmount,
-                                        BalanceAmt = customerOrderRequest.BalanceAmt,
-                                        BalanceSilver = customerOrderRequest.BalanceSilver,
-                                        BalanceGold = customerOrderRequest.BalanceGold,
-                                        TotalSaleGold = customerOrderRequest.TotalSaleGold,
-                                        TotalSaleSilver = customerOrderRequest.TotalSaleSilver,
-                                        TotalSaleUrdGold = customerOrderRequest.TotalSaleUrdGold,
-                                        TotalSaleUrdSilver = customerOrderRequest.TotalSaleUrdSilver,
-                                        FinancialYear = customerOrderRequest.FinancialYear,
-                                        BaseCurrency = customerOrderRequest.BaseCurrency,
-                                        TotalStoneWeight = customerOrderRequest.TotalStoneWeight,
-                                        TotalStoneAmount = customerOrderRequest.TotalStoneAmount,
-                                        TotalStonePieces = customerOrderRequest.TotalStonePieces,
-                                        TotalDiamondWeight = customerOrderRequest.TotalDiamondWeight,
-                                        TotalDiamondPieces = customerOrderRequest.TotalDiamondPieces,
-                                        TotalDiamondAmount = customerOrderRequest.TotalDiamondAmount,
-                                        FineSilver = customerOrderRequest.FineSilver,
-                                        FineGold = customerOrderRequest.FineGold,
-                                        DebitSilver = customerOrderRequest.DebitSilver,
-                                        DebitGold = customerOrderRequest.DebitGold,
-                                        PaidMetal = customerOrderRequest.PaidMetal,
-                                        PaidAmount = customerOrderRequest.PaidAmount,
-                                        TotalAdvanceAmt = customerOrderRequest.TotalAdvanceAmt,
-                                        TaxableAmount = customerOrderRequest.TaxableAmount,
-                                        TDSAmount = customerOrderRequest.TDSAmount,
-                                        CreatedOn = customerOrderRequest.CreatedOn.toString(),
-                                        LastUpdated = customerOrderRequest.LastUpdated.toString(),
-                                        StatusType = customerOrderRequest.StatusType!!,
-                                        FineMetal = customerOrderRequest.FineMetal,
-                                        BalanceMetal = customerOrderRequest.BalanceMetal,
-                                        AdvanceAmt = customerOrderRequest.AdvanceAmt,
-                                        PaidAmt = customerOrderRequest.PaidAmt,
-                                        TaxableAmt = customerOrderRequest.TaxableAmt,
-                                        GstAmount = customerOrderRequest.GstAmount,
-                                        GstCheck = customerOrderRequest.GstCheck,
-                                        Category = customerOrderRequest.Category,
-                                        TDSCheck = customerOrderRequest.TDSCheck,
-                                        Remark = customerOrderRequest.Remark,
-                                        OrderItemId = customerOrderRequest.OrderItemId!!.toInt(),
-                                        StoneStatus = customerOrderRequest.StoneStatus,
-                                        DiamondStatus = customerOrderRequest.DiamondStatus,
-                                        BulkOrderId = customerOrderRequest.BulkOrderId,
-                                        CustomOrderItem = customerOrderRequest.CustomOrderItem,
-                                        Payments = customerOrderRequest.Payments,
-                                        Customer = customerOrderRequest.Customer,
-                                        syncStatus = customerOrderRequest.syncStatus,
-                                        ProductName = ""
-                                    )
-                                }
-                */
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val res = repository.getAllOrderList(request)
+                if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+                    val list = res.body()!!
 
-                //  _getAllOrderList.value = mappedData
-                // _getAllOrderList.value = localData
+                    _getAllOrderList.value = list
+
+                    repository.saveOrderListCache(
+                        clientCode = request.clientcode.orEmpty(),
+                        list = list
+                    )
+                } else {
+                    val cached = repository.getOrderListCache(request.clientcode.orEmpty())
+                    _getAllOrderList.value = cached
+                }
+            } catch (e: Exception) {
+                val cached = repository.getOrderListCache(request.clientcode.orEmpty())
+                _getAllOrderList.value = cached
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }*/
+
+    fun fetchAllOrderListFromApi(request: ClientCodeRequest) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val clientCode = request.clientcode.orEmpty()
+
+            try {
+                // ✅ 1) pending(local) orders
+                val pendingLocal = getPendingOrderResponses(clientCode)
+
+                // ✅ 2) server orders (or cache)
+                val serverList = try {
+                    val res = repository.getAllOrderList(request)
+                    if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+                        val list = res.body()!!
+                        repository.saveOrderListCache(clientCode, list) // server cache
+                        list
+                    } else {
+                        repository.getOrderListCache(clientCode)
+                    }
+                } catch (e: Exception) {
+                    repository.getOrderListCache(clientCode)
+                }
+
+
+                // ✅ 3) merge (pending always top)
+                val merged = mergeOrders(pendingLocal, serverList)
+
+                Log.d("LIST", "clientCode = $clientCode")
+                Log.d("LIST", "pendingLocal size = ${pendingLocal.size}")
+                Log.d("LIST", "serverList size = ${serverList.size}")
+                Log.d("LIST", "merged size = ${merged.size}")
+                _getAllOrderList.value = merged
+
+            } finally {
                 _isLoading.value = false
             }
         }
     }
+    private fun mergeOrders(
+        pendingLocal: List<CustomOrderResponse>,
+        serverList: List<CustomOrderResponse>
+    ): List<CustomOrderResponse> {
+
+        val serverIds = serverList.map { it.CustomOrderId }.toSet()
+
+        val safePending = pendingLocal
+            .filter { it.CustomOrderId == 0 || it.CustomOrderId !in serverIds }
+            .sortedByDescending { it.CreatedOn }   // ✅ latest first (offline)
+
+        val safeServer = serverList
+            .sortedByDescending { it.CreatedOn }   // optional: server also latest first
+
+        return safePending + safeServer
+    }
+
 
     fun CustomOrderResponse.toRequest(): CustomOrderRequest {
         return CustomOrderRequest(
@@ -615,14 +518,14 @@ class OrderViewModel @Inject constructor(
             ReceivedAmount = this.ReceivedAmount,
             TotalBalanceMetal = this.TotalBalanceMetal,
             BalanceAmount = this.BalanceAmount?:"0.0",
-            TotalFineMetal = this.TotalFineMetal,
+            TotalFineMetal = this.TotalFineMetal.toString(),
             CourierCharge = this.CourierCharge,
             SaleType = this.SaleType,
             OrderDate = this.OrderDate,
             OrderCount = this.OrderCount,
             AdditionTaxApplied = this.AdditionTaxApplied,
             CategoryId = this.CategoryId,
-            OrderNo = this.OrderNo,
+            OrderNo = this.OrderNo.toString(),
             DeliveryAddress = this.DeliveryAddress,
             BillType = this.BillType,
             UrdPurchaseAmt = this.UrdPurchaseAmt,
@@ -657,15 +560,15 @@ class OrderViewModel @Inject constructor(
             TDSAmount = this.TDSAmount,
             CreatedOn = this.CreatedOn,
             StatusType = this.StatusType,
-            FineMetal = this.FineMetal,
-            BalanceMetal = this.BalanceMetal,
-            AdvanceAmt = this.AdvanceAmt,
-            PaidAmt = this.PaidAmt,
-            TaxableAmt = this.TaxableAmt,
-            GstAmount = this.GstAmount,
-            GstCheck = this.GstCheck,
+            FineMetal = this.FineMetal.toString(),
+            BalanceMetal = this.BalanceMetal.toString(),
+            AdvanceAmt = this.AdvanceAmt.toString(),
+            PaidAmt = this.PaidAmt.toString(),
+            TaxableAmt = this.TaxableAmt.toString(),
+            GstAmount = this.GstAmount.toString(),
+            GstCheck = this.GstCheck.toString(),
             Category = this.Category,
-            TDSCheck = this.TDSCheck,
+            TDSCheck = this.TDSCheck.toString(),
             Remark = this.Remark?: "",
             OrderItemId = this.OrderItemId,
             StoneStatus = this.StoneStatus?: "",
@@ -742,7 +645,7 @@ class OrderViewModel @Inject constructor(
     }
 
 
-    /*sync data to server*/
+    /*    *//*sync data to server*//*
     // Save the customer order to Room
     fun saveOrder(customerOrderRequest: CustomOrderRequest) {
         viewModelScope.launch {
@@ -756,7 +659,7 @@ class OrderViewModel @Inject constructor(
                 Log.d("orderViewModel", "orderViewModel" + e.toString())
             }
         }
-    }
+    }*/
 
     // Fetch all customer orders based on the client code
     fun getAllOrders(clientCode: String) {
@@ -854,8 +757,13 @@ class OrderViewModel @Inject constructor(
 
     fun saveOrderOffline(req: CustomOrderRequest, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
-            val localId = java.util.UUID.randomUUID().toString()
-            val json = Gson().toJson(req.copy(OrderNo = "LOCAL-$localId"))
+            val localId = UUID.randomUUID().toString()
+
+            // ✅ orderNo ko local bana do (string hi rakhna)
+            val reqWithLocalNo = req.copy(OrderNo = "LOCAL-$localId")
+
+            // ✅ pending table me payload save
+            val json = Gson().toJson(reqWithLocalNo)
 
             pendingOrderDao.upsert(
                 PendingOrderEntity(
@@ -864,9 +772,17 @@ class OrderViewModel @Inject constructor(
                     customerId = req.CustomerId?.toIntOrNull() ?: 0,
                     payloadJson = json,
                     status = "PENDING",
-                    createdAt = System.currentTimeMillis()
+                    createdAt = System.currentTimeMillis(),
+                    op = "CREATE",
+                    updatedAt = System.currentTimeMillis()
+
                 )
             )
+
+            val localItem = reqWithLocalNo.toLocalResponse(localId,req.Customer)
+            launch(Dispatchers.Main) {
+                _getAllOrderList.value = listOf(localItem) + _getAllOrderList.value
+            }
 
             // ✅ network available hote hi sync worker chale
             enqueuePendingSync(context)
@@ -888,6 +804,249 @@ class OrderViewModel @Inject constructor(
             request
         )
     }
+
+    @Inject
+    lateinit var pendingEmployeeDao: PendingEmployeeDao // constructor me inject karo
+
+    fun saveEmployeeOffline(req: AddEmployeeRequest) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val localId = UUID.randomUUID().toString()
+
+            // ✅ 1) pending table me save
+            val json = Gson().toJson(req)
+            pendingEmployeeDao.upsert(
+                PendingEmployeeEntity(
+                    localId = localId,
+                    clientCode = req.ClientCode.orEmpty(),
+                    payloadJson = json,
+                    status = "PENDING"
+                )
+            )
+
+            // ✅ 2) employee list me turant dikhane ke liye room employee table me insert
+            // (tumhare pas already mapper hai)
+            val emp = req.toEmployeeList()
+            repository.insertEmployeeToRoom(emp)
+
+            // ✅ 3) UI state refresh (optional: just call getAllEmpList again)
+            // getAllEmpList(req.ClientCode.orEmpty())
+
+
+
+
+            // ✅ 4) internet aate hi sync
+            enqueuePendingEmployeeSync(context1)
+        }
+    }
+
+    fun enqueuePendingEmployeeSync(context: Context) {
+        val work = OneTimeWorkRequestBuilder<PendingEmployeeSyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "pending_employee_sync",
+            ExistingWorkPolicy.KEEP,
+            work
+        )
+    }
+    private fun CustomOrderRequest.toLocalResponse(
+        localId: String,
+        fallbackCustomer: Customer ,
+    ): CustomOrderResponse {
+
+        fun s(v: Any?): String = v?.toString()?.trim().orEmpty()
+        fun s0(v: Any?): String = s(v).ifBlank { "0" }
+        fun s00(v: Any?): String = s(v).ifBlank { "0.0" }
+
+        val now = LocalDateTime.now().toString()
+        val orderNoStr = this.OrderNo?.toString()?.takeIf { it.isNotBlank() } ?: "LOCAL-$localId"
+
+        return CustomOrderResponse(
+            Id = 0, // autoGenerate true, but Room will ignore if 0
+            CustomOrderId = 0,
+            CustomerId = this.CustomerId?.toIntOrNull() ?: 0,
+            ClientCode = s(this.ClientCode),
+            OrderId = this.OrderId ?: 0,
+
+            TotalAmount = s00(this.TotalAmount),
+            PaymentMode = s(this.PaymentMode),
+            Offer = this.Offer, // nullable
+            Qty = s0(this.Qty),
+
+            GST = s(this.GST), // your model wants String ("true"/"false" or "1"/"0")
+            OrderStatus = this.OrderStatus?.takeIf { it.isNotBlank() } ?: "PENDING (OFFLINE)",
+
+            MRP = this.MRP, // nullable
+            VendorId = this.VendorId,
+            TDS = this.TDS,
+            PurchaseStatus = this.PurchaseStatus,
+
+            GSTApplied = s(this.GSTApplied),
+            Discount = s00(this.Discount),
+
+            TotalNetAmount = s00(this.TotalNetAmount),
+            TotalGSTAmount = s00(this.TotalGSTAmount),
+            TotalPurchaseAmount = s00(this.TotalPurchaseAmount),
+
+            ReceivedAmount = s00(this.ReceivedAmount),
+            TotalBalanceMetal = s00(this.TotalBalanceMetal),
+            BalanceAmount = s00(this.BalanceAmount),
+            TotalFineMetal = s00(this.TotalFineMetal),
+
+            CourierCharge = this.CourierCharge,
+            SaleType = this.SaleType,
+
+            OrderDate = this.OrderDate?.toString()?.takeIf { it.isNotBlank() } ?: now,
+            OrderCount = s0(this.OrderCount),
+
+            AdditionTaxApplied = s(this.AdditionTaxApplied),
+            CategoryId = this.CategoryId ?: 0,
+            OrderNo = orderNoStr,
+
+            DeliveryAddress = this.DeliveryAddress,
+            BillType = s(this.BillType),
+
+            UrdPurchaseAmt = this.UrdPurchaseAmt,
+            BilledBy = s(this.BilledBy),
+            SoldBy = s(this.SoldBy),
+
+            CreditSilver = this.CreditSilver,
+            CreditGold = this.CreditGold,
+            CreditAmount = this.CreditAmount,
+
+            BalanceAmt = s00(this.BalanceAmt),
+            BalanceSilver = this.BalanceSilver,
+            BalanceGold = this.BalanceGold,
+
+            TotalSaleGold = this.TotalSaleGold,
+            TotalSaleSilver = this.TotalSaleSilver,
+            TotalSaleUrdGold = this.TotalSaleUrdGold,
+            TotalSaleUrdSilver = this.TotalSaleUrdSilver,
+
+            FinancialYear = s(this.FinancialYear),
+            BaseCurrency = s(this.BaseCurrency),
+
+            TotalStoneWeight = s00(this.TotalStoneWeight),
+            TotalStoneAmount = s00(this.TotalStoneAmount),
+            TotalStonePieces = s0(this.TotalStonePieces),
+
+            TotalDiamondWeight = s00(this.TotalDiamondWeight),
+            TotalDiamondPieces = s0(this.TotalDiamondPieces),
+            TotalDiamondAmount = s00(this.TotalDiamondAmount),
+
+            FineSilver = s00(this.FineSilver),
+            FineGold = s00(this.FineGold),
+
+            DebitSilver = this.DebitSilver,
+            DebitGold = this.DebitGold,
+
+            PaidMetal = s00(this.PaidMetal),
+            PaidAmount = s00(this.PaidAmount),
+
+            TotalAdvanceAmt = this.TotalAdvanceAmt,
+            TaxableAmount = s00(this.TaxableAmount),
+            TDSAmount = this.TDSAmount,
+
+            CreatedOn = now,
+            LastUpdated = now,
+            StatusType = true,
+
+            FineMetal = s00(this.FineMetal),
+            BalanceMetal = s00(this.BalanceMetal),
+            AdvanceAmt = s00(this.AdvanceAmt),
+            PaidAmt = s00(this.PaidAmt),
+            TaxableAmt = s00(this.TaxableAmt),
+
+            GstAmount = s00(this.GstAmount),
+            GstCheck = s(this.GstCheck),
+
+            Category = s(this.Category),
+            TDSCheck = s(this.TDSCheck),
+
+            // ✅ important: store localId inside remark (since model has no localId field)
+            Remark = (this.Remark ?: "").ifBlank { "LOCAL_ID:$localId" }
+                .let { r -> if (r.contains("LOCAL_ID:")) r else "$r | LOCAL_ID:$localId" },
+
+            OrderItemId = this.OrderItemId?: 0,
+            StoneStatus = this.StoneStatus,
+            DiamondStatus = this.DiamondStatus,
+            BulkOrderId = this.BulkOrderId,
+
+            CustomOrderItem = this.CustomOrderItem ?: emptyList(),
+            Payments = this.Payments ?: emptyList(),
+
+            // ⚠️ Customer is NON-NULL in your model
+            Customer = this.Customer ?: fallbackCustomer,
+
+            syncStatus = false,
+
+            // non-null String
+            ProductName = ""?.toString().orEmpty()
+        )
+    }
+
+
+    suspend fun getPendingOrderResponses(clientCode: String): List<CustomOrderResponse> {
+        val pending = pendingOrderDao.getPendingByClientCode(clientCode)
+        return pending.mapNotNull { entity ->
+            try {
+                val req = Gson().fromJson(entity.payloadJson, CustomOrderRequest::class.java)
+
+                val fallbackCustomer = req.Customer
+
+                req.toLocalResponse(entity.localId, fallbackCustomer)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+
+    suspend fun updateOfflineCreatedOrder(localId: String, updatedReq: CustomOrderRequest) {
+        val row = pendingOrderDao.getByLocalId(localId) ?: return
+        // serverOrderId null => CREATE stays CREATE
+        pendingOrderDao.updatePayload(
+            localId = localId,
+            payloadJson = Gson().toJson(updatedReq),
+            op = "CREATE"
+        )
+    }
+
+    suspend fun updateSyncedOrderOffline(serverOrderId: Int, clientCode: String, updatedReq: CustomOrderRequest) {
+        val localId = "SRV-$serverOrderId"   // ✅ stable id
+        pendingOrderDao.upsert(
+            PendingOrderEntity(
+                localId = localId,
+                clientCode = clientCode,
+                op = "UPDATE",
+                payloadJson = Gson().toJson(updatedReq),
+                serverOrderId = serverOrderId,
+                status = "PENDING",
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                customerId =updatedReq.Customer.Id,
+                lastError = "ERROR",
+                attempts = 1,
+                serverOrderNo = serverOrderId.toString()
+            )
+        )
+    }
+
+    fun deleteOrderOffline(localId: String) {
+        viewModelScope.launch {
+            pendingOrderDao.markPendingDelete(localId)
+        }
+    }
+
+
+
+
+
 
 }
 

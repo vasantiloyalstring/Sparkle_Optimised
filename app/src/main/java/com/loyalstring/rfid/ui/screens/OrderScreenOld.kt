@@ -1743,9 +1743,9 @@ fun OrderScreenContent(
                                     )
                                     if (isOnline) {
                                         orderViewModel.addOrderCustomer(request)
-                                    } else {
+                                    } /*else {
                                         orderViewModel.saveOrder(request)
-                                    }
+                                    }*/
                                 }
                             } else {
 
@@ -1997,9 +1997,9 @@ fun OrderScreenContent(
                                 )
                                 if (isOnline) {
                                     orderViewModel.updateOrderCustomer(request)
-                                } else {
+                                } /*else {
                                     orderViewModel.saveOrder(request)
-                                }
+                                }*/
 
                             }
                         }
@@ -2659,7 +2659,8 @@ fun CustomOrderRequest.toCustomOrderResponse(): CustomOrderResponse {
         Payments = this.Payments,
         Customer = this.Customer,
         syncStatus = this.syncStatus,
-        ProductName = ""
+        ProductName = "",
+        Id = 0
     )
 }
 

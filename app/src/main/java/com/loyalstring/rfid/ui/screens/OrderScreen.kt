@@ -85,6 +85,7 @@ import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -94,6 +95,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.collections.forEach
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -116,6 +120,7 @@ fun OrderScreen(
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     val deliveryChallanViewModel: DeliveryChallanViewModel = hiltViewModel()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedPower by remember { mutableStateOf(10) }
     var isScanning by remember { mutableStateOf(false) }
 //var showSuccessDialog by remember { mutableStateOf(false) }
@@ -1635,7 +1640,24 @@ fun OrderScreen(
                        if (isOnline) {
                            orderViewModel.updateOrderCustomer(request)
                        } else {
-                           orderViewModel.saveOrder(request)
+                           scope.launch {
+                              // if (editOrder != null) {
+                                   // this is server order editing offline
+                                   orderViewModel.updateSyncedOrderOffline(
+                                       serverOrderId = editOrder?.CustomOrderId!!,
+                                       clientCode = employee?.clientCode.toString(),
+                                       updatedReq = request
+                                   )
+                                   Toast.makeText(context, "Order Updated Successfully!", Toast.LENGTH_SHORT).show()
+                              /* } else {
+                                   // offline-created order editing
+                                   orderViewModel.updateOfflineCreatedOrder(
+                                       localId = editOrder?.CustomOrderId!!.toString(),
+                                       updatedReq = request
+                                   )
+                                   Toast.makeText(context, "Order Updated Successfully!", Toast.LENGTH_SHORT).show()
+                               }*/
+                           }
                        }
                     } else {
                        createRequested = true
@@ -1648,39 +1670,59 @@ fun OrderScreen(
 
                            // ✅ OFFLINE: local order no
                            val localOrderNo = "OFF-${System.currentTimeMillis()}"
+
                            val customerList: List<EmployeeList> =
                                (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
 
-                           Log.d(
-                               "@@$$",
-                               " selectedCustomer?.Id.toString()" + customerList.toString()
+                           if ((customerId ?: 0) == 0) {
+                               Toast.makeText(context, "Please select customer", Toast.LENGTH_SHORT).show()
+                               return@ScanBottomBar
+                           }
+
+                           val selectedCustomerObj: EmployeeList? =
+                               customerList.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
+
+                           if (selectedCustomerObj == null) {
+                               Toast.makeText(context, "Customer not found in list", Toast.LENGTH_SHORT).show()
+                               return@ScanBottomBar
+                           }
+
+                           if (productList.isEmpty()) {
+                               Toast.makeText(context, "Please add at least 1 item", Toast.LENGTH_SHORT).show()
+                               return@ScanBottomBar
+                           }
+
+// ✅ 1) Build request ONCE
+                           val request = buildOrderRequest(
+                               orderNo = localOrderNo,
+                               employee = employee,
+                               productList = productList,
+                               selectedCustomer = selectedCustomerObj,
+                               gstAmount = gstAmount,
+                               lastOrderDetails = lastOrderDetails
                            )
 
+// ✅ 2) Save offline
+                           orderViewModel.saveOrderOffline(request, context)
 
-                           if(customerId!=0) {
+// ✅ 3) Show toast
+                           Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
 
-                               val selectedCustomerObj: EmployeeList? =
-                                   customerList?.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
+// ✅ 4) Generate + open PDF (offline request-based)
 
-
-                               Log.d(
-                                   "@@$$",
-                                   " selectedCustomer?.Id.toString()" + selectedCustomerObj.toString()
-                               )
-                               orderViewModel.saveOrderOffline(
-                                   buildOrderRequest(
-                                       orderNo = localOrderNo,
-                                       employee,
-                                       productList,
-                                       selectedCustomerObj,
-                                       gstAmount,
-                                       lastOrderDetails
-                                   ), // <-- same payload builder
-                                   context
-                               )
+                           scope.launch {
+                               generateTablePdfWithImages1(context, request)
                            }
-                           Toast.makeText(context, "Saved offline", Toast.LENGTH_SHORT).show()
+
+// ✅ 5) Reset UI (IMPORTANT: return should be at end)
+                           customerName = ""
+                           itemCode = TextFieldValue("")
+                           productList.clear()
+                         //  orderViewModel.clearOrderItems() // optional, if you want room clear also
+
                            return@ScanBottomBar
+
+
                        }else
                        {
                         orderViewModel.fetchLastOrderNo(ClientCodeRequest(clientCode))
@@ -1890,6 +1932,71 @@ fun OrderScreen(
     }
 
 
+}
+
+suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequest) {
+    val file = File(
+        context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS),
+        "Order_${order.Customer.FirstName}.pdf"
+    )
+    val writer = PdfWriter(file)
+    val pdf = PdfDocument(writer)
+    val doc = Document(pdf, PageSize.A4)
+    doc.setMargins(20f, 20f, 20f, 20f)
+    val header = Paragraph("Customer Order")
+        .setTextAlignment(TextAlignment.CENTER)
+        .setBold()
+        .setFontSize(18f)
+    doc.add(header)
+    doc.add(Paragraph("\n"))
+    for ((index, item) in order.CustomOrderItem.withIndex()) {
+        // Two column layout (no borders)
+        val infoTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 1f)))
+        infoTable.setWidth(UnitValue.createPercentValue(100f))
+        infoTable.setBorder(null)
+        val leftText = """
+            Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
+            Order No : ${item.OrderNo ?: "-"}
+            Design   : ${item.DesignName ?: "-"}
+            RFID No  : ${item.RFIDCode ?: "-"}
+        """.trimIndent()
+
+        // Right column text
+        val rightText = """
+            Gross Wt : ${item.GrossWt ?: "-"}
+            Stone Wt : ${item.StoneWt ?: "-"}
+            Net Wt   : ${item.NetWt ?: "-"}
+            Remark   : ${item.Remark ?: "-"}
+        """.trimIndent()
+        infoTable.addCell(Paragraph(leftText).setBorder(null))
+        infoTable.addCell(Paragraph(rightText).setBorder(null))
+        doc.add(infoTable)
+        doc.add(Paragraph("\n"))
+        // Big Image Below
+        val imgBytes = loadImageBytesFromUrl("https://rrgold.loyalstring.co.in/" + item.Image)
+        if (imgBytes != null) {
+            val imgData = ImageDataFactory.create(imgBytes)
+            val img = Image(imgData)
+                .setAutoScale(true)
+                .setWidth(UnitValue.createPercentValue(100f))
+                .setHorizontalAlignment(HorizontalAlignment.CENTER)
+            doc.add(img)
+        } else {
+            doc.add(Paragraph("Image not available").setItalic())
+        }
+        // Add page break after each item except the last one
+        if (index != order.CustomOrderItem.lastIndex) {
+            doc.add(AreaBreak(AreaBreakType.NEXT_PAGE))
+        }
+    }
+    doc.close()
+    // Open PDF
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/pdf")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Open PDF with..."))
 }
 
 fun buildOrderRequest(

@@ -8,8 +8,8 @@ fun AlllabelResponse.LabelItem.toBulkItem(): BulkItem {
     return BulkItem(
         productName = this.productName,
         itemCode = this.itemCode ?: "",
-        rfid = this.rfidCode.takeIf { !it.isNullOrBlank() } ?: this.tidNumber.takeIf { !it.isNullOrBlank() } ?: "",
-
+       // rfid = this.rfidCode.takeIf { !it.isNullOrBlank() } ?: this.tidNumber.takeIf { !it.isNullOrBlank() } ?: "",
+rfid=this.rfidCode?:"",
         grossWeight = this.grossWt ?: "",
         stoneWeight = this.totalStoneWeight ?: "",
         diamondWeight = this.totalDiamondWeight ?:"",
