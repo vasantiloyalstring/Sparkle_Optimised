@@ -159,7 +159,7 @@ fun OrderDetailsDialog(
     // Inside @Composable
 
     val calendar = Calendar.getInstance()
-    val dateFormatter = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val context = LocalContext.current
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     /*  LaunchedEffect(Unit) {
@@ -843,7 +843,7 @@ fun OrderDetailsDialog(
                                 deliverDate = deliverDate
                             )
 
-                            Log.d("",""+typeOfColors+" "+screwType+""+polishType)
+                            Log.d("",""+typeOfColors+" "+screwType+""+polishType+" "+orderDate+" "+deliverDate)
 
 
 
