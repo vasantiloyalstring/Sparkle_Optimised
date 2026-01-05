@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -96,6 +97,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.collections.forEach
 import androidx.compose.runtime.rememberCoroutineScope
+import com.loyalstring.rfid.MainActivity
+import com.loyalstring.rfid.data.reader.ScanKeyListener
 import kotlinx.coroutines.launch
 
 
@@ -163,6 +166,33 @@ fun OrderScreen(
     var gstAmount by remember { mutableStateOf(0.0) }
     var totalWithGst by remember { mutableStateOf(0.0) }
 
+
+    val activity = LocalContext.current as MainActivity
+    DisposableEffect(Unit) {
+        val listener = object : ScanKeyListener {
+            override fun onBarcodeKeyPressed() {
+
+
+                viewModel.startBarcodeScanning(context)
+            }
+
+            override fun onRfidKeyPressed() {
+                if (isScanning) {
+                    viewModel.stopScanning()
+                    isScanning = false
+                } else {
+                    viewModel.startScanning(selectedPower)
+                    isScanning = true
+                }
+            }
+        }
+        activity.registerScanKeyListener(listener)
+
+        onDispose {
+            activity.unregisterScanKeyListener()
+        }
+    }
+
      val IST: ZoneId = ZoneId.of("Asia/Kolkata")
 
      fun nowIsoDateTime(): String =
@@ -181,6 +211,8 @@ fun OrderScreen(
         return if (d.isNullOrEmpty() || d.equals("null", true)) nowDateOnly() else d
     }
 
+
+
     val editOrder = navController
         .currentBackStackEntry
         ?.savedStateHandle
@@ -188,7 +220,8 @@ fun OrderScreen(
 
     LaunchedEffect(editOrder) {
         if (editOrder != null) {
-
+            val firstCoItem = editOrder?.CustomOrderItem?.firstOrNull()
+            selectedItem = firstCoItem?.toItemCodeResponse()
             selectedCustomer = editOrder.Customer.toEmployeeList()
 
 
@@ -253,7 +286,7 @@ fun OrderScreen(
                     screwType = coItem.ScrewType.orEmpty(),
                     polishType = coItem.Polish.orEmpty(),
                     finePer = coItem.FinePercentage.orEmpty(),
-                    wastage = coItem.MakingFixedWastage,
+                    wastage = coItem.MakingPercentage,
                     orderDate = coItem.OrderDate,
                     deliverDate = coItem.DeliverDate,
                     productName = coItem.ProductName.orEmpty(),
@@ -269,7 +302,7 @@ fun OrderScreen(
                     stoneWt = coItem.StoneWt,
                     dimondWt = coItem.DiamondWt,
                     sku = coItem.SKU.orEmpty(),
-                    qty = coItem.Quantity,
+                    qty = qtyOrOne(coItem.Quantity),
                     hallmarkAmt = "",
                     mrp = coItem.MRP ?: "",
                     image = coItem.Image.orEmpty(),
@@ -554,7 +587,7 @@ fun OrderScreen(
                 polishType = "",
 
                 finePer = "0.0",
-                wastage = matchedItem.fixWastage ?: "0.0",
+                wastage = matchedItem.makingPercent ?: "0.0",
 
                 orderDate = pickOrderDate(lastOrderDetails),
                 deliverDate = pickDeliverDate(lastOrderDetails),
@@ -573,12 +606,12 @@ fun OrderScreen(
                 itemAmt = itemAmt.toString(),   // ✅ tumhare calc se
                 packingWt = "0.0",
 
-                totalWt = matchedItem.totalGwt?.toString() ?: "0.0",
+                totalWt = matchedItem.totalWt?.toString() ?: "0.0",
                 stoneWt = matchedItem.totalStoneWt?.toString() ?: "0.0",
                 dimondWt = matchedItem.diamondWeight ?: "0.0",
 
                 sku = matchedItem.sku.orEmpty(),
-                qty = (matchedItem.pcs ?: 1).toString(),
+                qty = qtyOrOne("0"),
 
                 hallmarkAmt = "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
@@ -682,7 +715,7 @@ fun OrderScreen(
             // 🔹 NO TOUCH / TUNCH LOGIC NOW
             // --- Only use values coming from matchedItem itself ---
             var makingPercent = matchedItem.makingPercent ?: "0.0"
-            var wastagePercent = matchedItem.fixWastage ?: "0.0"          // (not used in calc, but kept)
+            var wastage = matchedItem.makingPercent ?: "0.0"          // (not used in calc, but kept)
             var makingFixedWastage = matchedItem.fixWastage ?: "0.0"
             var makingFixedAmt = matchedItem.fixMaking ?: "0.0"
             var makingPerGram = matchedItem.makingPerGram ?: "0.0"
@@ -719,7 +752,7 @@ fun OrderScreen(
             // 4. FineWt = NetWt * Fine% (yahi field use kar raha hun)
             val finePercent = safeDouble(matchedItem.makingPercent)
             val fineWt = netWt * finePercent / 100.0
-
+            selectedItem = matchedItem.toItemCodeResponse()
             // --- Build SampleOutDetails ---
             val productDetail = OrderItem(
 
@@ -734,7 +767,7 @@ fun OrderScreen(
                 screwType = "",
                 polishType = "",
                 finePer = finePercent.toString(),
-                wastage = matchedItem.fixWastage ?: "0.0",
+                wastage = matchedItem.makingPercent ?: "0.0",
                 orderDate = pickOrderDate(lastOrderDetails),
                 deliverDate = pickDeliverDate(lastOrderDetails),
                 productName = matchedItem.productName.orEmpty(),
@@ -750,7 +783,7 @@ fun OrderScreen(
                 stoneWt = matchedItem.totalStoneWt?.toString() ?: "0.0",
                 dimondWt = matchedItem.diamondWeight ?: "0.0",
                 sku = matchedItem.sku.orEmpty(),
-                qty = (matchedItem.pcs ?: 1).toString(),
+                qty = qtyOrOne("0"),
                 hallmarkAmt = "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
                 image = matchedItem.imageUrl.orEmpty(),
@@ -883,7 +916,7 @@ fun OrderScreen(
             val imageString = matchedItem.imageUrl.orEmpty()
             val lastImagePath = imageString.split(",").lastOrNull()?.trim()
             val finalImageUrl = if (!lastImagePath.isNullOrBlank()) "$baseUrl$lastImagePath" else ""
-
+            selectedItem = matchedItem.toItemCodeResponse()
             val newProduct = OrderItem(
 
 
@@ -901,7 +934,7 @@ fun OrderScreen(
                 polishType = "",
 
                 finePer = matchedItem.makingPerGram.toString(),                // example: "91.6"
-                wastage = matchedItem.fixWastage?.toString() ?: "0.0",
+                wastage = matchedItem.makingPercent?.toString() ?: "0.0",
 
                 orderDate = pickOrderDate(lastOrderDetails),
                 deliverDate = pickDeliverDate(lastOrderDetails),
@@ -922,7 +955,7 @@ fun OrderScreen(
                 dimondWt = matchedItem.diamondWeight ?: "0.0",
 
                 sku = matchedItem.sku.orEmpty(),
-                qty = (matchedItem.pcs ?: 1).toString(),
+                qty = qtyOrOne("0"),
 
                 hallmarkAmt = "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
@@ -1038,7 +1071,7 @@ fun OrderScreen(
             Qty = productList.size.toString(),
             GST = "0",
             OrderStatus = "Order Received",
-            MRP = null,
+            MRP = productList.get(0).mrp,
             VendorId = null,
             TDS = null,
             PurchaseStatus = null,
@@ -1053,7 +1086,7 @@ fun OrderScreen(
             TotalFineMetal = "0",
             CourierCharge = null,
             SaleType = null,
-            OrderDate = pickOrderDate(lastOrderDetails),
+            OrderDate = (orderDate),
             OrderCount = productList.size.toString(),
             AdditionTaxApplied = "false",
             CategoryId = categoryId,
@@ -1147,11 +1180,11 @@ fun OrderScreen(
                     NetWt = item.nWt ?: "0.0",
 
                     Size = item.size ?: "",
-                    Length = "",
+                    Length = item.length,
 
-                    TypesOdColors = "",
+                    TypesOdColors = item.typeOfColor,
 
-                    Quantity = (item.qty ?: 1).toString(),
+                    Quantity = qtyOrOne(item.qty),
 
                     RatePerGram = item.todaysRate ?: "0.0",
                     MakingPerGram = item.makingPerGram ?: "0.0",
@@ -1166,8 +1199,8 @@ fun OrderScreen(
                     StoneAmount = item.stoneAmt?: "0.0",
 
 
-                    ScrewType = "",
-                    Polish = "",
+                    ScrewType = item.screwType,
+                    Polish = item.polishType,
                     Rhodium = "",
 
                     SampleWt = "",
@@ -1217,7 +1250,7 @@ fun OrderScreen(
                     BranchId = item.branchId.toInt() ?: branchId,          // fallback
                     BranchName = item.branchName ?: "",
 
-                    Exhibition = "",
+                    Exhibition = item.exhibition,
                     CounterId = (item.counterId ?: 0).toString(),  // CustomOrderItem expects String
                     EmployeeId = employee?.id ?: 0,
 
@@ -1527,7 +1560,7 @@ fun OrderScreen(
                                    Size = product.size,
                                    Length = product.length,
                                    TypesOdColors = product.typeOfColor,
-                                   Quantity = product.qty,
+                                   Quantity = qtyOrOne(product.qty),
                                    RatePerGram =product.todaysRate,
                                    MakingPerGram = product.makingPerGram,
                                    MakingFixed = product.makingFixedAmt,
@@ -1864,7 +1897,7 @@ fun OrderScreen(
             }
             Spacer(modifier = Modifier.height(4.dp))
            OrderListTable(
-                productList = productList,
+
                 onTotalsChange = { base, gst, final ->
                     baseTotal = base
                     gstAmount = gst
@@ -1873,7 +1906,8 @@ fun OrderScreen(
                 onItemUpdated = { index, updated ->
                     // ✅ sirf ek item update
                     productList[index] = updated
-                }
+                },
+               productList = productList
             )
 
             /*      DeliveryChallanItemListTable(
@@ -1906,33 +1940,159 @@ fun OrderScreen(
             onDismiss = { showOrderDetailsDialog = false },
             onSave = { details ->
 
-                lastOrderDetails = details // ✅ future scans/manual default
+                /*    lastOrderDetails = details // ✅ future scans/manual default
 
-                val updated = buildOrderItemFromSelectedItem(
-                    selectedItem = selectedItem!!,
-                    details = details,
-                    branchList = branchList,
-                    dailyRates=dailyRates
+                    val updated = buildOrderItemFromSelectedItem(
+                        selectedItem = selectedItem!!,
+                        details = details,
+                        branchList = branchList,
+                        dailyRates=dailyRates
 
-                )
+                    )
 
-                // ✅ Upsert in productList (same RFID/itemCode match)
-                val idx = productList.indexOfFirst {
-                    (!it.rfidCode.isNullOrBlank() && it.rfidCode.equals(updated.rfidCode, true)) ||
-                            (!it.itemCode.isNullOrBlank() && it.itemCode.equals(updated.itemCode, true))
+                    // ✅ Upsert in productList (same RFID/itemCode match)
+                    val idx = productList.indexOfFirst {
+                        (!it.rfidCode.isNullOrBlank() && it.rfidCode.equals(updated.rfidCode, true)) ||
+                                (!it.itemCode.isNullOrBlank() && it.itemCode.equals(updated.itemCode, true))
+                    }
+                    if (idx >= 0) productList[idx] = updated else productList.add(updated)
+
+                    // ✅ Room/VM update so API payload also gets updated values later
+                   // orderViewModel.insertOrderItemToRoomORUpdate(updated)*/
+
+
+
+
+                    // 1) Save as defaults for future scans
+                    lastOrderDetails = details
+
+                    // 2) Normalize dates (VERY IMPORTANT for .NET DateTime)
+                    val normalizedOrderDate = toIsoOffsetDateTime(details.orderDate) ?: nowIsoDateTime()
+                    val normalizedDeliverDate = toIsoLocalDate(details.deliverDate) ?: nowDateOnly()
+
+                    // 3) Resolve branch id from branch name
+                    val branchObj = branchList.firstOrNull { it.BranchName == details.branch }
+                    val branchIdStr = (branchObj?.Id ?: 0).toString()
+
+                    fun safeDouble(v: String?) = v?.trim()?.toDoubleOrNull() ?: 0.0
+
+                    // 4) Apply to ALL existing items (and recalc itemAmt if purity/rate changed)
+                    for (i in productList.indices) {
+                        val old = productList[i]
+
+                        // rate based on details.purity (fallback to old.todaysRate)
+                        val rate = dailyRates.firstOrNull {
+                            it.PurityName.equals(details.purity, ignoreCase = true)
+                        }?.Rate?.toString()?.toDoubleOrNull()
+                            ?: safeDouble(old.todaysRate)
+
+                        val netWt = safeDouble(old.nWt)
+                        val stoneAmt = safeDouble(old.stoneAmt)
+                        val diamondAmt = safeDouble(old.diamondAmt)
+
+                        val makingPerGram = safeDouble(old.makingPerGram)
+                        val makingFixed = safeDouble(old.makingFixedAmt)
+                        val makingPercent = safeDouble(old.makingPercentage)
+                        val fixWastage = safeDouble(old.makingFixedWastage)
+
+                        val metalAmt = netWt * rate
+                        val makingAmt = makingPerGram + makingFixed + ((makingPercent / 100.0) * netWt) + fixWastage
+                        val newItemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
+                        Log.d("",""+details.typeOfColors+" "+details.screwType+""+details.polishType)
+
+                        productList[i] = old.copy(
+
+                                    // details apply
+                            branchId = if (branchIdStr != "0") branchIdStr else old.branchId,
+                            branchName = details.branch,
+                            exhibition = details.exhibition,
+                            remark = details.remark,
+
+                            purity = details.purity,
+                            size = details.size,
+                            length = details.length,
+                            typeOfColor = details.typeOfColors,
+                            screwType = details.screwType,
+                            polishType = details.polishType,
+                            finePer = details.finePercentage,
+                            wastage = details.wastage,
+                            makingPercentage = details.wastage,
+
+                            // normalized dates apply to all
+                            orderDate = normalizedOrderDate,
+                            deliverDate = normalizedDeliverDate,
+
+                            // update rate + amounts
+                            todaysRate = rate.toString(),
+                            itemAmt = String.format(Locale.US, "%.2f", newItemAmt),
+                            netAmt = String.format(Locale.US, "%.2f", newItemAmt)
+                        )
+                    }
+
+                    // 5) Optional: if you store list in Room, upsert all updated items too
+                    // productList.forEach { orderViewModel.insertOrderItemToRoomORUpdate(it) }
+
+                    showOrderDetailsDialog = false
                 }
-                if (idx >= 0) productList[idx] = updated else productList.add(updated)
 
-                // ✅ Room/VM update so API payload also gets updated values later
-               // orderViewModel.insertOrderItemToRoomORUpdate(updated)
 
-                showOrderDetailsDialog = false
-            }
+
+
+
+
         )
     }
 
 
 }
+
+fun CustomOrderItem.toItemCodeResponse(): ItemCodeResponse {
+    return ItemCodeResponse(
+        Id = this.CustomOrderId,                      // agar hai
+        SKUId = this.SKUId,                // agar hai
+
+        ItemCode = this.ItemCode,
+        RFIDCode = this.RFIDCode,
+
+        ProductName = this.ProductName,
+        ProductCode = this.ProductCode,
+
+        CategoryId = this.CategoryId,
+        CategoryName = this.CategoryName,
+
+        ProductId = this.ProductId,
+        DesignId = this.DesignId,
+        DesignName = this.DesignName,
+
+        PurityId = this.PurityId,
+        PurityName = this.PurityName,
+
+        GrossWt = this.GrossWt,
+        NetWt = this.NetWt,
+
+        TotalStoneWeight = this.StoneWt,
+        TotalStoneAmount = this.StoneAmount,
+
+        DiamondWeight = this.DiamondWt,
+        TotalDiamondAmount = this.DiamondAmount,
+
+        MakingPerGram = this.MakingPerGram,
+        MakingFixedAmt = this.MakingFixed,
+        MakingPercentage = this.MakingPercentage,
+        MakingFixedWastage = this.FixedWt,
+
+        BranchId = this.BranchId,
+        SKU = this.SKU,
+        Images = this.Image,
+        MRP = this.MRP,
+
+        // ✅ MUST PASS THESE TWO (otherwise error)
+        Stones = this.Stones ?: emptyList(),        // if CustomOrderItem has Stones
+        Diamonds =  emptyList()     // if CustomOrderItem has Diamonds
+    )
+}
+
+
 
 suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequest) {
     val file = File(
@@ -1973,7 +2133,20 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
         doc.add(infoTable)
         doc.add(Paragraph("\n"))
         // Big Image Below
-        val imgBytes = loadImageBytesFromUrl("https://rrgold.loyalstring.co.in/" + item.Image)
+        val last = item.Image
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.lastOrNull()
+
+        val imgUrl = last?.let {
+            if (it.startsWith("http", true)) it
+            else "https://rrgold.loyalstring.co.in/$it"
+        }
+
+
+
+        val imgBytes = loadImageBytesFromUrl(imgUrl.toString())
         if (imgBytes != null) {
             val imgData = ImageDataFactory.create(imgBytes)
             val img = Image(imgData)
@@ -2216,7 +2389,7 @@ fun buildOrderRequest(
                 Length = item.length?.toString().orEmpty(),
                 TypesOdColors = item.typeOfColor?.toString().orEmpty(),
 
-                Quantity = item.qty?.toString() ?: "1",
+                Quantity =qtyOrOne(item.qty),
 
                 RatePerGram = item.todaysRate ?: "0.0",
                 MakingPerGram = item.makingPerGram ?: "0.0",
@@ -2496,7 +2669,7 @@ private fun buildOrderItemFromSelectedItem(
         dimondWt  = selectedItem.DiamondWeight?.toString() ?: "0.0",
 
         sku = selectedItem.SKU.orEmpty(),
-        qty = selectedItem.ClipQuantity?.toString() ?: "1",
+        qty = qtyOrOne("0"),
 
         hallmarkAmt = selectedItem.HallmarkAmount?.toString() ?: "0.0",
         mrp = selectedItem.MRP?.toString() ?: "0.0",
@@ -2534,6 +2707,30 @@ fun isoDateTimeOrNull(date: String?): String? {
     val d = date?.trim()
     return if (d.isNullOrEmpty() || d.equals("null", true)) null else d
 }
+
+private fun qtyOrOne(raw: Any?): String {
+    return when (raw) {
+        null -> "1"
+
+        is Number -> {
+            val q = raw.toInt()
+            if (q <= 0) "1" else q.toString()
+        }
+
+        is String -> {
+            val s = raw.trim()
+            if (s.isEmpty() || s.equals("null", true)) return "1"
+
+            // handle "0", "0.0", "00"
+            val d = s.toDoubleOrNull() ?: return "1"
+            val q = d.toInt()
+            if (q <= 0) "1" else q.toString()
+        }
+
+        else -> "1"
+    }
+}
+
 
 suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderResponse) {
     val file = File(
@@ -2574,7 +2771,18 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
         doc.add(infoTable)
         doc.add(Paragraph("\n"))
         // Big Image Below
-        val imgBytes = loadImageBytesFromUrl("https://rrgold.loyalstring.co.in/" + item.Image)
+        val last = item.Image
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.lastOrNull()
+
+        val imgUrl = last?.let {
+            if (it.startsWith("http", true)) it
+            else "https://rrgold.loyalstring.co.in/$it"
+        }
+        Log.d("@@","item.Image"+imgUrl)
+        val imgBytes = loadImageBytesFromUrl(imgUrl.toString())
         if (imgBytes != null) {
             val imgData = ImageDataFactory.create(imgBytes)
             val img = Image(imgData)

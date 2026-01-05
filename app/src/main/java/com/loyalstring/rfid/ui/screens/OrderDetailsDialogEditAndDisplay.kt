@@ -116,7 +116,7 @@ fun OrderDetailsDialogEditAndDisplay(
         listOf(
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
         )
     }
 
@@ -249,13 +249,15 @@ fun OrderDetailsDialogEditAndDisplay(
         polishType = selectedItem.polishType.orEmpty()
 
         finePercentage = selectedItem.finePer?.takeIf { !it.equals("null", true) } ?: ""
-        wastage = selectedItem.wastage?.takeIf { !it.equals("null", true) } ?: ""
+        wastage = selectedItem.makingPercentage?.takeIf { !it.equals("null", true) } ?: ""
 
         orderDate = formatDateSafe(selectedItem.orderDate)
         deliverDate = formatDateSafe(selectedItem.deliverDate)
 
         hallMarkAmt = selectedItem.hallmarkAmt.orEmpty()
         mrp = selectedItem.mrp.orEmpty()
+
+        Log.d("","hallMarkAmt"+hallMarkAmt+" "+mrp+" "+wastage)
 
         // rate: try selected rate; later dailyRate will override when purity matches
         ratePerGRam = selectedItem.todaysRate.orEmpty()
@@ -884,12 +886,12 @@ fun OrderDetailsDialogEditAndDisplay(
                                 epc = selectedItem?.epc ?: "",
                                 tid = selectedItem?.tid ?: "",
 
-                                makingPercentage = selectedItem?.makingPercentage.orEmpty(),
+                                makingPercentage = wastage,
                                 makingFixedAmt = selectedItem?.makingFixedAmt.orEmpty(),
                                 makingFixedWastage = selectedItem?.makingFixedWastage.orEmpty(),
                                 makingPerGram = selectedItem?.makingPerGram.orEmpty()
                             )
-
+                            Log.d("","hallMarkAmt"+hallMarkAmt+" "+mrp+" "+wastage)
                             orderViewModel.insertOrderItemToRoomORUpdate(orderItem)
                             onSave(orderItem)
                             onDismiss()

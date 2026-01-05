@@ -560,15 +560,15 @@ class OrderViewModel @Inject constructor(
             TDSAmount = this.TDSAmount,
             CreatedOn = this.CreatedOn,
             StatusType = this.StatusType,
-            FineMetal = this.FineMetal.toString(),
-            BalanceMetal = this.BalanceMetal.toString(),
-            AdvanceAmt = this.AdvanceAmt.toString(),
-            PaidAmt = this.PaidAmt.toString(),
-            TaxableAmt = this.TaxableAmt.toString(),
-            GstAmount = this.GstAmount.toString(),
-            GstCheck = this.GstCheck.toString(),
+            FineMetal = this.FineMetal?:"",
+            BalanceMetal = this.BalanceMetal?:"",
+            AdvanceAmt = this.AdvanceAmt?:"",
+            PaidAmt = this.PaidAmt?:"",
+            TaxableAmt = this.TaxableAmt?:"",
+            GstAmount = this.GstAmount?:"",
+            GstCheck = this.GstCheck?:"",
             Category = this.Category,
-            TDSCheck = this.TDSCheck.toString(),
+            TDSCheck = this.TDSCheck?:"",
             Remark = this.Remark?: "",
             OrderItemId = this.OrderItemId,
             StoneStatus = this.StoneStatus?: "",
@@ -1037,10 +1037,60 @@ class OrderViewModel @Inject constructor(
         )
     }
 
-    fun deleteOrderOffline(localId: String) {
-        viewModelScope.launch {
-            pendingOrderDao.markPendingDelete(localId)
+    fun deleteOrderOffline(order: CustomOrderResponse) {
+        viewModelScope.launch(Dispatchers.IO) {
+
+            val clientCode = order.ClientCode.orEmpty()
+
+            // ✅ localId decide
+            val localId = when {
+                order.CustomOrderId == 0 && order.OrderNo?.startsWith("LOCAL-") == true ->
+                    order.OrderNo!!.removePrefix("LOCAL-")
+
+                order.CustomOrderId > 0 ->
+                    "SRV-${order.CustomOrderId}"
+
+                else -> {
+                    // fallback: try remark LOCAL_ID
+                    extractLocalIdFromRemark(order.Remark) ?: return@launch
+                }
+            }
+
+            // ✅ If row doesn't exist (server order), create delete pending entry
+            val existing = pendingOrderDao.getByLocalId(localId)
+            if (existing == null) {
+                pendingOrderDao.upsert(
+                    PendingOrderEntity(
+                        localId = localId,
+                        clientCode = clientCode,
+                        customerId = order.CustomerId,
+                        payloadJson = Gson().toJson(order.toRequest()),
+                        status = "PENDING",
+                        createdAt = System.currentTimeMillis(),
+                        updatedAt = System.currentTimeMillis(),
+                        op = "DELETE",
+                        serverOrderId = order.CustomOrderId.takeIf { it > 0 },
+                        serverOrderNo = order.OrderNo
+                    )
+                )
+            } else {
+                pendingOrderDao.markPendingDelete(localId)
+            }
+
+            // ✅ UI se turant hata do
+            _getAllOrderList.value = _getAllOrderList.value.filterNot {
+                (order.CustomOrderId > 0 && it.CustomOrderId == order.CustomOrderId) ||
+                        (order.CustomOrderId == 0 && it.OrderNo == order.OrderNo)
+            }
         }
+    }
+
+    private fun extractLocalIdFromRemark(remark: String?): String? {
+        if (remark.isNullOrBlank()) return null
+        val key = "LOCAL_ID:"
+        val idx = remark.indexOf(key)
+        if (idx == -1) return null
+        return remark.substring(idx + key.length).trim().split(" ", "|").firstOrNull()
     }
 
 

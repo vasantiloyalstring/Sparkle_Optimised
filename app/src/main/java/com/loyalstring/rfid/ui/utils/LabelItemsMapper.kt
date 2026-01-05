@@ -62,7 +62,9 @@ rfid=this.rfidCode?:"",
         designId = this.designId ?: 0,
         packetId = this.packetId ?: 0,
         packetName = this.packetName ?: "",
-        branchType = this.branchType ?: ""
+            branchType = this.branchType ?: "",
+            totalWt = this.totalWeight?.toDoubleOrNull() ?: 0.0,
+
     ).apply {
         uhfTagInfo = null
     }

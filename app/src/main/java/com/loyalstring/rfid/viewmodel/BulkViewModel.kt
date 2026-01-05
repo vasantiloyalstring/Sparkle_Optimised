@@ -1184,6 +1184,7 @@ class BulkViewModel @Inject constructor(
                     packetId = 0,
                     packetName = "",
                     branchType = "",
+                    totalWt = 0.0
                 ).apply {
                     uhfTagInfo = tag
                 }
@@ -1419,7 +1420,7 @@ class BulkViewModel @Inject constructor(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    fun syncItems() {
+/*    fun syncItems() {
         val skippedItems = mutableListOf<String>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -1470,10 +1471,10 @@ class BulkViewModel @Inject constructor(
 
                 for (item in bulkItems) {
                     var updatedItem = if (tagType == "webreusable") {
-                       /* if (!item.rfid.isNullOrBlank()) {
+                       *//* if (!item.rfid.isNullOrBlank()) {
                             if (item.epc.isNullOrBlank()) item.epc = syncAndMapRow(item.rfid!!)
                             item
-                        } else null*/
+                        } else null*//*
                         if (!item.rfid.isNullOrBlank()) {
                             val mapped = syncAndMapRow(item.rfid!!).trim().uppercase()
                             item.copy(
@@ -1544,15 +1545,188 @@ class BulkViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _syncSkippedItemCodes.value = skippedItems.distinct()
                     _syncSyncedCount.value = synced
-                    _toastMessage.emit("✅ Synced $synced of $total items successfully!")
+                   // _toastMessage.emit("✅ Synced $synced of $total items successfully!")
                     _syncStatusText.value = "Sync completed!"
+                }
+                viewModelScope.launch {
+                    _toastMessage.emit("✅ Synced $synced of $total items successfully!")
                 }
 
             } finally {
                 withContext(Dispatchers.Main) { _isLoading.value = false }
             }
         }
+    }*/
+
+    fun syncItems() {
+        val skippedItems = mutableListOf<String>()
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) {
+                    _isLoading.value = true
+                    _syncStatusText.value = "Downloading data from server..."
+                    _syncProgress.value = 0f
+                    _syncTotalCount.value = 0
+                    _syncSyncedCount.value = 0
+                }
+
+                val clientCode = employee?.clientCode ?: run {
+                    withContext(Dispatchers.Main) { _isLoading.value = false }
+                    return@launch
+                }
+
+                Log.d("SYNC", "clientCode=$clientCode")
+
+                val request = ClientCodeRequest(clientCode)
+                val tagType = userPreferences.getClient()?.rfidType?.trim()?.lowercase() ?: "webreusable"
+                delay(100)
+
+                // ✅ API fetch
+                val response = bulkRepository.syncBulkItemsFromServer(request)
+                Log.d("response", "response=$response")
+                val bulkItems = response.asSequence()
+                    .filter {
+                        (it.status == "ApiActive" || it.status == "Active") &&
+                                (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
+                    }
+                    .map { it.toBulkItem() }
+                    .toList()
+
+                val total = bulkItems.size
+
+                withContext(Dispatchers.Main) {
+                    _syncTotalCount.value = total
+                    _syncSyncedCount.value = 0
+                }
+
+                // ✅ Clear old data
+                bulkRepository.clearAllItems()
+
+                if (total == 0) {
+                    withContext(Dispatchers.Main) {
+                        _syncProgress.value = 1f
+                        _syncStatusText.value = "No items to sync"
+                    }
+                    return@launch
+                }
+
+                val processedItems = mutableListOf<BulkItem>()
+                var processed = 0
+                var synced = 0
+                var lastUpdate = System.currentTimeMillis()
+
+                for (item in bulkItems) {
+
+                    // ✅ Build updatedItem
+                    val updatedItem: BulkItem? =
+                        if (tagType == "webreusable") {
+                            if (!item.rfid.isNullOrBlank()) {
+                                val mapped = syncAndMapRow(item.rfid!!).trim().uppercase()
+                                item.copy(
+                                    epc = item.epc.takeIf { !it.isNullOrBlank() } ?: mapped,
+                                    tid = item.tid.takeIf { !it.isNullOrBlank() } ?: mapped
+                                )
+                            }
+                            // ✅ if RFID blank but EPC/TID exists, allow insert
+                            else if (!item.epc.isNullOrBlank() || !item.tid.isNullOrBlank()) {
+                                item
+                            } else {
+                                null
+                            }
+                        } else {
+                            if (!item.itemCode.isNullOrBlank()) {
+                                val hexValue = item.itemCode.toByteArray()
+                                    .joinToString("") { String.format("%02X", it) }
+                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
+                            } else null
+                        }
+
+                    // ✅ VALIDATION + INSERT LIST
+                    if (updatedItem != null) {
+
+                        // ✅ IMPORTANT FIX:
+                        // earlier you checked item.tid (old), now check updatedItem.tid (mapped)
+                        if (!updatedItem.rfid.isNullOrBlank() && updatedItem.tid.isNullOrBlank()) {
+                            val info = "ItemCode=${updatedItem.itemCode} here RFID Wrong"
+                            skippedItems.add(info)
+                            Log.e("SYNC_NOT_SYNCED", info)
+                        } else {
+                            processedItems.add(updatedItem)
+                            synced++
+                        }
+
+                    } else {
+                        val info = "ItemCode=${item.itemCode} here TID/RFID is NULL"
+                        skippedItems.add(info)
+                        Log.e("SYNC_NOT_SYNCED", info)
+                    }
+
+                    processed++
+
+                    // ✅ Progress update throttled
+                    val now = System.currentTimeMillis()
+                    if (now - lastUpdate > 500) {
+                        val progress = processed.toFloat() / total.toFloat()
+                        withContext(Dispatchers.Main) {
+                            _syncProgress.value = progress
+                            _syncSyncedCount.value = synced
+                            _syncStatusText.value = "Processing $synced of $total"
+                        }
+                        lastUpdate = now
+                    }
+
+                    // ✅ Batch insert (with protection)
+                    if (processedItems.size >= 100) {
+                        try {
+                            bulkRepository.insertBulkItems(processedItems.toList())
+                        } catch (e: Exception) {
+                            Log.e("SYNC_DB", "Insert chunk failed size=${processedItems.size}", e)
+                            skippedItems.add("DB insert failed for chunk: ${e.message}")
+                        } finally {
+                            processedItems.clear()
+                        }
+                    }
+                }
+
+                Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}")
+                // ✅ Insert remaining
+                if (processedItems.isNotEmpty()) {
+                    try {
+                        bulkRepository.insertBulkItems(processedItems.toList())
+                    } catch (e: Exception) {
+                        Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}", e)
+                        skippedItems.add("DB insert failed for remaining: ${e.message}")
+                    } finally {
+                        processedItems.clear()
+                    }
+                }
+
+                Log.e("SYNC_NOT_SYNCED_SUMMARY", "Total Not Synced = ${skippedItems.size}")
+                Log.e("SYNC_NOT_SYNCED_LIST", skippedItems.joinToString("\n"))
+
+                // ✅ Final UI update
+                withContext(Dispatchers.Main) {
+                    _syncSkippedItemCodes.value = skippedItems.distinct()
+                    _syncSyncedCount.value = synced
+                    _syncProgress.value = 1f
+                    _syncStatusText.value = "Sync completed!"
+                }
+
+                // ✅ toast emit (no need to launch again)
+                _toastMessage.emit("✅ Synced $synced of $total items successfully!")
+
+            } catch (e: Exception) {
+                Log.e("SYNC_FAILED", "syncItems failed", e)
+                withContext(Dispatchers.Main) {
+                    _syncStatusText.value = "Sync failed: ${e.message}"
+                }
+            } finally {
+                withContext(Dispatchers.Main) { _isLoading.value = false }
+            }
+        }
     }
+
 
 
 

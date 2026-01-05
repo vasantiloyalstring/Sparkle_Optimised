@@ -11,6 +11,7 @@ import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import android.util.Log
+import com.loyalstring.rfid.data.remote.data.DeleteOrderRequest
 
 @HiltWorker
 class PendingOrderSyncWorker @AssistedInject constructor(
@@ -26,6 +27,35 @@ class PendingOrderSyncWorker @AssistedInject constructor(
 
         var anyFailed = false
 
+
+        // ✅ 1) DELETE first
+        val deletes = pending.filter { it.op.equals("DELETE", true) }
+        deletes.forEach { row ->
+            try {
+                val serverId = row.serverOrderId
+
+                if (serverId == null || serverId == 0) {
+                    // offline-created row deleted before sync -> just remove locally
+                    dao.hardDeleteByLocalId(row.localId)
+                } else {
+                    // ✅ call delete API (adjust signature if needed)
+
+                    val resp = api.deleteCustomerOrder(DeleteOrderRequest(row.clientCode,serverId))
+                    if (!resp.isSuccessful) throw Exception("Delete failed: ${resp.code()}")
+                    dao.hardDeleteByLocalId(row.localId)
+                }
+            } catch (e: Exception) {
+                anyFailed = true
+                dao.updateStatus(
+                    localId = row.localId,
+                    status = "PENDING",
+                    err = e.message ?: "Delete error",
+                    attempts = row.attempts + 1,
+                    serverNo = row.serverOrderNo,
+                    serverId = row.serverOrderId
+                )
+            }
+        }
         pending.forEach { row ->
             try {
                 val req = Gson().fromJson(row.payloadJson, CustomOrderRequest::class.java)

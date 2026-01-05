@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.repository
 
+import android.util.Log
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.loyalstring.rfid.data.local.dao.BulkItemDao
@@ -119,6 +120,7 @@ class BulkRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getAllLabeledStock(requestBody)
             if (response.isSuccessful) {
+                Log.d("## response","response"+response)
                 response.body() ?: emptyList()
             } else {
                 emptyList()

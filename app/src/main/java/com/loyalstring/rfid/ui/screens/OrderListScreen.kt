@@ -495,7 +495,10 @@ fun OrderTableWithPagination(
                                                         }
                                                     }else
                                                     {
-                                                       orderViewModel.deleteOrderOffline(order.CustomOrderId.toString())
+
+                                                        Log.d("orderListscreen","Order.orderNo"+order.OrderNo.toString())
+                                                       orderViewModel.deleteOrderOffline(order)
+                                                        orderViewModel.enqueuePendingSync(context)
                                                     }
                                                 }
                                                 orderToDelete = null
