@@ -127,7 +127,7 @@ fun OrderDetailsDialog(
         screwType = "" // if stored
         polishType = "" // if stored
         finePercentage = selectedItem.FinePercent ?: ""
-        wastage = selectedItem.WastagePercent ?: ""
+        wastage = selectedItem.MakingPercentage ?: ""
         orderDate = "" // if you want to show default
         deliverDate = ""
     }
@@ -159,7 +159,7 @@ fun OrderDetailsDialog(
     // Inside @Composable
 
     val calendar = Calendar.getInstance()
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()) }
     val context = LocalContext.current
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     /*  LaunchedEffect(Unit) {
@@ -842,6 +842,8 @@ fun OrderDetailsDialog(
                                 orderDate = orderDate,
                                 deliverDate = deliverDate
                             )
+
+                            Log.d("",""+typeOfColors+" "+screwType+""+polishType)
 
 
 

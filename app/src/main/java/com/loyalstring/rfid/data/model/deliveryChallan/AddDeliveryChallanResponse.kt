@@ -1,5 +1,7 @@
 package com.loyalstring.rfid.data.model.deliveryChallan
 
+import com.loyalstring.rfid.data.model.order.Customer
+
 data class AddDeliveryChallanResponse( val Id: Int,
                                        val CreatedOn: String,
                                        val LastUpdated: String,
@@ -77,4 +79,5 @@ data class AddDeliveryChallanResponse( val Id: Int,
                                        val Description: String?,
                                        val MetalType: String,
                                        val ChallanDetails: List<ChallanDetails>,
-                                       val Payments: List<Payment>)
+                                       val Payments: List<Payment>,
+                                       val customer : Customer)

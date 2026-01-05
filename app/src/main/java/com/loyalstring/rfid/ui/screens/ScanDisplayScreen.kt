@@ -90,6 +90,7 @@ import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 
 
 // column widths
@@ -168,8 +169,19 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         )
     }
+    val _isLoadingUI = MutableStateFlow(false)
+    val isLoadingUI by _isLoadingUI.collectAsState()
     val isLoading by productListViewModel.isLoading.collectAsState()
+    val isLoadingAllItems by productListViewModel.isLoadingAllItems.collectAsState()
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
+
+    // ✅ Performance logging for initial load
+    LaunchedEffect(allItems.size) {
+        if (allItems.isNotEmpty()) {
+            Log.d("ScanDisplayScreen", "🚀 [PERF] allItems loaded: ${allItems.size} items")
+        }
+    }
+
     // incoming filter from previous screen (branch/box/counter/exhibition)
     val filterTypeName = navController.previousBackStackEntry
         ?.savedStateHandle
@@ -185,17 +197,28 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    val navFilteredItems = remember(allItems, filterTypeName, filterValue) {
-        if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
-            allItems
-        } else {
-            when (filterTypeName.lowercase()) {
-                "box" -> allItems.filter { it.boxName == filterValue }
-                "counter" -> allItems.filter { it.counterName == filterValue }
-                "branch" -> allItems.filter { it.branchName == filterValue }
-                "exhibition" -> allItems.filter { it.branchType == filterTypeName && it.branchName == filterValue }
-                else -> allItems
+    // ✅ Optimized: Use derivedStateOf and sequence for lazy evaluation
+    val navFilteredItems by remember(allItems, filterTypeName, filterValue) {
+        derivedStateOf {
+            val filterStartTime = System.currentTimeMillis()
+            val result = if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
+                allItems
+            } else {
+                when (filterTypeName.lowercase()) {
+                    "box" -> allItems.asSequence().filter { it.boxName == filterValue }.toList()
+                    "counter" -> allItems.asSequence().filter { it.counterName == filterValue }.toList()
+                    "branch" -> allItems.asSequence().filter { it.branchName == filterValue }.toList()
+                    "exhibition" -> allItems.asSequence()
+                        .filter { it.branchType == filterTypeName && it.branchName == filterValue }
+                        .toList()
+                    else -> allItems
+                }
             }
+            val filterTime = System.currentTimeMillis() - filterStartTime
+            if (filterTime > 10) { // Only log if filtering takes significant time
+                Log.d("ScanDisplayScreen", "🚀 [PERF] navFilteredItems computed in: ${filterTime}ms (${result.size} items)")
+            }
+            result
         }
     }
     /*  remember(allItems, filterTypeName, filterValue) {
@@ -234,27 +257,50 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val selectedDesignsKey = selectedDesigns.toList()
 
 
-    val allCategories = remember(navFilteredItems) {
-        navFilteredItems.mapNotNull { it.category }.distinct().sorted()
+    // ✅ Optimized: Use derivedStateOf and cache results
+    val allCategories by remember(navFilteredItems) {
+        derivedStateOf {
+            navFilteredItems.asSequence()
+                .mapNotNull { it.category }
+                .distinct()
+                .sorted()
+                .toList()
+        }
     }
 
-
-    val allProducts = remember(navFilteredItems, selectedCategoriesKey) {
-        navFilteredItems
-            .filter { selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey }
-            .mapNotNull { it.productName }
-            .distinct()
-            .sorted()
+    val allProducts by remember(navFilteredItems, selectedCategoriesKey) {
+        derivedStateOf {
+            if (selectedCategoriesKey.isEmpty()) {
+                navFilteredItems.asSequence()
+                    .mapNotNull { it.productName }
+                    .distinct()
+                    .sorted()
+                    .toList()
+            } else {
+                val categorySet = selectedCategoriesKey.toSet()
+                navFilteredItems.asSequence()
+                    .filter { it.category in categorySet }
+                    .mapNotNull { it.productName }
+                    .distinct()
+                    .sorted()
+                    .toList()
+            }
+        }
     }
 
+    val allDesigns by remember(navFilteredItems, selectedCategoriesKey, selectedProductsKey) {
+        derivedStateOf {
+            val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
+            val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
 
-    val allDesigns = remember(navFilteredItems, selectedCategoriesKey, selectedProductsKey) {
-        navFilteredItems
-            .filter { selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey }
-            .filter { selectedProductsKey.isEmpty() || it.productName in selectedProductsKey }
-            .mapNotNull { it.design }
-            .distinct()
-            .sorted()
+            navFilteredItems.asSequence()
+                .filter { categorySet == null || it.category in categorySet }
+                .filter { productSet == null || it.productName in productSet }
+                .mapNotNull { it.design }
+                .distinct()
+                .sorted()
+                .toList()
+        }
     }
 
 
@@ -266,16 +312,19 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val scannedFiltered by bulkViewModel.scannedFilteredItems
     val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
 
-    val summaryItems by remember(navFilteredItems, matchedEpcs) {
+    // ✅ Optimized: Use sequence for lazy evaluation
+    /*val summaryItems by remember(navFilteredItems, matchedEpcs) {
         derivedStateOf {
-            navFilteredItems.map { original ->
-                val keyEpc = original.epc?.trim()?.uppercase()
-                val status =
-                    if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
-                original.copy(scannedStatus = status)
-            }
+            navFilteredItems.asSequence()
+                .map { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status =
+                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                    original.copy(scannedStatus = status)
+                }
+                .toList()
         }
-    }
+    }*/
 
 
     var showMenu by remember { mutableStateOf(false) }
@@ -357,28 +406,92 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }*/
-    val scopeItems by remember(
+    // ✅ Process scopeItems on background thread to avoid blocking main thread and OOM
+    var scopeItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
+    var isComputingScopeItems by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(
         navFilteredItems,
         selectedCategoriesKey,
         selectedProductsKey,
         selectedDesignsKey,
-        matchedEpcs,           // ✅ ADD THIS
+        matchedEpcs,
         scannedFiltered
     ) {
-        derivedStateOf {
-            if (navFilteredItems.isEmpty()) emptyList()
-            else {
-                navFilteredItems.mapNotNull { original ->
-                    val keyEpc = original.epc?.trim()?.uppercase()
-                    val status =
-                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+        if (navFilteredItems.isEmpty()) {
+            scopeItems = emptyList()
+            return@LaunchedEffect
+        }
+        
+        // ✅ Compute on background thread to avoid blocking UI
+        isComputingScopeItems = true
+        val scopeStartTime = System.currentTimeMillis()
+        _isLoadingUI.value = true
+        withContext(Dispatchers.Default) {
+            try {
+                // Pre-compute filter sets for O(1) lookups
+                val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
+                val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
+                val designSet = if (selectedDesignsKey.isEmpty()) null else selectedDesignsKey.toSet()
+                
+                val itemsToProcess = navFilteredItems
+                val resultList = mutableListOf<BulkItem>()
+                
+                // ✅ Process in smaller chunks (5k) with yields to allow GC
+                val chunkSize = 5000
+                val chunks = itemsToProcess.chunked(chunkSize)
 
-                    val withScan = original.copy(scannedStatus = status)
-
-                    if ((selectedCategoriesKey.isEmpty() || withScan.category in selectedCategoriesKey) &&
-                        (selectedProductsKey.isEmpty() || withScan.productName in selectedProductsKey) &&
-                        (selectedDesignsKey.isEmpty() || withScan.design in selectedDesignsKey)
-                    ) withScan else null
+                chunks.forEachIndexed { index, chunk ->
+                    val chunkResult = chunk.asSequence()
+                        .filter { categorySet == null || it.category in categorySet }
+                        .filter { productSet == null || it.productName in productSet }
+                        .filter { designSet == null || it.design in designSet }
+                        .map { original ->
+                            val keyEpc = original.epc?.trim()?.uppercase()
+                            val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                            // Only copy if status is different to save memory
+                            if (original.scannedStatus != status) {
+                                original.copy(scannedStatus = status)
+                            } else {
+                                original // Reuse to save memory
+                            }
+                        }
+                    resultList.addAll(chunkResult)
+                    //    .forEach { resultList.add(it) }
+                    
+                    // ✅ Yield every chunk to allow GC and prevent OOM
+                    kotlinx.coroutines.yield()
+                    
+                    // Log progress for very large lists
+                    if (itemsToProcess.size > 100000 && (index + 1) % 10 == 0) {
+                        Log.d("ScanDisplayScreen", "🚀 [PERF] Processed ${(index + 1) * chunkSize}/${itemsToProcess.size} items in scopeItems (background)")
+                    }
+                }
+                
+                // Update UI on main thread
+                withContext(Dispatchers.Main) {
+                    scopeItems = resultList
+                    isComputingScopeItems = false
+                    val scopeTime = System.currentTimeMillis() - scopeStartTime
+                    if (scopeTime > 100) {
+                        _isLoadingUI.value = false
+                        Log.d("ScanDisplayScreen", "🚀 [PERF] scopeItems computed in: ${scopeTime}ms (${resultList.size} items from ${navFilteredItems.size} navFiltered) - Background thread")
+                    }
+                }
+            } catch (e: OutOfMemoryError) {
+                Log.e("ScanDisplayScreen", "❌ [PERF] OutOfMemoryError in scopeItems: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    // Fallback: use original items without processing
+                    scopeItems = navFilteredItems
+                    isComputingScopeItems = false
+                    _isLoadingUI.value = false
+                }
+            } catch (e: Exception) {
+                Log.e("ScanDisplayScreen", "❌ [PERF] Error computing scopeItems: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    scopeItems = navFilteredItems
+                    isComputingScopeItems = false
+                    _isLoadingUI.value = false
                 }
             }
         }
@@ -408,22 +521,33 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     val stickyUnmatchedIds by bulkViewModel.filteredUnmatchedIds.collectAsState()
 
+    // ✅ Optimized: Use sequence and pre-compute sets for better performance
     val displayItems by remember(scopeItems, selectedMenu, stickyUnmatchedIds) {
         derivedStateOf {
-            if (scopeItems.isEmpty()) emptyList()
-            else when (selectedMenu) {
-                MENU_MATCHED -> scopeItems.filter { it.scannedStatus == "Matched" }
-
-                MENU_UNMATCHED -> {
-                    val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
-                    val sticky = scopeItems.filter {
-                        val id = it.epc?.trim()?.uppercase()
-                        id != null && stickyUnmatchedIds.contains(id)
+            if (scopeItems.isEmpty()) {
+                emptyList()
+            } else {
+                when (selectedMenu) {
+                    MENU_MATCHED -> {
+                        scopeItems.asSequence()
+                            .filter { it.scannedStatus == "Matched" }
+                            .toList()
                     }
-                    (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                    MENU_UNMATCHED -> {
+                        val stickySet = stickyUnmatchedIds.toSet()
+                        val unmatchedNow = scopeItems.asSequence()
+                            .filter { it.scannedStatus == "Unmatched" }
+                            .toList()
+                        val sticky = scopeItems.asSequence()
+                            .filter {
+                                val id = it.epc?.trim()?.uppercase()
+                                id != null && stickySet.contains(id)
+                            }
+                            .toList()
+                        (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                    }
+                    else -> scopeItems
                 }
-
-                else -> scopeItems
             }
         }
     }
@@ -516,12 +640,28 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
-        employee?.clientCode?.let { singleProductViewModel.fetchAllDropdownData(ClientCodeRequest(it)) }
-        //bulkViewModel.getAllItems()
-        // Initialize with pagination
-        scope.launch {
+        val initStartTime = System.currentTimeMillis()
+        Log.d("ScanDisplayScreen", "🚀 [PERF] Starting screen initialization...")
+
+        employee?.clientCode?.let {
+            val dropdownStartTime = System.currentTimeMillis()
+            singleProductViewModel.fetchAllDropdownData(ClientCodeRequest(it))
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Dropdown data fetch initiated in: ${System.currentTimeMillis() - dropdownStartTime}ms")
+        }
+
+        // ✅ Initialize with pagination - load first page only
+        scope.launch(Dispatchers.IO) {
+            val paginationStartTime = System.currentTimeMillis()
             bulkViewModel.loadTotalCount()
+            val countTime = System.currentTimeMillis() - paginationStartTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Total count loaded in: ${countTime}ms")
+
             bulkViewModel.loadPage(0) // Load first page
+            val pageLoadTime = System.currentTimeMillis() - paginationStartTime - countTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] First page loaded in: ${pageLoadTime}ms")
+
+            val totalInitTime = System.currentTimeMillis() - initStartTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Screen initialization completed in: ${totalInitTime}ms")
         }
     }
 
@@ -663,13 +803,46 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                 TableHeader(currentLevel)
 
+                // ✅ Optimized: Pre-compute all grouped data and filter sets outside LazyColumn
+                val categorySetForGrouping = remember(selectedCategories) {
+                    if (selectedCategories.isEmpty()) null else selectedCategories.toSet()
+                }
+                val productSetForGrouping = remember(selectedProducts) {
+                    if (selectedProducts.isEmpty()) null else selectedProducts.toSet()
+                }
+                val designSetForGrouping = remember(selectedDesigns) {
+                    if (selectedDesigns.isEmpty()) null else selectedDesigns.toSet()
+                }
+
+                // Pre-compute grouped data for each level
+                val categoryGrouped = remember(displayItems) {
+                    displayItems.groupBy { it.category ?: "Unknown" }
+                }
+                val productGrouped = remember(displayItems, categorySetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .groupBy { it.productName ?: "Unknown" }
+                }
+                val designGrouped = remember(displayItems, categorySetForGrouping, productSetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .filter { productSetForGrouping == null || it.productName in productSetForGrouping }
+                        .groupBy { it.design ?: "Unknown" }
+                }
+                val designItemsList = remember(displayItems, categorySetForGrouping, productSetForGrouping, designSetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .filter { productSetForGrouping == null || it.productName in productSetForGrouping }
+                        .filter { designSetForGrouping == null || it.design in designSetForGrouping }
+                        .toList()
+                }
+
                 // ---------- L A Z Y   C O L U M N   (drill-down + multi-select friendly) ----------
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     when (currentLevel) {
                         "Category" -> {
-                            val grouped = displayItems.groupBy { it.category ?: "Unknown" }
-                            grouped.forEach { (label, items) ->
-                                item {
+                            categoryGrouped.forEach { (label, items) ->
+                                item(key = "category_$label") {
                                     TableDataRow(TableRow(label, items), currentLevel) {
                                         // drill down to product for the chosen category (single-select drill)
                                         currentCategory = label
@@ -684,12 +857,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         }
 
                         "Product" -> {
-                            val grouped = displayItems
-                                .filter { selectedCategories.isEmpty() || it.category in selectedCategories }
-                                .groupBy { it.productName ?: "Unknown" }
-
-                            grouped.forEach { (label, items) ->
-                                item {
+                            productGrouped.forEach { (label, items) ->
+                                item(key = "product_$label") {
                                     TableDataRow(TableRow(label, items), currentLevel) {
                                         // when clicking product row, drill to design level
                                         currentProduct = label
@@ -704,15 +873,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         }
 
                         "Design" -> {
-                            val grouped = displayItems
-                                .filter {
-                                    (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                            (selectedProducts.isEmpty() || it.productName in selectedProducts)
-                                }
-                                .groupBy { it.design ?: "Unknown" }
-
-                            grouped.forEach { (label, items) ->
-                                item {
+                            designGrouped.forEach { (label, items) ->
+                                item(key = "design_$label") {
                                     TableDataRow(TableRow(label, items), currentLevel) {
                                         currentDesign = label
                                         if (!selectedDesigns.contains(label)) selectedDesigns.add(
@@ -725,15 +887,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         }
 
                         "DesignItems" -> {
-                            val itemsList = displayItems.filter {
-                                (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                        (selectedProducts.isEmpty() || it.productName in selectedProducts) &&
-                                        (selectedDesigns.isEmpty() || it.design in selectedDesigns)
-                            }
-
                             // Use pagination for large lists
                             items(
-                                itemsList,
+                                designItemsList,
                                 key = {
                                     it.epc ?: it.itemCode ?: it.design ?: it.hashCode().toString()
                                 }) { item ->
@@ -744,7 +900,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                             }
 
                             // Load more items when reaching the end (for pagination)
-                            if (itemsList.size >= pageSize && !isLoadingPage) {
+                            if (designItemsList.size >= pageSize && !isLoadingPage) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -786,7 +942,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
         // 🔹 Loader overlay (TOP LEVEL) - reuse existing shared loader (productListViewModel / bulkViewModel)
         val bulkIsLoading by bulkViewModel.isLoading.collectAsState()
-        if (isLoading || bulkIsLoading) {
+        val showLoader = isLoading || bulkIsLoading || isLoadingAllItems || isLoadingUI
+        
+        if (showLoader) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -797,7 +955,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        if (bulkIsLoading) "Please wait..." else "Loading products...",
+                        when {
+                            isLoadingAllItems -> "Loading all items... (${allItems.size} loaded)"
+                            bulkIsLoading -> "Please wait..."
+                            else -> "Loading products..."
+                        },
                         color = Color.White,
                         fontFamily = poppins
                     )
@@ -996,12 +1158,12 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }*/
-   /* var matchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Matched" } }
+    var matchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Matched" } }
     var unmatchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Unmatched" } }
-    val totalCount = remember(scopeItems) { scopeItems.size }*/
-    val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
+    val totalCount = remember(scopeItems) { scopeItems.size }
+    /*val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
     val unmatchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Unmatched" } }
-    val totalCount = remember(summaryItems) { summaryItems.size }   // ✅ THIS LINE FIXED
+    val totalCount = remember(summaryItems) { summaryItems.size }*/   // ✅ THIS LINE FIXED
 
     if (showMenu) {
         Box(
@@ -1576,23 +1738,29 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
 
 @Composable
 fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
+    // ✅ Optimized: Use derivedStateOf and sequence for better performance
+    val totals by remember(items) {
+        derivedStateOf {
+            val totalQty = items.size
+            val totalWt = items.asSequence()
+                .fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-    val totals = remember(items) {
-        val totalQty = items.size
-        val totalWt = items.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
+            val matched = items.asSequence()
+                .filter { it.scannedStatus == "Matched" }
+                .toList()
+            val matchedQty = matched.size
+            val matchedWt = matched.asSequence()
+                .fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-        val matched = items.filter { it.scannedStatus == "Matched" }
-        val matchedQty = matched.size
-        val matchedWt = matched.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
+            val unmatchedQty = totalQty - matchedQty
+            val unmatchedWt = totalWt.subtract(matchedWt)
 
-        val unmatchedQty = totalQty - matchedQty
-        val unmatchedWt = totalWt.subtract(matchedWt)
-
-        Triple(
-            Triple(totalQty, totalWt, matchedQty),
-            Triple(matchedWt, unmatchedQty, unmatchedWt),
-            Unit
-        )
+            Triple(
+                Triple(totalQty, totalWt, matchedQty),
+                Triple(matchedWt, unmatchedQty, unmatchedWt),
+                Unit
+            )
+        }
     }
 
     val totalQty = totals.first.first
@@ -1691,16 +1859,30 @@ fun TableHeader(currentLevel: String) {
 
 @Composable
 fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
-    val qty = row.items.size
-    val matchedItems = row.items.filter { it.scannedStatus == "Matched" }
-    val matchedQty = matchedItems.size
-    val grossWeight = row.items
-        .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
-        .toBigDecimal()
-
-    val matchedWeight = matchedItems
-        .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
-        .toBigDecimal()
+    // ✅ Optimized: Use sequence and memoize computations
+    val computedValues = remember(row.items) {
+        val qty = row.items.size
+        val matchedItems = row.items.asSequence()
+            .filter { it.scannedStatus == "Matched" }
+            .toList()
+        val matchedQty = matchedItems.size
+        val grossWeight = row.items.asSequence()
+            .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
+            .toBigDecimal()
+        val matchedWeight = matchedItems.asSequence()
+            .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
+            .toBigDecimal()
+        object {
+            val qty = qty
+            val matchedQty = matchedQty
+            val grossWeight = grossWeight
+            val matchedWeight = matchedWeight
+        }
+    }
+    val qty = computedValues.qty
+    val matchedQty = computedValues.matchedQty
+    val grossWeight = computedValues.grossWeight
+    val matchedWeight = computedValues.matchedWeight
 
     Row(
         modifier = Modifier

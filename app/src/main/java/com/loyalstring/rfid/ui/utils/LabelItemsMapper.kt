@@ -8,8 +8,8 @@ fun AlllabelResponse.LabelItem.toBulkItem(): BulkItem {
     return BulkItem(
         productName = this.productName,
         itemCode = this.itemCode ?: "",
-        rfid = this.rfidCode.takeIf { !it.isNullOrBlank() } ?: this.tidNumber.takeIf { !it.isNullOrBlank() } ?: "",
-
+       // rfid = this.rfidCode.takeIf { !it.isNullOrBlank() } ?: this.tidNumber.takeIf { !it.isNullOrBlank() } ?: "",
+rfid=this.rfidCode?:"",
         grossWeight = this.grossWt ?: "",
         stoneWeight = this.totalStoneWeight ?: "",
         diamondWeight = this.totalDiamondWeight ?:"",
@@ -62,7 +62,9 @@ fun AlllabelResponse.LabelItem.toBulkItem(): BulkItem {
         designId = this.designId ?: 0,
         packetId = this.packetId ?: 0,
         packetName = this.packetName ?: "",
-        branchType = this.branchType ?: ""
+            branchType = this.branchType ?: "",
+            totalWt = this.totalWeight?.toDoubleOrNull() ?: 0.0,
+
     ).apply {
         uhfTagInfo = null
     }

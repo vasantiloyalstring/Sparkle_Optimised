@@ -335,6 +335,8 @@
     <string name="order_date">Order Date</string>
     <string name="delivery_date">Delivery Date</string>
     <string name="quotation_List">Quotatation List</string>
+    <string name="return_label">Return</string>
+    <string name="non_return_label">Non Return</string>
 
 
 

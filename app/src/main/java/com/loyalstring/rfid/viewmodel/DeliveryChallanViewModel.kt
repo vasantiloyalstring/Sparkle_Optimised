@@ -1,4 +1,6 @@
 package com.loyalstring.rfid.viewmodel
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loyalstring.rfid.data.model.deliveryChallan.AddDeliveryChallanRequest
@@ -6,10 +8,14 @@ import com.loyalstring.rfid.data.model.deliveryChallan.AddDeliveryChallanRespons
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanNoRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchResponse
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
+import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanRequestList
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import com.loyalstring.rfid.repository.DeliveryChallanRepository
+import com.loyalstring.rfid.ui.screens.generateDeliveryChallanPdf
+import com.loyalstring.rfid.ui.screens.openPdfPreview
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -160,8 +166,46 @@ class DeliveryChallanViewModel @Inject constructor(
         }
     }
 
+  /*  fun printDeliveryChallan(
+        context: Context,
+        challan: DeliveryChallanResponseList
+    ) {
+        viewModelScope.launch {
+            try {
+                // ✅ If list item already has full details, use it
+                // ✅ Otherwise fetch full challan from API inside getChallanForPrint(...)
+                val printData = getChallanForPrint(
+                    clientCode = challan.ClientCode ?: "",
+                    challanId = challan.Id ?: 0
+                )
+
+                val uri = generateDeliveryChallanPdf(context, printData)
+                if (uri != null) openPdfPreview(context, uri)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Print failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ✅ You already mentioned you have this kind of function
+    suspend fun getChallanForPrint(clientCode: String, challanId: Int): DeliveryChallanPrintData {
+        // call API + map to DeliveryChallanPrintData
+        // return printData
+        TODO("Implement")
+    }*/
 
 
+
+    fun clearLastChallanNo() { _lastChallanNo.value = null }
+    fun clearAddChallanResponse() { _addChallanResponse.value = null }
 
 
 }
+
+
+
+
+
+

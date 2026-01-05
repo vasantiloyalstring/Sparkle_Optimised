@@ -32,9 +32,9 @@ import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun OrderListTable(
-    productList: List<OrderItem>,
     onTotalsChange: (baseTotal: Double, gstAmount: Double, finalTotal: Double) -> Unit = { _, _, _ -> },
-    onItemUpdated: (index: Int, updated: OrderItem) -> Unit = { _, _ -> }
+    onItemUpdated: (index: Int, updated: OrderItem) -> Unit = { _, _ -> },
+    productList: List<OrderItem>
 ) {
     val horizontalScroll = rememberScrollState()
     var selectedItem by remember { mutableStateOf<OrderItem?>(null) }
@@ -100,6 +100,8 @@ fun OrderListTable(
                     }
                 }
 
+
+
                 // Data rows
                 items(productList.size) { index ->
                     val item = productList[index]
@@ -123,7 +125,7 @@ fun OrderListTable(
                             item.finePlusWt ?: "",
                             item.stoneAmt ?: "",
                             item.diamondAmt ?: "",
-                            item.itemAmt ?: "",
+                            (item.itemAmt) ?: "",
                             item.rfidCode ?: ""
                         ).forEach { value ->
                             Text(

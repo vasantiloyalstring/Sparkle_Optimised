@@ -1,7 +1,11 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -43,6 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
@@ -52,6 +57,7 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.DeliveryChallanItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.AddDeliveryChallanRequest
+import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
@@ -70,17 +76,13 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import android.os.Build
-import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-
-import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @SuppressLint("UnrememberedMutableState")
 @Composable
@@ -89,7 +91,7 @@ fun DeliveryChalanScreen(
     navController: NavHostController,
     challanId: Int? = null
 ) {
-
+    var isSaving by remember { mutableStateOf(false) }
     val viewModel: BulkViewModel = hiltViewModel()
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
@@ -851,8 +853,9 @@ fun DeliveryChalanScreen(
     // 🔹 When last challan number updates → Add the challan
     val lastChallanNo by deliveryChallanViewModel.lastChallanNo.collectAsState()
 
-    LaunchedEffect(lastChallanNo) {
+    LaunchedEffect(lastChallanNo, isSaving) {
         // Only run when a new value is emitted
+        if (!isSaving) return@LaunchedEffect
         val lastNo = lastChallanNo ?: return@LaunchedEffect
         val newChallanNo = lastNo + 1
 
@@ -942,6 +945,7 @@ fun DeliveryChalanScreen(
         )
 
         deliveryChallanViewModel.addDeliveryChallan(request)
+
     }
 
 
@@ -1389,6 +1393,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
 
             viewModel.resetProductScanResults()
 
+
             // Optional: clear after short delay so toast doesn’t miss it
             kotlinx.coroutines.delay(500)
             //deliveryChallanViewModel.clearAddChallanResponse()
@@ -1408,13 +1413,26 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 )
             }
 
+            fun formatIsoToNormal(input: String?): String {
+                if (input.isNullOrBlank()) return ""
+
+                return try {
+                    val odt = OffsetDateTime.parse(input) // parses +05:30 also
+                    val outFmt =
+                        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm", Locale.getDefault())
+                    odt.format(outFmt)
+                } catch (e: Exception) {
+                    ""
+                }
+            }
+
             val printData = DeliveryChallanPrintData(
                 branchName = "QA",
-                city = "PUNE",
-                createdDateTime = response.CreatedOn,
+                city = response?.customer?.City ?: "",
+                createdDateTime = formatIsoToNormal(response.CreatedOn),
                 customerName = customerName,
                 quotationNo = (response.InvoiceNo ?: "0").toString(),
-                phone =response.ChallanDetails.get(0).DesignName,
+                phone = response?.customer?.Mobile ?: "",
                 items = itemsForPrint,
                 taxableAmount = String.format("%.2f", baseTotal),
                 cgstPercent = 1.5,
@@ -1444,7 +1462,8 @@ MakingPerGram=${touchMatch.MakingPerGram}
                     )
                 }
             }
-            Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
+            //Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
+            deliveryChallanViewModel.clearAddChallanResponse()
         }
         resetAllFields(   onResetCustomerName = { customerName = it },
             onResetCustomerId = { customerId = it },
@@ -2073,6 +2092,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                         val branchId = employee.branchNo ?: 1
 
                         // 🔹 Step 1: Fetch last challan no
+                        isSaving = true
                         deliveryChallanViewModel.fetchLastChallanNo(clientCode, branchId)
                     }
                 },

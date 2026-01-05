@@ -46,6 +46,7 @@ import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.quotation.AddQuotationRequest
@@ -70,8 +71,10 @@ import com.loyalstring.rfid.viewmodel.QuotationViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import kotlin.collections.forEach
 
 
@@ -119,6 +122,21 @@ fun QuotationScreen(
     var baseTotal by remember { mutableStateOf(0.0) }
     var gstAmount by remember { mutableStateOf(0.0) }
     var totalWithGst by remember { mutableStateOf(0.0) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                orderViewModel.getAllEmpList(employee?.clientCode.toString())
+                orderViewModel.getAllItemCodeList(ClientCodeRequest(employee?.clientCode.toString()))
+                singleProductViewModel.getAllBranches(ClientCodeRequest(employee?.clientCode.toString()))
+                singleProductViewModel.getAllPurity(ClientCodeRequest(employee?.clientCode.toString()))
+                singleProductViewModel.getAllSKU(ClientCodeRequest(employee?.clientCode.toString()))
+                orderViewModel.getDailyRate(ClientCodeRequest(employee?.clientCode))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
 
     LaunchedEffect(Id, QuotationNo) {
@@ -255,6 +273,7 @@ fun QuotationScreen(
         }
 
         if (matchedItem != null) {
+            selectedItem = matchedItem.toItemCodeResponse()
             Log.d("ManualEntry", "Found: ${matchedItem.itemCode}")
 
             // Prevent duplicates by RFID
@@ -278,13 +297,30 @@ fun QuotationScreen(
 
             // Find rate from dailyRates if available
             val rate = if (!dailyRates.isNullOrEmpty()) {
-                dailyRates
-                    .firstOrNull { it.PurityName.equals(matchedItem.purity, ignoreCase = true) }
-                    ?.Rate?.toDoubleOrNull()
+
+
+                val matchedPurity = matchedItem.purity?.trim().orEmpty()
+
+                val computedRate  = dailyRates
+                    .firstOrNull { r ->
+                        val ratePurity = r.PurityName?.trim().orEmpty()
+
+                        Log.d("DAILY_RATE_MATCH", "ratePurity='$ratePurity'  matchedPurity='$matchedPurity'")
+
+                        ratePurity.equals(matchedPurity, ignoreCase = true)
+                    }
+                    ?.Rate
+                    ?.toString()
+                    ?.toDoubleOrNull()
                     ?: 0.0
+
+                Log.d("DAILY_RATE_MATCH", "FINAL matchedPurity='$matchedPurity'  rate=$computedRate")
+                computedRate
             } else {
                 0.0
             }
+
+            Log.d("@@","@@rate"+rate);
 
             val makingPerGramFinal = safeDouble(makingPerGram)
             val fixMaking = safeDouble(makingFixedAmt)
@@ -292,9 +328,14 @@ fun QuotationScreen(
             val fixWastage = safeDouble(makingFixedWastage)
             val stoneAmt = safeDouble(matchedItem.stoneAmount)
             val diamondAmt = safeDouble(matchedItem.diamondAmount)
+            fun asDouble(v: Any?): Double = when (v) {
+                is Number -> v.toDouble()
+                is String -> v.trim().toDoubleOrNull() ?: 0.0
+                else -> 0.0
+            }
 
             // Metal Amount = NetWt * Rate
-            val metalAmt = netWt * rate
+            val metalAmt = netWt * asDouble(rate)
 
             // Making Amount = (MakingPerGram + FixMaking) + (Making% * NetWt / 100) + FixWastage
             val makingAmt =
@@ -1258,7 +1299,7 @@ fun QuotationScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Invoice Fields",
+                            text = "Quotation",
                             fontSize = 13.sp,
                             color = Color.Gray
                         )

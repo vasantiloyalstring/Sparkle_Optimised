@@ -90,7 +90,7 @@ interface BulkItemDao {
     //@Query("DELETE FROM bulk_items WHERE id = :id")
     //suspend fun deleteById(id: Int): Int   // ✅ rows deleted
     // Pagination queries for efficient large dataset handling
-    @Query("SELECT id, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items ORDER BY id LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, rfid, design FROM bulk_items ORDER BY id LIMIT :limit OFFSET :offset")
     suspend fun getMinimalItemsPaged(limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items")

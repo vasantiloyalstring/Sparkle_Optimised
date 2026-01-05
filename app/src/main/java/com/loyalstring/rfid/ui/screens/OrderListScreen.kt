@@ -64,6 +64,7 @@ import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.navigation.GradientTopBar
+import com.loyalstring.rfid.ui.utils.NetworkUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
@@ -92,6 +93,7 @@ fun OrderLisrScreen(
     var visibleItems by remember { mutableStateOf(7000) }
     var searchQuery by remember { mutableStateOf("") }
 
+
     LaunchedEffect(Unit) {
         employee?.clientCode?.let {
             orderViewModel.fetchAllOrderListFromApi(ClientCodeRequest(it))
@@ -115,7 +117,12 @@ fun OrderLisrScreen(
         }
     } else allItems
 
-    val visibleData = filteredData.sortedByDescending { it.CustomOrderId }
+  //  val visibleData = filteredData.sortedByDescending { it.CustomOrderId }
+
+    val visibleData = filteredData.sortedWith(
+        compareByDescending<CustomOrderResponse> { it.CustomOrderId == 0 } // local first (true > false)
+            .thenByDescending { it.CreatedOn } // then latest first
+    )
 
     val headerTitles = listOf(
         "O.No",
@@ -467,20 +474,31 @@ fun OrderTableWithPagination(
                                             onClick = {
                                                 orderToDelete?.let { order ->
                                                     Log.d("customer order id","onclick ok " + order.CustomOrderId)
-                                                    employee?.clientCode?.let {
-                                                        orderViewModel.deleteOrders(
-                                                            ClientCodeRequest(it),
-                                                            order.CustomOrderId
-                                                        ) { isSuccess ->
-                                                            Toast.makeText(
-                                                                context,
-                                                                if (isSuccess) "Order Deleted Successfully" else "Failed to delete",
-                                                                Toast.LENGTH_SHORT
-                                                            ).show()
-                                                            if (isSuccess) {
-                                                                orderViewModel.removeOrderById(order.CustomOrderId)
+                                                    val isOnline = NetworkUtils.isNetworkAvailable(context)
+                                                    if(isOnline) {
+                                                        employee?.clientCode?.let {
+                                                            orderViewModel.deleteOrders(
+                                                                ClientCodeRequest(it),
+                                                                order.CustomOrderId
+                                                            ) { isSuccess ->
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    if (isSuccess) "Order Deleted Successfully" else "Failed to delete",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                                if (isSuccess) {
+                                                                    orderViewModel.removeOrderById(
+                                                                        order.CustomOrderId
+                                                                    )
+                                                                }
                                                             }
                                                         }
+                                                    }else
+                                                    {
+
+                                                        Log.d("orderListscreen","Order.orderNo"+order.OrderNo.toString())
+                                                       orderViewModel.deleteOrderOffline(order)
+                                                        orderViewModel.enqueuePendingSync(context)
                                                     }
                                                 }
                                                 orderToDelete = null

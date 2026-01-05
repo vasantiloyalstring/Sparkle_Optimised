@@ -7,7 +7,9 @@ import androidx.room.Query
 import androidx.room.Update
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.loyalstring.rfid.data.local.entity.OrderItem
+import com.loyalstring.rfid.data.local.entity.OrderListCacheEntity
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
+import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
 import kotlinx.coroutines.flow.Flow
@@ -241,7 +243,7 @@ interface OrderItemDao {
 
     /************ customer Order response **************/
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCustomerOrder(customerOrderRequest: CustomOrderRequest)
+    suspend fun insertCustomerOrder(customerOrderRequest: List<CustomOrderResponse>)
 
     @Query("SELECT * FROM customerorderequest WHERE ClientCode = :clientCode")
     suspend fun getAllCustomnerOrderReponse(clientCode: String): List<CustomOrderRequest>
@@ -252,6 +254,18 @@ interface OrderItemDao {
     @Query("DELETE FROM OrderItem")
     suspend fun clearAll()
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(employee: EmployeeList)
+
+    /*new */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(list: List<OrderListCacheEntity>)
+
+    @Query("SELECT * FROM order_list_cache WHERE clientCode=:clientCode ORDER BY createdAt DESC")
+    suspend fun getAll(clientCode: String): List<OrderListCacheEntity>
+
+    @Query("DELETE FROM order_list_cache WHERE clientCode=:clientCode")
+    suspend fun clear(clientCode: String)
 
 
 }

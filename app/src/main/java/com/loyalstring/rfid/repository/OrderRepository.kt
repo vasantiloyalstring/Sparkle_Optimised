@@ -4,10 +4,11 @@ import android.util.Log
 import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeRequest
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeResponse
+import com.google.gson.Gson
 import com.loyalstring.rfid.data.local.dao.OrderItemDao
 import com.loyalstring.rfid.data.local.entity.OrderItem
+import com.loyalstring.rfid.data.local.entity.OrderListCacheEntity
 import com.loyalstring.rfid.data.model.ClientCodeRequest
-import com.loyalstring.rfid.data.model.addSingleItem.PurityModel
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
@@ -24,13 +25,18 @@ import kotlin.String
 
 class OrderRepository @Inject constructor(
     private val apiService: RetrofitInterface,
-    private val orderItemDao: OrderItemDao
+    private val orderItemDao: OrderItemDao,
+   // private val employeeDao: PendingEmployeeDao,
 ) {
     suspend fun AAddAllEmployeeDetails(request: AddEmployeeRequest): Response<EmployeeResponse> {
         return apiService.addEmployee(request)
     }
 
     suspend fun getAllEmpList(clientCodeRequest: ClientCodeRequest): Response<List<EmployeeList>> {
+        val res = apiService.getAllEmpList(clientCodeRequest)
+        if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+            saveEmpListToRoom(res.body()!!)
+        }
         return apiService.getAllEmpList(clientCodeRequest)
     }
 
@@ -126,8 +132,8 @@ class OrderRepository @Inject constructor(
 
 
     // Save the custom order response to Room
-    suspend fun saveCustomerOrder(request: CustomOrderRequest) {
-        Log.d("@@","customerOrder"+request)
+    suspend fun saveCustomerOrder(request: List<CustomOrderResponse>) {
+        //Log.d("@@","customerOrder"+request)
         orderItemDao.insertCustomerOrder(request)
     }
 
@@ -161,6 +167,41 @@ class OrderRepository @Inject constructor(
     suspend fun dailyRate(clientcodeRequest: ClientCodeRequest): Response<List<DailyRateResponse>> {
         return apiService.getDailyDailyRate(clientcodeRequest)
     }
+
+    suspend fun insertEmployeeToRoom(emp: EmployeeList) {
+        orderItemDao.insert(emp) // ya jo bhi tumhara insert method hai
+    }
+
+   /* suspend fun refreshEmpListFromServer(clientCode: String) {
+        val res = apiService.getAllEmpList(ClientCodeRequest(clientCode))
+        if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+            saveEmpListToRoom(res.body()!!)
+        }
+    }*/
+
+    suspend fun saveOrderListCache(clientCode: String, list: List<CustomOrderResponse>) {
+        val gson = Gson()
+        val entities = list.map {
+            OrderListCacheEntity(
+                orderId = it.CustomOrderId ?: 0,
+                ClientCode = clientCode,                 // ⚠️ name is ClientCode
+                created_at = System.currentTimeMillis(), // ✅ required
+                payloadJson = gson.toJson(it)
+            )
+        }
+        orderItemDao.upsertAll(entities)
+    }
+
+    suspend fun getOrderListCache(clientCode: String): List<CustomOrderResponse> {
+        val gson = Gson()
+        return orderItemDao.getAll(clientCode).mapNotNull {
+            runCatching { gson.fromJson(it.payloadJson, CustomOrderResponse::class.java) }.getOrNull()
+        }
+    }
+
+
+
+
 
 
 }

@@ -10,7 +10,7 @@ import kotlinx.android.parcel.Parcelize
 @Entity(tableName = "customerorderequest")
 @TypeConverters(CustomOrderConverters::class)
 data class CustomOrderRequest(
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey(autoGenerate = true) val Id: Int = 0,
     val CustomOrderId: Int,
     val CustomerId: String,
     val ClientCode: String,
@@ -99,6 +99,7 @@ data class CustomOrderRequest(
     val syncStatus: Boolean = false,
 
     @ColumnInfo(name = "LastUpdated")
-    val LastUpdated: String? = null
+    val LastUpdated: String? = null,
+    val HallmarkAmount:String?=null
 
 )

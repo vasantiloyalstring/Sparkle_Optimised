@@ -25,5 +25,6 @@ data class SampleOutListResponse(
     val SampleInDate: String?,    // null in JSON
     val BranchId: Int?,           // null in JSON
     val IssueItems: List<IssueItemDto>,
-    val Customer: SampleCustomerDto?
+    val Customer: SampleCustomerDto?,
+    val Date: String
 )

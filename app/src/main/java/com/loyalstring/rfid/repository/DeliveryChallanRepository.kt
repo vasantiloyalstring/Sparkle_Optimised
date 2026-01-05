@@ -19,4 +19,6 @@ interface DeliveryChallanRepository {
     suspend fun updateDeliveryChallan(request: UpdateDeliveryChallanRequest): Response<AddDeliveryChallanResponse>
     suspend fun getAllCustomerTunch(request: CustomerTunchRequest): Response<List<CustomerTunchResponse>>
 
+   // suspend fun getDeliveryChallanById(clientCode: String, challanId: Int): Response<DeliveryChallanResponseList>
+
 }

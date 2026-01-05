@@ -12,7 +12,7 @@ import kotlinx.parcelize.Parcelize
 @Entity(tableName = "customer_order_response")
 @TypeConverters(CustomOrderTypeConverters::class)
 data class CustomOrderResponse(
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey(autoGenerate = true) val Id: Int,
     val CustomOrderId: Int,
     val CustomerId: Int,
     val ClientCode: String,
@@ -97,4 +97,5 @@ data class CustomOrderResponse(
     val Customer: Customer,
     val syncStatus: Boolean = false,
     val ProductName: String,
+    val HallmarkAmount:String
     ): Serializable, Parcelable

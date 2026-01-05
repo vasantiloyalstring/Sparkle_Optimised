@@ -187,11 +187,13 @@ private fun SetupNavigation(
         employee?.clientCode?.let { clientCode ->
             withContext(Dispatchers.IO) {
                 //Unnecessary
+                //Unnecessary
                 /*orderViewModel1.getAllEmpList(clientCode)
                 orderViewModel1.getAllItemCodeList(ClientCodeRequest(clientCode))
                 singleProductViewModel.getAllBranches(ClientCodeRequest(clientCode))
                 singleProductViewModel.getAllPurity(ClientCodeRequest(clientCode))
-                singleProductViewModel.getAllSKU(ClientCodeRequest(clientCode))*/
+                singleProductViewModel.getAllSKU(ClientCodeRequest(clientCode))
+                orderViewModel1.getDailyRate(ClientCodeRequest(employee?.clientCode))*/
             }
         }
     }

@@ -7,6 +7,8 @@ import com.loyalstring.rfid.data.local.dao.DropdownDao
 import com.loyalstring.rfid.data.local.dao.EpcDao
 import com.loyalstring.rfid.data.local.dao.LocationDao
 import com.loyalstring.rfid.data.local.dao.OrderItemDao
+import com.loyalstring.rfid.data.local.dao.PendingEmployeeDao
+import com.loyalstring.rfid.data.local.dao.PendingOrderDao
 import com.loyalstring.rfid.data.local.dao.TransferTypeDao
 import com.loyalstring.rfid.data.local.dao.UserPermissionDao
 import com.loyalstring.rfid.data.local.db.AppDatabase
@@ -63,4 +65,12 @@ object DatabaseModule {
     }
     @Provides
     fun provideUserPermissionDao(db: AppDatabase): UserPermissionDao = db.userPermissionDao()
+
+    @Provides
+    fun providePendingOrderDao(db: AppDatabase): PendingOrderDao =
+        db.pendingOrderDao()
+
+    @Provides
+    fun providerPendingEmployeeDao(db: AppDatabase): PendingEmployeeDao =
+        db.pendingEmployeeDao()
 }
