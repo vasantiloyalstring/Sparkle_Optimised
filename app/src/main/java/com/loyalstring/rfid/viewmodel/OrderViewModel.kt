@@ -567,7 +567,7 @@ class OrderViewModel @Inject constructor(
             TaxableAmt = this.TaxableAmt?:"",
             GstAmount = this.GstAmount?:"",
             GstCheck = this.GstCheck?:"",
-            Category = this.Category,
+            Category = this.Category?:"",
             TDSCheck = this.TDSCheck?:"",
             Remark = this.Remark?: "",
             OrderItemId = this.OrderItemId,
