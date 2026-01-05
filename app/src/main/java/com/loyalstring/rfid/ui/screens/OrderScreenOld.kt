@@ -1689,7 +1689,7 @@ fun OrderScreenContent(
                                                 Purity = product.purity,
                                                 Status = "",
                                                 URDNo = "",
-                                                HallmarkAmt=product.hallmarkAmt,
+                                                HallmarkAmount =product.hallmarkAmt,
                                                 Stones = emptyList(),
                                                 Diamond = emptyList()
                                             )
@@ -1943,7 +1943,7 @@ fun OrderScreenContent(
                                             Purity = product.purity,
                                             Status = "",
                                             URDNo = "",
-                                            HallmarkAmt=product.hallmarkAmt,
+                                            HallmarkAmount  =product.hallmarkAmt,
                                             Stones = emptyList(),
                                             Diamond = emptyList()
                                         )
@@ -2660,7 +2660,8 @@ fun CustomOrderRequest.toCustomOrderResponse(): CustomOrderResponse {
         Customer = this.Customer,
         syncStatus = this.syncStatus,
         ProductName = "",
-        Id = 0
+        Id = 0,
+        HallmarkAmount = this.HallmarkAmount.toString()
     )
 }
 

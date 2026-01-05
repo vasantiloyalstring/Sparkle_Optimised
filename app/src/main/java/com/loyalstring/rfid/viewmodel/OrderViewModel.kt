@@ -986,7 +986,8 @@ class OrderViewModel @Inject constructor(
             syncStatus = false,
 
             // non-null String
-            ProductName = ""?.toString().orEmpty()
+            ProductName = ""?.toString().orEmpty(),
+            HallmarkAmount=this.HallmarkAmount.toString()
         )
     }
 

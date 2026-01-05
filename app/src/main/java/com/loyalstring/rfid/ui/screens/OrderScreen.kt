@@ -303,7 +303,7 @@ fun OrderScreen(
                     dimondWt = coItem.DiamondWt,
                     sku = coItem.SKU.orEmpty(),
                     qty = qtyOrOne(coItem.Quantity),
-                    hallmarkAmt = "",
+                    hallmarkAmt = coItem.HallmarkAmount.toString(),
                     mrp = coItem.MRP ?: "",
                     image = coItem.Image.orEmpty(),
                     netAmt = "",
@@ -613,7 +613,7 @@ fun OrderScreen(
                 sku = matchedItem.sku.orEmpty(),
                 qty = qtyOrOne("0"),
 
-                hallmarkAmt = "0.0",
+                hallmarkAmt = "" ?: "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
 
                 image = matchedItem.imageUrl.orEmpty(),
@@ -784,7 +784,7 @@ fun OrderScreen(
                 dimondWt = matchedItem.diamondWeight ?: "0.0",
                 sku = matchedItem.sku.orEmpty(),
                 qty = qtyOrOne("0"),
-                hallmarkAmt = "0.0",
+                hallmarkAmt = ""?: "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
                 image = matchedItem.imageUrl.orEmpty(),
                 netAmt = itemAmt.toString(),
@@ -957,7 +957,7 @@ fun OrderScreen(
                 sku = matchedItem.sku.orEmpty(),
                 qty = qtyOrOne("0"),
 
-                hallmarkAmt = "0.0",
+                hallmarkAmt ="0.0"?.toString() ?: "0.0",
                 mrp = matchedItem.mrp?.toString() ?: "0.0",
                 image = finalImageUrl,                           // your final image url
                 netAmt = itemAmt.toString(),
@@ -1267,7 +1267,7 @@ fun OrderScreen(
 
                     Status = "" ?: null,
                     URDNo = null,
-                    HallmarkAmt = item.hallmarkAmt ?: null,
+                    HallmarkAmount = item.hallmarkAmt ?: null,
 
                     Stones = emptyList(),
                     Diamond = emptyList()
@@ -1617,7 +1617,7 @@ fun OrderScreen(
                                    Purity = product.purity,
                                    Status = "",
                                    URDNo = "",
-                                   HallmarkAmt=product.hallmarkAmt,
+                                   HallmarkAmount =product.hallmarkAmt,
                                    Stones = emptyList(),
                                    Diamond = emptyList()
                                )
@@ -2471,7 +2471,7 @@ fun buildOrderRequest(
                 Purity = item.purity.orEmpty(),
                 Status = null,
                 URDNo = null,
-                HallmarkAmt = item.hallmarkAmt,
+                HallmarkAmount = item.hallmarkAmt,
 
                 Stones = emptyList(),
                 Diamond = emptyList()

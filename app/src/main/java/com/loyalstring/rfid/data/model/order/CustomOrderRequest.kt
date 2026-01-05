@@ -99,6 +99,7 @@ data class CustomOrderRequest(
     val syncStatus: Boolean = false,
 
     @ColumnInfo(name = "LastUpdated")
-    val LastUpdated: String? = null
+    val LastUpdated: String? = null,
+    val HallmarkAmount:String?=null
 
 )
