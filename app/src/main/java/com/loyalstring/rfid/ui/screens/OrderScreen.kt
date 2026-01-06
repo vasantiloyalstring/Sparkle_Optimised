@@ -1539,7 +1539,7 @@ fun OrderScreen(
                                    CustomOrderId = editOrder?.CustomOrderId?.toInt() ?: 0,
                                    RFIDCode =product?.rfidCode.toString(),
                                    OrderDate = isoDateTimeOrNull(product.orderDate) ?: nowIsoDateTime(),
-                                   DeliverDate = (product.deliverDate?.takeIf { it.isNotBlank() && !it.equals("null", true) }) ?: nowDateOnly(),
+                                   DeliverDate = isoDateTimeOrNull(product.deliverDate) ?: nowIsoDateTime(),
                                    SKUId = 0,
                                    SKU = product.sku,
                                    CategoryId = selectedItem?.CategoryId,
@@ -1998,7 +1998,7 @@ fun OrderScreen(
                         val metalAmt = netWt * rate
                         val makingAmt = makingPerGram + makingFixed + ((makingPercent / 100.0) * netWt) + fixWastage
                         val newItemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
-                        Log.d("",""+details.typeOfColors+" "+details.screwType+""+details.polishType)
+                        Log.d("",""+details.deliverDate+" "+details.orderDate+""+details.polishType)
 
                         productList[i] = old.copy(
 
@@ -2019,8 +2019,8 @@ fun OrderScreen(
                             makingPercentage = details.wastage,
 
                             // normalized dates apply to all
-                            orderDate = normalizedOrderDate,
-                            deliverDate = normalizedDeliverDate,
+                            orderDate = details.orderDate,
+                            deliverDate = details.deliverDate,
 
                             // update rate + amounts
                             todaysRate = rate.toString(),
