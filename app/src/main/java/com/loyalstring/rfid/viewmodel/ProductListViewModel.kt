@@ -39,6 +39,24 @@ class ProductListViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+
+            /*try {
+                    _isLoading.value = true
+                    repository.getAllBulkItems().collect { items ->
+                        for (item in items) {
+                            if (item.rfid == "SJ4227") {
+                                val json = Gson().toJson(item)
+                                Log.d("ProductListVM", "🎯 Matched BulkItem: $json")
+                            }
+                        }
+
+                        _productList.value = items
+                        _isLoading.value = false
+                    }
+                } catch (e: Exception) {
+                    _isLoading.value = false
+                }*/
+
             try {
                 val startTime = System.currentTimeMillis()
                 Log.d("ProductListVM", "🚀 [PERF] Starting initial load...")

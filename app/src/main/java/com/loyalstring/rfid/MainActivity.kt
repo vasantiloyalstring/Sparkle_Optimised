@@ -192,8 +192,8 @@ private fun SetupNavigation(
                 orderViewModel1.getAllItemCodeList(ClientCodeRequest(clientCode))
                 singleProductViewModel.getAllBranches(ClientCodeRequest(clientCode))
                 singleProductViewModel.getAllPurity(ClientCodeRequest(clientCode))
-                singleProductViewModel.getAllSKU(ClientCodeRequest(clientCode))
-                orderViewModel1.getDailyRate(ClientCodeRequest(employee?.clientCode))*/
+                singleProductViewModel.getAllSKU(ClientCodeRequest(clientCode))*/
+                orderViewModel1.getDailyRate(ClientCodeRequest(employee?.clientCode))
             }
         }
     }

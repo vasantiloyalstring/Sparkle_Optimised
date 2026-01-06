@@ -756,7 +756,7 @@ class BulkViewModel @Inject constructor(
 
     fun stopScanningAndCompute() {
         stopScanning()
-
+        return
         // Quick guard: avoid re-entry early
         if (isComputing) return
 
