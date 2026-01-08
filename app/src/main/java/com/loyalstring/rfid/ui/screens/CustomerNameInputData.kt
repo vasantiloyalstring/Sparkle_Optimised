@@ -45,10 +45,13 @@ import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
+import java.util.Locale
 
-/*----------------------------------------------------------
-   CUSTOMER NAME INPUT (with search dropdown)
------------------------------------------------------------*/
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerNameInputData(
@@ -66,7 +69,7 @@ fun CustomerNameInputData(
     employeeClientCode: String? = null,
     employeeId: String? = null
 ) {
-    var showDropdown by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
     var showAddCustomerDialog by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
@@ -76,28 +79,27 @@ fun CustomerNameInputData(
         listOf(Color(0xFF5231A7), Color(0xFFD32940))
     )
 
-    // Filter list locally (case-insensitive)
-    val visibleCustomers = remember(customerName, filteredCustomers) {
-        if (customerName.isEmpty()) emptyList()
-        else filteredCustomers.filter {
-            val query = customerName.trim().lowercase()
-            it.FirstName.orEmpty().lowercase().contains(query) ||
-                    it.LastName.orEmpty().lowercase().contains(query)
-        }
-    }
     val context: Context = LocalContext.current
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
     val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
+    // ✅ Filter using customerName only (same input)
+    val visibleCustomers = remember(customerName, filteredCustomers) {
+        val q = customerName.trim().lowercase(Locale.getDefault())
+        if (q.isEmpty()) filteredCustomers
+        else filteredCustomers.filter {
+            it.FirstName.orEmpty().lowercase(Locale.getDefault()).contains(q) ||
+                    it.LastName.orEmpty().lowercase(Locale.getDefault()).contains(q)
+        }
+    }
 
-    // ✅ Added Padding for better spacing in UI
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
-        // 🔹 Input Row
+        // ✅ MAIN INPUT (ONLY ONE INPUT)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -107,42 +109,59 @@ fun CustomerNameInputData(
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = Color.Gray,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+
             BasicTextField(
                 value = customerName,
                 onValueChange = {
                     onCustomerNameChange(it)
-                    showDropdown = it.isNotEmpty()
+                    if (!isExpanded) isExpanded = true
                     coroutineScope.launch { fetchSuggestions() }
                 },
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 14.sp, color = Color.Black),
-                modifier = Modifier.weight(1f),
-                decorationBox = { innerTextField ->
+                textStyle = TextStyle(fontSize = 13.sp, color = Color.Black),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        isExpanded = true
+                        coroutineScope.launch { fetchSuggestions() }
+                        keyboardController?.show()
+                    },
+                decorationBox = { inner ->
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (customerName.isEmpty()) {
+                        if (customerName.isBlank()) {
                             Text(
                                 text = localizedContext.getString(R.string.hint_enter_customer_name),
                                 fontSize = 13.sp,
-                                color = Color.Gray
+                                color = Color.Gray,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                        innerTextField()
+                        inner()
                     }
                 }
             )
 
-            // 🔹 Add / Clear Icon
-            if (customerName.isEmpty()) {
-                IconButton(
-                    onClick = {
-                        onAddCustomerClick()
-                        showDropdown = false
-                        showAddCustomerDialog = true
-                    },
-                    modifier = Modifier.size(26.dp)
+            if (customerName.isBlank()) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            onAddCustomerClick()
+                            showAddCustomerDialog = true
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.vector_add),
@@ -155,11 +174,11 @@ fun CustomerNameInputData(
                 IconButton(
                     onClick = {
                         onClear()
-                        showDropdown = false
+                        isExpanded = false
                         focusManager.clearFocus()
                         keyboardController?.hide()
                     },
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
                         Icons.Default.Clear,
@@ -171,74 +190,88 @@ fun CustomerNameInputData(
             }
         }
 
-        // 🔽 Dropdown (matching RFID style)
-        DropdownMenu(
-            expanded = showDropdown && (isLoading || visibleCustomers.isNotEmpty()),
-            onDismissRequest = { showDropdown = false },
-            modifier = Modifier
-                .widthIn(min = 220.dp, max = 280.dp)
-                .background(Color.White)
-        ) {
-            when {
-                isLoading -> {
-                    DropdownMenuItem(
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = Color(0xFF5231A7)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(localizedContext.getString(R.string.label_loading), fontSize = 12.sp)
-                            }
-                        },
-                        onClick = {}
-                    )
-                }
+        // ✅ LIST BELOW INPUT (NO SECOND SEARCH BOX)
+        if (isExpanded) {
+            Spacer(Modifier.height(6.dp))
 
-                visibleCustomers.isEmpty() -> {
-                    DropdownMenuItem(
-                        text = {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 140.dp, max = 260.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                val listScroll = rememberScrollState()
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(listScroll)
+                ) {
+                    when {
+                        isLoading -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(localizedContext.getString(R.string.label_loading))
+                            }
+                        }
+
+                        visibleCustomers.isEmpty() -> {
                             Text(
-                                text = localizedContext.getString( R.string.no_results_found),
-                                fontSize = 12.sp,
+                                text = localizedContext.getString(R.string.no_results_found),
+                                modifier = Modifier.padding(12.dp),
                                 color = Color.Gray
                             )
-                        },
-                        onClick = {}
-                    )
-                }
+                        }
 
-                else -> {
-                    visibleCustomers.forEach { customer ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
+                        else -> {
+                            visibleCustomers.forEach { customer ->
+                                val fullName =
+                                    "${customer.FirstName.orEmpty()} ${customer.LastName.orEmpty()}".trim()
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onCustomerNameChange(fullName)
+                                            onCustomerSelected(customer)
+
+                                            isExpanded = false
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                        }
+                                        .padding(vertical = 10.dp, horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
-                                        text = "${customer.FirstName.orEmpty()} ${customer.LastName.orEmpty()}",
+                                        text = fullName,
                                         fontSize = 13.sp,
-                                        color = Color.Black
+                                        color = Color.Black,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                            },
-                            onClick = {
-                                onCustomerSelected(customer)
-                                showDropdown = false
-                                focusManager.clearFocus()
-                                keyboardController?.hide()
+                                Divider(color = Color(0xFFEAEAEA))
                             }
-                        )
+                        }
                     }
                 }
             }
         }
     }
 
-    // 🔹 Add Customer Dialog
+    // ✅ Add Customer Dialog
     if (showAddCustomerDialog) {
         AddCustomerDialog(
-            localizedContext=localizedContext,
+            localizedContext = localizedContext,
             onDismiss = { showAddCustomerDialog = false },
             onSaveCustomer = {
                 onSaveCustomer(it)
@@ -249,10 +282,6 @@ fun CustomerNameInputData(
         )
     }
 }
-
-
-
-
 /*----------------------------------------------------------
    ADD CUSTOMER DIALOG (Localized)
 -----------------------------------------------------------*/

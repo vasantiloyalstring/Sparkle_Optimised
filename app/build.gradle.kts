@@ -18,8 +18,8 @@ android {
         applicationId = "com.loyalstring.rfid"
         minSdk = 26
         targetSdk = 36
-        versionCode = 46
-        versionName = "1.46"
+        versionCode = 47
+        versionName = "1.47"
         resConfigs("en", "hi","ar")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -148,6 +148,7 @@ dependencies {
     kapt(libs.androidx.hilt.compiler)
     implementation("com.google.dagger:hilt-android:2.51")
     kapt("com.google.dagger:hilt-compiler:2.51")
+    implementation ("org.apache.poi:poi-ooxml:5.2.3")
     //LiveData
     implementation(libs.androidx.lifecycle.livedata.ktx)// or latest
 

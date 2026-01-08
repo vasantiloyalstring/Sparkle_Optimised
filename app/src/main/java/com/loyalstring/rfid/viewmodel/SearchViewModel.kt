@@ -69,7 +69,7 @@ class SearchViewModel @Inject constructor(
             setFastID(false)
             setDynamicDistance(0)
         }
-        
+
 
         readerManager.startInventoryTag(power, true)
 
@@ -255,3 +255,213 @@ class SearchViewModel @Inject constructor(
 
 
 }
+
+
+/*
+package com.loyalstring.rfid.viewmodel
+
+import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.loyalstring.rfid.data.local.entity.BulkItem
+import com.loyalstring.rfid.data.local.entity.SearchItem
+import com.loyalstring.rfid.data.reader.RFIDReaderManager
+import com.loyalstring.rfid.repository.BulkRepositoryImpl
+import com.rscja.deviceapi.RFIDWithUHFUART
+import com.rscja.deviceapi.interfaces.IUHF
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
+import javax.inject.Inject
+
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val readerManager: RFIDReaderManager,
+    private val bulkRepositoryImpl: BulkRepositoryImpl,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private var _searchItems = mutableStateListOf<SearchItem>()
+    val searchItems: List<SearchItem> get() = _searchItems
+
+    init {
+        val unmatched = savedStateHandle.get<List<BulkItem>>("unmatchedItems") ?: emptyList()
+        Log.d("SearchViewModel", "Received ${unmatched.size} items")
+    }
+
+    private var scanJob: Job? = null
+    private var lastSoundId: Int? = null
+    private var blinkingJob: Job? = null
+
+    // ✅ NEW: store all nearby EPCs
+    private val nearbyEpcs = mutableSetOf<String>()
+
+    fun startSearch(unmatchedItems: List<BulkItem>, power: Int) {
+        _searchItems.clear()
+        _searchItems.addAll(unmatchedItems.map { item ->
+            val epcValue = when {
+                !item.epc.isNullOrBlank() -> item.epc!!
+                !item.rfid.isNullOrBlank() -> item.rfid!!
+                !item.itemCode.isNullOrBlank() -> item.itemCode!!
+                else -> ""
+            }
+            SearchItem(
+                epc = epcValue,
+                itemCode = item.itemCode ?: "",
+                productName = item.productName ?: "",
+                rfid = item.rfid ?: ""
+            )
+        })
+
+        if (readerManager.initReader()) {
+            startTagScanning(power)
+            startBlinkingMultipleEpcs() // ✅ start LED job ONCE
+        }
+    }
+
+    fun startTagScanning(power: Int) {
+        readerManager.reader?.apply {
+            setTagFocus(false)
+            setFastID(false)
+            setDynamicDistance(0)
+        }
+
+        readerManager.startInventoryTag(power, true)
+
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val tag = readerManager.readTagFromBuffer()
+
+                if (tag?.epc != null) {
+                    val epc = tag.epc.trim()
+                    val rssi = tag.rssi
+                    val proximity = convertRssiToProximity(rssi)
+
+                    val id = when {
+                        proximity in 1..49 -> 4
+                        proximity in 51..75 -> 2
+                        proximity >= 76 -> 5
+                        else -> -1
+                    }
+
+                    val index = _searchItems.indexOfFirst {
+                        it.epc.equals(epc, true) ||
+                                it.rfid.equals(epc, true) ||
+                                it.itemCode.equals(epc, true)
+                    }
+
+                    if (index != -1 && _searchItems.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            _searchItems[index] = _searchItems[index].copy(
+                                rssi = rssi,
+                                proximityPercent = proximity
+                            )
+
+                            // 🔊 SOUND (UNCHANGED)
+                            if (id != -1) {
+                                lastSoundId?.let { readerManager.stopSound(it) }
+                                lastSoundId = id
+                                readerManager.playSound(id)
+                            }
+
+                            // 🔦 LED LOGIC (ONLY CHANGE)
+                            if (proximity >= 40) {
+                                nearbyEpcs.add(epc)
+                            } else {
+                                nearbyEpcs.remove(epc)
+                            }
+                        }
+                    }
+                } else {
+                    delay(100)
+                }
+            }
+        }
+    }
+
+    suspend fun getAllBulkItemsFromDb(): List<BulkItem> {
+        return bulkRepositoryImpl.getAllBulkItems().first()
+    }
+
+    fun clearSearchItems() {
+        _searchItems.clear()
+    }
+
+    fun stopSearch() {
+        scanJob?.cancel()
+        readerManager.stopInventory()
+        lastSoundId?.let { readerManager.stopSound(it) }
+        lastSoundId = null
+        stopBlinkingEpc()
+    }
+
+    private fun convertRssiToProximity(rssi: String): Int {
+        return try {
+            val rssiValue = rssi.toFloat()
+            ((rssiValue + 80).coerceAtLeast(0f) * 100f / 40f)
+                .toInt()
+                .coerceIn(0, 100)
+        } catch (e: NumberFormatException) {
+            0
+        }
+    }
+
+    */
+/* ================= MULTI TAG LED BLINK ================= *//*
+
+
+    private fun startBlinkingMultipleEpcs() {
+        blinkingJob?.cancel()
+
+        blinkingJob = viewModelScope.launch(Dispatchers.IO) {
+            val reader = readerManager.reader ?: return@launch
+
+            while (isActive) {
+                if (nearbyEpcs.isEmpty()) {
+                    delay(100)
+                    continue
+                }
+
+                for (epc in nearbyEpcs.toList()) {
+                    if (!isActive) break
+
+                    try {
+                        readerManager.stopInventory()
+
+                        val filterBank = RFIDWithUHFUART.Bank_EPC
+                        val filterPtr = 32
+                        val filterCnt = epc.length * 4
+
+                        reader.readData(
+                            "00000000",
+                            filterBank,
+                            filterPtr,
+                            filterCnt,
+                            epc,
+                            IUHF.Bank_RESERVED,
+                            4,
+                            1
+                        )
+
+                        delay(80) // fast blink illusion
+
+                    } catch (e: Exception) {
+                        Log.e("RFID", "Error blinking EPC: $epc", e)
+                    } finally {
+                        readerManager.startInventoryTag(30, true)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopBlinkingEpc() {
+        blinkingJob?.cancel()
+        blinkingJob = null
+        nearbyEpcs.clear()
+    }
+}
+*/

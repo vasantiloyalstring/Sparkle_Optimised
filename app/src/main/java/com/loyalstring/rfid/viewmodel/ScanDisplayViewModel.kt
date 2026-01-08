@@ -13,6 +13,9 @@ import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.element.Cell
 import com.itextpdf.layout.element.Paragraph
 import com.itextpdf.layout.element.Table
+
+
+import org.apache.poi.ss.usermodel.CellStyle
 import com.itextpdf.layout.properties.TextAlignment
 import com.loyalstring.rfid.data.local.dao.CustomerEmailDao
 import com.loyalstring.rfid.data.local.entity.BulkItem
@@ -30,7 +33,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
+import java.io.FileOutputStream
 
 import java.util.Properties
 import javax.activation.DataHandler
@@ -47,6 +53,10 @@ import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
 import javax.mail.internet.MimeMultipart
 import com.itextpdf.layout.Document as PdfLayoutDocument
+
+
+import org.apache.poi.ss.usermodel.HorizontalAlignment
+import org.apache.poi.xssf.usermodel.XSSFCellStyle
 
 
 @HiltViewModel
@@ -83,7 +93,7 @@ class ScanDisplayViewModel @Inject constructor(
         return customerEmailDao.getAllEmails().map { it.email }
     }
 
-    suspend fun generateScanReportPdf(
+/*    suspend fun generateScanReportPdf(
         context: Context,
         allItemsSummary: List<SummaryItem>,
         matchedItems: List<DetailedItem>,
@@ -414,7 +424,274 @@ class ScanDisplayViewModel @Inject constructor(
 
         doc.close()
         return file
+    }*/
+
+    suspend fun generateScanReportExcel(
+        context: Context,
+        allItemsSummary: List<SummaryItem>,
+        matchedItems: List<DetailedItem>,
+        unmatchedItems: List<DetailedItem>
+    ): File {
+
+        val file = File(
+            context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+            "scan_report.xlsx"
+        )
+
+        val workbook = XSSFWorkbook()
+        val sheet = workbook.createSheet("Scan Report")
+
+        /* ---------------- Styles ---------------- */
+
+        val headerStyle = workbook.createCellStyle().apply {
+            setFont(workbook.createFont().apply {
+                bold = true
+                fontHeightInPoints = 10
+            })
+            alignment = HorizontalAlignment.CENTER
+        }
+
+        val cellStyle = workbook.createCellStyle().apply {
+            setFont(workbook.createFont().apply {
+                fontHeightInPoints = 9
+            })
+            alignment = HorizontalAlignment.LEFT
+        }
+
+        val centerStyle = workbook.createCellStyle().apply {
+            setFont(workbook.createFont().apply {
+                fontHeightInPoints = 9
+            })
+            alignment = HorizontalAlignment.CENTER
+        }
+
+        val boldStyle = workbook.createCellStyle().apply {
+            setFont(workbook.createFont().apply {
+                bold = true
+                fontHeightInPoints = 9
+            })
+        }
+
+        var rowIndex = 0
+
+        fun createRow(values: List<Any?>, style: XSSFCellStyle) {
+            val row = sheet.createRow(rowIndex++)
+            values.forEachIndexed { index, value ->
+                val cell = row.createCell(index)
+                cell.setCellValue(value?.toString() ?: "-")
+                cell.cellStyle = style
+            }
+        }
+
+        fun addTitle(title: String) {
+            val row = sheet.createRow(rowIndex++)
+            val cell = row.createCell(0)
+            cell.setCellValue(title)
+            cell.cellStyle = boldStyle
+            rowIndex++
+        }
+
+        /* ============================
+           1️⃣ ALL ITEMS SUMMARY
+           ============================ */
+
+        addTitle("All Items Summary")
+
+        createRow(
+            listOf(
+                "Counter Name", "Category", "Product",
+                "Total Qty", "Match Qty", "Unmatch Qty",
+                "Total G.Wt", "Match G.Wt", "Unmatch G.Wt"
+            ),
+            headerStyle
+        )
+
+        var totalQty = 0
+        var totalMatch = 0
+        var totalUnmatch = 0
+        var totalGwt = 0.0
+        var totalMatchGwt = 0.0
+        var totalUnmatchGwt = 0.0
+
+        allItemsSummary.forEach {
+            createRow(
+                listOf(
+                    it.counterName,
+                    it.category,
+                    it.product,
+                    it.totalQty,
+                    it.matchQty,
+                    it.unmatchQty,
+                    it.totalGrossWt,
+                    it.matchGrossWt,
+                    it.unmatchGrossWt
+                ),
+                cellStyle
+            )
+
+            totalQty += it.totalQty
+            totalMatch += it.matchQty
+            totalUnmatch += it.unmatchQty
+            totalGwt += it.totalGrossWt?.toDoubleOrNull() ?: 0.0
+            totalMatchGwt += it.matchGrossWt?.toDoubleOrNull() ?: 0.0
+            totalUnmatchGwt += it.unmatchGrossWt?.toDoubleOrNull() ?: 0.0
+        }
+
+        createRow(
+            listOf(
+                "TOTAL", "", "",
+                totalQty,
+                totalMatch,
+                totalUnmatch,
+                "%.3f".format(totalGwt),
+                "%.3f".format(totalMatchGwt),
+                "%.3f".format(totalUnmatchGwt)
+            ),
+            boldStyle
+        )
+
+        rowIndex += 2
+
+        /* ============================
+           2️⃣ UNMATCHED ITEMS
+           ============================ */
+
+        addTitle("Unmatched Items")
+
+        createRow(
+            listOf(
+                "Counter Name", "Category", "Product", "Purity",
+                "Barcode No", "Item Code", "Pieces",
+                "Gross Wt", "Stone Wt", "Net Wt", "MRP", "Status"
+            ),
+            headerStyle
+        )
+
+        var uPieces = 0
+        var uGross = 0.0
+        var uStone = 0.0
+        var uNet = 0.0
+
+        unmatchedItems.forEach {
+            createRow(
+                listOf(
+                    it.counterName,
+                    it.category,
+                    it.product,
+                    it.purity,
+                    it.barcodeNumber,
+                    it.itemCode,
+                    it.pieces,
+                    it.grossWeight,
+                    it.stoneWeight,
+                    it.netWeight,
+                    it.mrp,
+                    "Not Found"
+                ),
+                cellStyle
+            )
+
+            uPieces += it.pieces
+            uGross += it.grossWeight?.toDoubleOrNull() ?: 0.0
+            uStone += it.stoneWeight?.toDoubleOrNull() ?: 0.0
+            uNet += it.netWeight?.toDoubleOrNull() ?: 0.0
+        }
+
+        createRow(
+            listOf(
+                "TOTAL", "", "", "", "", "",
+                uPieces,
+                "%.3f".format(uGross),
+                "%.3f".format(uStone),
+                "%.3f".format(uNet),
+                "-", "-"
+            ),
+            boldStyle
+        )
+
+        rowIndex += 2
+
+        /* ============================
+           3️⃣ MATCHED ITEMS
+           ============================ */
+
+        addTitle("Matched Items")
+
+        createRow(
+            listOf(
+                "Counter Name", "Category", "Product", "Purity",
+                "Barcode No", "Item Code", "Pieces",
+                "Gross Wt", "Stone Wt", "Net Wt", "MRP", "Status"
+            ),
+            headerStyle
+        )
+
+        var mPieces = 0
+        var mGross = 0.0
+        var mStone = 0.0
+        var mNet = 0.0
+
+        matchedItems.forEach {
+            createRow(
+                listOf(
+                    it.counterName,
+                    it.category,
+                    it.product,
+                    it.purity,
+                    it.barcodeNumber,
+                    it.itemCode,
+                    it.pieces,
+                    it.grossWeight,
+                    it.stoneWeight,
+                    it.netWeight,
+                    it.mrp,
+                    "Found"
+                ),
+                cellStyle
+            )
+
+            mPieces += it.pieces
+            mGross += it.grossWeight?.toDoubleOrNull() ?: 0.0
+            mStone += it.stoneWeight?.toDoubleOrNull() ?: 0.0
+            mNet += it.netWeight?.toDoubleOrNull() ?: 0.0
+        }
+
+        createRow(
+            listOf(
+                "TOTAL", "", "", "", "", "",
+                mPieces,
+                "%.3f".format(mGross),
+                "%.3f".format(mStone),
+                "%.3f".format(mNet),
+                "-", "-"
+            ),
+            boldStyle
+        )
+
+        /* ---------------- Autosize ---------------- */
+
+     /*   for (i in 0..11) {
+            sheet.autoSizeColumn(i)
+        }*/
+        sheet.setColumnWidth(0, 20 * 256) // Counter Name
+        sheet.setColumnWidth(1, 18 * 256) // Category
+        sheet.setColumnWidth(2, 18 * 256) // Product
+        sheet.setColumnWidth(3, 12 * 256) // Purity
+        sheet.setColumnWidth(4, 20 * 256) // Barcode
+        sheet.setColumnWidth(5, 16 * 256) // Item Code
+        sheet.setColumnWidth(6, 10 * 256) // Pieces
+        sheet.setColumnWidth(7, 12 * 256) // Gross Wt
+        sheet.setColumnWidth(8, 12 * 256) // Stone Wt
+        sheet.setColumnWidth(9, 12 * 256) // Net Wt
+        sheet.setColumnWidth(10, 12 * 256) // MRP
+        sheet.setColumnWidth(11, 14 * 256) // Status
+
+        workbook.write(FileOutputStream(file))
+        workbook.close()
+
+        return file
     }
+
 
 
     // Helper for matched/unmatched
