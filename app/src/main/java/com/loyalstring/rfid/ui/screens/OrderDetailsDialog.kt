@@ -63,6 +63,9 @@ import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
@@ -131,6 +134,12 @@ fun OrderDetailsDialog(
         orderDate = "" // if you want to show default
         deliverDate = ""
     }
+
+    val IST = ZoneId.of("Asia/Kolkata")
+
+    fun nowIsoDateTime(): String =
+        ZonedDateTime.now(IST)
+            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 
 
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
@@ -826,7 +835,6 @@ fun OrderDetailsDialog(
                                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
                                 makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0"*/
 
-
                             val details = OrderDetails(
                                 branch = branch,
                                 exhibition = exhibition,
@@ -839,9 +847,8 @@ fun OrderDetailsDialog(
                                 polishType = polishType,
                                 finePercentage = finePercentage,
                                 wastage = wastage,
-                                orderDate = orderDate,
-                                deliverDate = deliverDate
-                            )
+                                orderDate = orderDate?.takeIf { it.isNotBlank() && !it.equals("null", true) } ?: nowIsoDateTime(),
+                                deliverDate = deliverDate?.takeIf { it.isNotBlank() && !it.equals("null", true) } ?: nowIsoDateTime())
 
                             Log.d("",""+typeOfColors+" "+screwType+""+polishType+" "+orderDate+" "+deliverDate)
 

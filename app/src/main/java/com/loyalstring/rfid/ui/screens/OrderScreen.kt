@@ -1356,7 +1356,7 @@ fun OrderScreen(
                 generateTablePdfWithImages(context, it)
                 //showInvoice = true
                 orderViewModel.clearOrderItems()
-                customerName = ""
+                customerName = customerName
                 itemCode = TextFieldValue("")  // reset text field
                 productList.clear()
             }
@@ -1824,6 +1824,7 @@ fun OrderScreen(
                 onCustomerSelected = {
                     customerName = "${it.FirstName.orEmpty()} ${it.LastName.orEmpty()}".trim()
                     customerId = it.Id ?: 0
+                    selectedCustomer=it
                 },
                 coroutineScope = coroutineScope,
                 fetchSuggestions = { orderViewModel.getAllEmpList(clientCode = employee?.clientCode.toString()) },
@@ -2019,8 +2020,8 @@ fun OrderScreen(
                             makingPercentage = details.wastage,
 
                             // normalized dates apply to all
-                            orderDate = details.orderDate,
-                            deliverDate = details.deliverDate,
+                            orderDate = details.orderDate?: nowIsoDateTime(),
+                            deliverDate = details.deliverDate?:nowIsoDateTime(),
 
                             // update rate + amounts
                             todaysRate = rate.toString(),
@@ -2119,6 +2120,7 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
             Order No : ${item.OrderNo ?: "-"}
             Design   : ${item.DesignName ?: "-"}
             RFID No  : ${item.RFIDCode ?: "-"}
+            Quantity  : ${item.Quantity ?: "-"}
         """.trimIndent()
 
         // Right column text
@@ -2757,6 +2759,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
             Order No : ${item.OrderNo ?: "-"}
             Design   : ${item.DesignName ?: "-"}
             RFID No  : ${item.RFIDCode ?: "-"}
+            Quantity  : ${item.Quantity ?: "-"}
         """.trimIndent()
 
         // Right column text

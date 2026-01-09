@@ -1,6 +1,6 @@
 // ScanDisplayScreen.kt
 package com.loyalstring.rfid.ui.screens
-
+import kotlinx.coroutines.yield
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -126,7 +128,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val loading by scanDisplayViewModel.loading.collectAsState()
     val error by scanDisplayViewModel.error.collectAsState()
     val successMsg by scanDisplayViewModel.successMsg.collectAsState()
-
+    var isSending by remember { mutableStateOf(false) }
 
 
 
@@ -238,7 +240,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     LaunchedEffect(emailStatus) {
         when (emailStatus) {
-            "success" -> Toast.makeText(context, "Email sent!", Toast.LENGTH_LONG).show()
+            "success" -> Toast.makeText(context, "Email Sent successfully", Toast.LENGTH_LONG).show()
             null -> Unit
             else -> Toast.makeText(context, emailStatus ?: "Error", Toast.LENGTH_LONG).show()
         }
@@ -967,124 +969,133 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }
-    if (showEmailDialog) {
-        AlertDialog(
-            onDismissRequest = { showEmailDialog = false },
-            title = { Text("Send Report", fontFamily = poppins) },
-            text = {
-                Column {
-                    if (savedEmails.isNotEmpty()) {
-                        Text("Saved Emails:", fontFamily = poppins)
-                        savedEmails.forEach { email ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { selectedEmail = email }
-                                    .background(
-                                        if (selectedEmail == email) Color.LightGray else Color.Transparent
-                                    )
-                                    .padding(8.dp)
-                            ) {
-                                Text(email, fontFamily = poppins)
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                    }
-                    OutlinedTextField(
-                        value = newEmail,
-                        onValueChange = { newEmail = it },
-                        label = { Text("Add New Email", fontFamily = poppins) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    val finalEmail = when {
-                        newEmail.isNotBlank() -> newEmail
-                        !selectedEmail.isNullOrBlank() -> selectedEmail
-                        else -> null
-                    }
-                    if (finalEmail.isNullOrBlank()) {
-                        Toast.makeText(
-                            context,
-                            "Please enter or select an email",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return@Button
-                    }
 
-                    scope.launch(Dispatchers.IO) {
-                        // save new email
+            if (showEmailDialog) {
+                AlertDialog(
+                    onDismissRequest = { if (!isSending) showEmailDialog = false },
 
-                        if (newEmail.isNotBlank()) {
-                            scanDisplayViewModel.saveEmail(newEmail)
-                            savedEmails = scanDisplayViewModel.getAllEmails()
-                            selectedEmail = newEmail
-                            newEmail = ""
-                        }
-                        try {
-                            val summaryList = scanDisplayViewModel.buildSummary(displayItems)
-                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(
-                                displayItems
-                            )
+                    title = { Text("Send Report", fontFamily = poppins) },
 
-                            val pdfFile = scanDisplayViewModel.generateScanReportPdf(
-                                context,
-                                summaryList,
-                                matched,
-                                unmatched
-                            )
-
-                            println("=== Trying to send email to $finalEmail ===")
-
-                            scanDisplayViewModel.sendEmailHostinger(
-                                sendEmail = "android@loyalstring.com",
-                                sendPass = "Loyal@123",
-                                recipients = listOf(finalEmail),
-                                subject = "Inventory Scan Report",
-                                body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
-                                type = "text/html",
-                                attachments = mapOf(pdfFile.name to pdfFile.absolutePath)
-                            )
-
-                            println("=== Email sent successfully ===")
-
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    "Report sent to $finalEmail",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                    text = {
+                        Column {
+                            if (savedEmails.isNotEmpty()) {
+                                Text("Saved Emails:", fontFamily = poppins)
+                                savedEmails.forEach { email ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(enabled = !isSending) {
+                                                selectedEmail = email
+                                                newEmail = email // optional: auto fill
+                                            }
+                                            .background(
+                                                if (selectedEmail == email) Color.LightGray else Color.Transparent
+                                            )
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(email, fontFamily = poppins)
+                                    }
+                                }
+                                Spacer(Modifier.height(12.dp))
                             }
 
-                        } catch (e: Exception) {
-                            println("=== Email send failed: ${e.message} ===")
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG)
-                                    .show()
-                            }
+                            OutlinedTextField(
+                                value = newEmail,
+                                onValueChange = { newEmail = it },
+                                enabled = !isSending,
+                                label = { Text("Add New Email", fontFamily = poppins) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
+                    },
+
+                    confirmButton = {
+                        GradientButtonNew(
+                            text = "Send",
+                            enabled = true,
+                            isLoading = isSending,
+                            onClick = {
+                                val finalEmail = when {
+                                    newEmail.isNotBlank() -> newEmail.trim()
+                                    !selectedEmail.isNullOrBlank() -> selectedEmail!!.trim()
+                                    else -> null
+                                }
+
+                                if (finalEmail.isNullOrBlank()) {
+                                    Toast.makeText(context, "Please enter or select an email", Toast.LENGTH_SHORT).show()
+                                    return@GradientButtonNew
+                                }
+
+                                // ✅ keep dialog open + show loader
+                                isSending = true
+
+                                // ✅ copy state now (important)
+                                val itemsForReport = displayItems.toList()
+                                val emailToSend = finalEmail
+                                val newEmailToSave = newEmail.trim()
+
+                                scope.launch {
+                                    try {
+                                        // ✅ allow UI to draw loader first
+                                        yield()
+
+                                        // save new email (IO)
+                                        if (newEmailToSave.isNotBlank() && !savedEmails.contains(newEmailToSave)) {
+                                            withContext(Dispatchers.IO) { scanDisplayViewModel.saveEmail(newEmailToSave) }
+                                            savedEmails = withContext(Dispatchers.IO) { scanDisplayViewModel.getAllEmails() }
+                                            selectedEmail = newEmailToSave
+                                            newEmail = ""
+                                        }
+
+                                        // build + generate file (IO)
+                                        val reportFile = withContext(Dispatchers.IO) {
+                                            val summaryList = scanDisplayViewModel.buildSummary(itemsForReport)
+                                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport)
+
+                                            scanDisplayViewModel.generateScanReportExcel(
+                                                context, summaryList, matched, unmatched
+                                            )
+                                        }
+
+                                        // send email (IO)
+                                        withContext(Dispatchers.IO) {
+                                            scanDisplayViewModel.sendEmailHostinger(
+                                                sendEmail = "android@loyalstring.com",
+                                                sendPass = "Loyal@123",
+                                                recipients = listOf(emailToSend),
+                                                subject = "Inventory Scan Report",
+                                                body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
+                                                type = "text/html",
+                                                attachments = mapOf(reportFile.name to reportFile.absolutePath)
+                                            )
+                                        }
+
+                                       // Toast.makeText(context, "Report sent to $emailToSend", Toast.LENGTH_LONG).show()
+                                        showEmailDialog = false
+
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        isSending = false
+                                    }
+                                }
+                            }
+                        )
+                    },
+
+                    dismissButton = {
+                        GradientButtonNew(
+                            text = "Cancel",
+                            enabled = !isSending,
+                            isLoading = false,
+                            onClick = { showEmailDialog = false }
+                        )
                     }
-
-                    // build lists
-
-                    // showSuccessDialog = true
-
-
-                    showEmailDialog = false
-                }) {
-                    Text("Send", fontFamily = poppins)
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showEmailDialog = false }) {
-                    Text("Cancel", fontFamily = poppins)
-                }
+                )
             }
-        )
-    }
+
+
 
     if (showSuccessDialog) {
         AlertDialog(
@@ -1320,7 +1331,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     if (showItemDialog && selectedItem != null) {
         ItemDetailsDialog(item = selectedItem!!, onDismiss = { showItemDialog = false })
     }
-    if (showEmailDialog) {
+    /*if (showEmailDialog) {
         AlertDialog(
             onDismissRequest = { showEmailDialog = false },
             title = { Text("Select or Add Email") },
@@ -1388,12 +1399,20 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 displayItems
                             )
 
-                            val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                           *//* val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                                context,
+                                summaryList,
+                                matched,
+                                unmatched
+                            )*//*
+
+                            val pdfFile = scanDisplayViewModel.generateScanReportExcel(
                                 context,
                                 summaryList,
                                 matched,
                                 unmatched
                             )
+
 
                             scanDisplayViewModel.sendEmailHostinger(
                                 sendEmail = "android@loyalstring.com",
@@ -1417,9 +1436,55 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 )
             }
         )
-    }
+    }*/
 
 }
+
+@Composable
+fun GradientButtonNew(
+    text: String,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(Color(0xFFD32940), Color(0xFF5231A7))
+    )
+
+    Button(
+        onClick = onClick,
+        enabled = enabled && !isLoading,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(gradient, RoundedCornerShape(10.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text("Sending...", color = Color.White, fontFamily = poppins)
+                } else {
+                    Text(text, color = Color.White, fontFamily = poppins)
+                }
+            }
+        }
+    }
+}
+
 
 typealias StockItem = com.loyalstring.rfid.data.model.stockVerification.Item
 
