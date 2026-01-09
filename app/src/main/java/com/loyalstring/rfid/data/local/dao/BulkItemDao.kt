@@ -119,4 +119,27 @@ interface BulkItemDao {
     @Query("SELECT * FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs)")
     suspend fun getItemsByEpcs(epcs: List<String>): List<BulkItem>
 
+
+    @Query("""
+    SELECT * FROM bulk_items
+    WHERE scannedStatus IN ('Unmatched','Not Found')
+    LIMIT :limit OFFSET :offset
+""")
+    /*@Query("""
+    SELECT * FROM bulk_items
+    WHERE
+    scannedStatus IN ('Unmatched','Not Found')
+    OR scannedStatus IS NULL
+    OR TRIM(scannedStatus) = ''
+""")*/
+    suspend fun getUnmatchedPaged(limit: Int, offset: Int): List<BulkItem>
+
+
+    @Query("""
+    SELECT * FROM bulk_items
+    WHERE scannedStatus IN ('Matched','Found')
+    LIMIT :limit OFFSET :offset
+""")
+    suspend fun getMatchedPaged(limit: Int, offset: Int): List<BulkItem>
+
 }
