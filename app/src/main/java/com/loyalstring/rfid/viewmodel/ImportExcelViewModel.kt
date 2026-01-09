@@ -152,6 +152,8 @@ class ImportExcelViewModel @Inject constructor(
                             epcVal = "TEMP-${System.currentTimeMillis()}-${i}"
                         }
 
+                        Log.d("@@ epcVal","epcVal"+epcVal)
+
                         try {
                             val item = createBulkItemFromRow(
                                 row,

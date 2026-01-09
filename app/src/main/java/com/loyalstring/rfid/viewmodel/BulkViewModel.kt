@@ -1585,7 +1585,7 @@ class BulkViewModel @Inject constructor(
 
                 // ✅ API fetch
                 val response = bulkRepository.syncBulkItemsFromServer(request)
-                Log.d("response", "response=$response")
+
                 val bulkItems = response.asSequence()
                     .filter {
                         (it.status == "ApiActive" || it.status == "Active") &&
@@ -1636,11 +1636,24 @@ class BulkViewModel @Inject constructor(
                                 null
                             }
                         } else {
+
                             if (!item.itemCode.isNullOrBlank()) {
-                                val hexValue = item.itemCode.toByteArray()
-                                    .joinToString("") { String.format("%02X", it) }
-                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
+
+                                val hexValue = convertToHex(item.itemCode)
+
+                                item.copy(
+                                    rfid = "",
+                                    epc = hexValue,
+                                    tid = hexValue
+                                )
+
                             } else null
+
+//                            if (!item.itemCode.isNullOrBlank()) {
+//                                val hexValue = item.itemCode.toByteArray()
+//                                    .joinToString("") { String.format("%02X", it) }
+//                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
+//                            } else null
                         }
 
                     // ✅ VALIDATION + INSERT LIST
@@ -1728,6 +1741,22 @@ class BulkViewModel @Inject constructor(
         }
     }
 
+    fun convertToHex(input: String): String {
+        val hexBuilder = StringBuilder()
+
+        // Step 1: Convert each character to 2-digit hex (ASCII)
+        for (ch in input) {
+            val hex = String.format("%02X", ch.code)
+            hexBuilder.append(hex)
+        }
+
+        // Step 2: Pad with "00" at the START until length % 4 == 0
+        while (hexBuilder.length % 4 != 0) {
+            hexBuilder.insert(0, "00")
+        }
+
+        return hexBuilder.toString()
+    }
 
 
 
