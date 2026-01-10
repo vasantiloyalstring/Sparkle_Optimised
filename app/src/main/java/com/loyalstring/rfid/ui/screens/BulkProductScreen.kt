@@ -75,9 +75,13 @@ fun BulkProductScreen(
 
     var clickedIndex by remember { mutableStateOf<Int?>(null) }
 
-    var selectedPower by remember {
-        mutableStateOf(
-            UserPreferences.getInstance(context).getInt(UserPreferences.KEY_PRODUCT_COUNT)
+
+    var selectedPower by remember { mutableIntStateOf(5) }
+
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_PRODUCT_COUNT,
+            5
         )
     }
 

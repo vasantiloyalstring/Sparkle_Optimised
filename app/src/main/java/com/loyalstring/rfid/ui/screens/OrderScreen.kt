@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -124,7 +125,17 @@ fun OrderScreen(
     val deliveryChallanViewModel: DeliveryChallanViewModel = hiltViewModel()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var selectedPower by remember { mutableStateOf(10) }
+  //  var selectedPower by remember { mutableStateOf(10) }
+
+    var selectedPower by remember { mutableIntStateOf(10) }
+
+    LaunchedEffect(Unit) {
+        selectedPower = userPreferences.getInt(
+            UserPreferences.KEY_ORDER_COUNT,
+            10
+        )
+    }
+
     var isScanning by remember { mutableStateOf(false) }
 //var showSuccessDialog by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }

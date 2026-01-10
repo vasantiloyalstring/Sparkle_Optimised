@@ -104,11 +104,15 @@ fun StockTransferScreen(
         selectedItems.size == filteredItems.size && filteredItems.isNotEmpty()
     }
 
-    var selectedPower by remember {
-        mutableIntStateOf(UserPreferences.getInstance(context).getInt(
-            UserPreferences.KEY_STOCK_TRANSFER_COUNT))
+
+    var selectedPower by remember { mutableIntStateOf(10) }
+
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_STOCK_TRANSFER_COUNT,
+            10
+        )
     }
-    remember { mutableIntStateOf(10) }
 
     var selectedTransferType by remember { mutableStateOf("Transfer Type") }
     var selectedFrom by remember { mutableStateOf("From") }

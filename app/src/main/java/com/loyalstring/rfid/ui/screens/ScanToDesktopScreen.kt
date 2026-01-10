@@ -29,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,9 +65,13 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     val rfidMap by viewModel.rfidMap.collectAsState()
 
     var firstPress by remember { mutableStateOf(false) }
-    var selectedPower by remember {
-        mutableStateOf(
-            UserPreferences.getInstance(context).getInt(UserPreferences.KEY_PRODUCT_COUNT)
+
+    var selectedPower by remember { mutableIntStateOf(5) }
+
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_PRODUCT_COUNT,
+            5
         )
     }
     var shouldNavigateBack by remember { mutableStateOf(false) }

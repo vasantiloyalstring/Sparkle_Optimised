@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -290,9 +291,15 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var selectedItem by remember { mutableStateOf<BulkItem?>(null) }
     var showItemDialog by remember { mutableStateOf(false) }
 
-    var selectedPower by remember { mutableStateOf(UserPreferences.getInstance(context).getInt(
-        UserPreferences.KEY_INVENTORY_COUNT)) }
-    remember { mutableStateOf("30") }
+
+    var selectedPower by remember { mutableIntStateOf(30) }
+
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_INVENTORY_COUNT,
+            30
+        )
+    }
     var _isResetting by remember { mutableStateOf(false) }
     var isScanning by remember { mutableStateOf(false) }
     var showEmailDialog by remember { mutableStateOf(false) }
