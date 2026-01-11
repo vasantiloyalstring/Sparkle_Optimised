@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.google.gson.Gson
 import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
@@ -93,6 +94,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
 
 
 // column widths
@@ -171,6 +173,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         )
     }
+    val _isLoadingCommon = MutableStateFlow(false)
+    val isLoadingCommon by _isLoadingCommon.collectAsState()
     val _isLoadingUI = MutableStateFlow(false)
     val isLoadingUI by _isLoadingUI.collectAsState()
     val isLoading by productListViewModel.isLoading.collectAsState()
@@ -314,7 +318,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val scannedFiltered by bulkViewModel.scannedFilteredItems
     val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
 
-    // ✅ Optimized: Use sequence for lazy evaluation
+    // ✅ Optimized: Use sequence for lazy evaluation // Commented
     /*val summaryItems by remember(navFilteredItems, matchedEpcs) {
         derivedStateOf {
             navFilteredItems.asSequence()
@@ -428,7 +432,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         // ✅ Compute on background thread to avoid blocking UI
         isComputingScopeItems = true
         val scopeStartTime = System.currentTimeMillis()
-        _isLoadingUI.value = true
+        if (!isScanning)
+            _isLoadingUI.value = true
         withContext(Dispatchers.Default) {
             try {
                 // Pre-compute filter sets for O(1) lookups
@@ -667,6 +672,12 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
+    fun writeToFile(context: Context, json: String): File {
+        val file = File(context.getExternalFilesDir(null), "stock_items.json")
+        file.writeText(json)
+        return file
+    }
+
     // Avoid feeding UI projection back into VM during scanning to reduce churn
 
     Scaffold(
@@ -696,21 +707,29 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 SummaryRow(currentLevel, displayItems, selectedMenu)
                 ScanBottomBarInventory(
                     onSave = { /* save */
+                        _isLoadingCommon.value = true
+                        scope.launch(Dispatchers.IO) {
+                            val clientCode = employee?.clientCode       // 🔁 replace
 
-                        val clientCode = employee?.clientCode       // 🔁 replace
+                            val scannedItems = buildItemsForUpload(scopeItems)
 
-                        val scannedItems = buildItemsForUpload(scopeItems)
+                            Log.d("SAVE_DEBUG", "scopeItems=${scopeItems.size} " +
+                                    "matched=${scopeItems.count { it.scannedStatus == "Matched" }} " +
+                                    "unmatched=${scopeItems.count { it.scannedStatus == "Unmatched" }}")
 
-                        Log.d("SAVE_DEBUG", "scopeItems=${scopeItems.size} " +
-                                "matched=${scopeItems.count { it.scannedStatus == "Matched" }} " +
-                                "unmatched=${scopeItems.count { it.scannedStatus == "Unmatched" }}")
-
-                        Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
-                                "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
-                                "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
-                        //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
-                        //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
-                        scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 500)
+                            Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
+                                    "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
+                                    "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
+                            //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
+                            //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
+                            /*val json = Gson().toJson(scannedItems)
+                            val file = writeToFile(context, json)
+                            Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")*/
+                            scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 5000)
+                            withContext(Dispatchers.Main) {
+                                _isLoadingCommon.value = false
+                            }
+                        }
                     },
                     onList = { showMenu = true },
                     onScan = {
@@ -943,8 +962,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
         // 🔹 Loader overlay (TOP LEVEL) - reuse existing shared loader (productListViewModel / bulkViewModel)
+
         val bulkIsLoading by bulkViewModel.isLoading.collectAsState()
-        val showLoader = isLoading || bulkIsLoading || isLoadingAllItems || isLoadingUI
+        val showLoader = isLoading || bulkIsLoading || isLoadingAllItems || isLoadingUI || isLoadingCommon
         
         if (showLoader) {
             Box(
@@ -960,6 +980,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         when {
                             isLoadingAllItems -> "Loading all items... (${allItems.size} loaded)"
                             bulkIsLoading -> "Please wait..."
+                            isLoadingCommon -> "Please wait..."
                             else -> "Loading products..."
                         },
                         color = Color.White,
@@ -969,6 +990,158 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }
+    /*if (showEmailDialog) {
+            AlertDialog(
+                onDismissRequest = { showEmailDialog = false },
+                title = { Text("Send Report", fontFamily = poppins) },
+                text = {
+                    Column {
+                        if (savedEmails.isNotEmpty()) {
+                            Text("Saved Emails:", fontFamily = poppins)
+                            savedEmails.forEach { email ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { selectedEmail = email }
+                                        .background(
+                                            if (selectedEmail == email) Color.LightGray else Color.Transparent
+                                        )
+                                        .padding(8.dp)
+                                ) {
+                                    Text(email, fontFamily = poppins)
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        OutlinedTextField(
+                            value = newEmail,
+                            onValueChange = { newEmail = it },
+                            label = { Text("Add New Email", fontFamily = poppins) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val finalEmail = when {
+                            newEmail.isNotBlank() -> newEmail
+                            !selectedEmail.isNullOrBlank() -> selectedEmail
+                            else -> null
+                        }
+                        if (finalEmail.isNullOrBlank()) {
+                            Toast.makeText(
+                                context,
+                                "Please enter or select an email",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+                        _isLoadingCommon.value = true
+                        scope.launch(Dispatchers.IO) {
+                            // save new email
+
+                            if (newEmail.isNotBlank()) {
+                                scanDisplayViewModel.saveEmail(newEmail)
+                                savedEmails = scanDisplayViewModel.getAllEmails()
+                                selectedEmail = newEmail
+                                newEmail = ""
+                            }
+                            try {
+                                *//*val summaryList = scanDisplayViewModel.buildSummary(displayItems)
+                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(
+                                displayItems
+                            )
+
+                            val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                                context,
+                                summaryList,
+                                matched,
+                                unmatched
+                            )*//*
+
+                            try {
+                                val summary = scanDisplayViewModel.buildSummary(displayItems)
+                                val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(
+                                    displayItems
+                                )
+
+                                *//*val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                                    context = context,
+                                    allItemsSummary = summary,
+                                    matched
+                                )*//*
+
+                                val pdfFile = scanDisplayViewModel.generateScanReportExcel(
+                                    context = context,
+                                    allItemsSummary = summary,
+                                    matched,
+                                    unmatched
+                                )
+
+                                Toast.makeText(context, "PDF Created: ${pdfFile.name}", Toast.LENGTH_LONG).show()
+
+
+                                println("=== Trying to send email to $finalEmail ===")
+
+                                scanDisplayViewModel.sendEmailHostinger(
+                                    sendEmail = "android@loyalstring.com",
+                                    sendPass = "Loyal@123",
+                                    recipients = listOf(finalEmail),
+                                    subject = "Inventory Scan Report",
+                                    body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
+                                    type = "text/html",
+                                    attachments = mapOf(pdfFile.name to pdfFile.absolutePath)
+                                )
+
+                                withContext(Dispatchers.Main) {
+                                    _isLoadingCommon.value = false
+                                }
+
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "PDF Error: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+
+
+
+                            println("=== Email sent successfully ===")
+
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "Report sent to $finalEmail",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+
+                        } catch (e: Exception) {
+                            println("=== Email send failed: ${e.message} ===")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG)
+                                    .show()
+                            }
+                        }
+                    }
+
+                    // build lists
+
+                    // showSuccessDialog = true
+
+
+                    showEmailDialog = false
+                }) {
+                    Text("Send", fontFamily = poppins)
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showEmailDialog = false }) {
+                    Text("Cancel", fontFamily = poppins)
+                }
+            }
+        )
+    }*/
+
+
 
             if (showEmailDialog) {
                 AlertDialog(
@@ -1053,10 +1226,14 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                             val summaryList = scanDisplayViewModel.buildSummary(itemsForReport)
                                             val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport)
 
-                                            scanDisplayViewModel.generateScanReportExcel(
-                                                context, summaryList, matched, unmatched
-                                            )
-                                        }
+                                    /*scanDisplayViewModel.generateScanReportExcel(
+                                        context, summaryList, matched, unmatched
+                                    )*/
+                                    scanDisplayViewModel.generateScanReportCsv(
+                                        context, summaryList, matched, unmatched
+                                    )
+
+                                }
 
                                         // send email (IO)
                                         withContext(Dispatchers.IO) {

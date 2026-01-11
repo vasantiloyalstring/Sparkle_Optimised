@@ -7,8 +7,14 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody
+import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
+import okio.BufferedSink
+import okio.GzipSink
+import okio.buffer
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -30,6 +36,7 @@ object NetWorkRetrofitClient {
     @NormalRetrofit
     fun provideNormalOkHttp(): OkHttpClient =
         OkHttpClient.Builder()
+            //.addInterceptor(GzipRequestInterceptor())
             .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.MINUTES)
@@ -106,4 +113,30 @@ object NetWorkRetrofitClient {
     fun provideDefaultApi(
         @NormalRetrofit api: RetrofitInterface
     ): RetrofitInterface = api
+}
+
+class GzipRequestInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val original = chain.request()
+        if (original.body == null || original.header("Content-Encoding") != null) {
+            return chain.proceed(original)
+        }
+
+        val compressedRequest = original.newBuilder()
+            .header("Content-Encoding", "gzip")
+            .method(original.method, gzip(original.body!!))
+            .build()
+
+        return chain.proceed(compressedRequest)
+    }
+
+    private fun gzip(body: RequestBody): RequestBody =
+        object : RequestBody() {
+            override fun contentType() = body.contentType()
+            override fun writeTo(sink: BufferedSink) {
+                val gzipSink = GzipSink(sink).buffer()
+                body.writeTo(gzipSink)
+                gzipSink.close()
+            }
+        }
 }

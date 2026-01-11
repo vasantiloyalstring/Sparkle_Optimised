@@ -298,6 +298,10 @@ interface RetrofitInterface {
     @POST("api/ProductMaster/AddStockVerificationBySession")
     suspend  fun stockVarificationNew(@Body stockVerificationRequestData: StockVerificationRequestData): Response<ScanSessionResponse>
 
+    @POST("api/ProductMaster/AddStockVerificationBySession")
+    suspend fun uploadStock(@Body body: RequestBody): Response<ScanSessionResponse>
+
+
     @POST("/api/RFIDDevice/DeleteRFIDByClientAndDevice")
     suspend fun clearStockData(@Body req: ClearStockDataModelReq): Response<ClearStockDataModelResponse>
 
