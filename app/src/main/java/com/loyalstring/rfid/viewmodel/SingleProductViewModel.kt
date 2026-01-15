@@ -24,6 +24,8 @@ import com.loyalstring.rfid.data.model.addSingleItem.ProductModel
 import com.loyalstring.rfid.data.model.addSingleItem.PurityModel
 import com.loyalstring.rfid.data.model.addSingleItem.SKUModel
 import com.loyalstring.rfid.data.model.addSingleItem.VendorModel
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.data.EditDataRequest
@@ -487,6 +489,7 @@ class SingleProductViewModel @Inject constructor(
             branchType    = this.BranchType,
             designId      = this.DesignId,
             totalWt =  this.TotalWeight
+
         )
     }
 

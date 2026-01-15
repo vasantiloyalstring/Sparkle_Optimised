@@ -4,8 +4,12 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.loyalstring.rfid.data.local.entity.BulkItem
+import com.loyalstring.rfid.data.model.order.BulkItemWithDetails
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.data.IdNamePair
 import kotlinx.coroutines.flow.Flow
 
@@ -106,5 +110,15 @@ interface BulkItemDao {
     // ✅ NEW: batch fetch (fast)
     @Query("SELECT * FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs)")
     suspend fun getItemsByEpcs(epcs: List<String>): List<BulkItem>
+
+    @Insert
+    suspend fun insertStones(stones: List<Stone>)
+
+    @Insert
+    suspend fun insertDiamonds(diamonds: List<Diamond>)
+
+    @Transaction
+    @Query("SELECT * FROM bulk_items")
+    suspend fun getAllBulkItems(): List<BulkItemWithDetails>
 
 }

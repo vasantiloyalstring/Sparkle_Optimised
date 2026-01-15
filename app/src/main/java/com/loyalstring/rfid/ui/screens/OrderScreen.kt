@@ -718,7 +718,7 @@ fun OrderScreen(
             }
 
             // 3️⃣ Duplicate skip
-            if (productList.any { it.rfidCode == matchedItem.rfid }) {
+            if (productList.any { it.tid == matchedItem.tid }) {
                 Log.d("RFIDScan", "⚠️ Duplicate RFID skipped: ${matchedItem.rfid}")
                 return@forEach
             }
@@ -822,7 +822,7 @@ fun OrderScreen(
                 makingPerGram = makingPerGram
             )
 
-            if (productList.none { it.rfidCode == productDetail.rfidCode }) {
+            if (productList.none { it.itemCode == productDetail.itemCode }) {
                 productList.add(productDetail)
                 Log.d("RFIDScan", "✅ Added ${productDetail.itemCode} (${productDetail.rfidCode})")
             } else {

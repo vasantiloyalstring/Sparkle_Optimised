@@ -433,8 +433,8 @@ fun SampleOutScreen(
             }
 
             // 3️⃣ Duplicate skip
-            if (productList.any { it.RFIDCode == matchedItem.rfid }) {
-                Log.d("RFIDScan", "⚠️ Duplicate RFID skipped: ${matchedItem.rfid}")
+            if (productList.any { it.ItemCode == matchedItem.itemCode }) {
+                Log.d("RFIDScan", "⚠️ Duplicate RFID skipped: ${matchedItem.itemCode}")
                 return@forEach
             }
 
@@ -595,7 +595,7 @@ fun SampleOutScreen(
                 CustomerName = ""
             )
 
-            if (productList.none { it.RFIDCode == productDetail.RFIDCode }) {
+            if (productList.none { it.ItemCode == productDetail.ItemCode }) {
                 productList.add(productDetail)
                 Log.d("RFIDScan", "✅ Added ${productDetail.ItemCode} (${productDetail.RFIDCode})")
             } else {

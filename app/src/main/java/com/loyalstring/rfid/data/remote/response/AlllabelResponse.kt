@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.data.remote.response
 
 import com.google.gson.annotations.SerializedName
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 
 data class AlllabelResponse(
     @SerializedName("labelList") val labelList: List<LabelItem>?
@@ -97,6 +99,12 @@ data class AlllabelResponse(
         @SerializedName("PacketId") val packetId: Int?,
         @SerializedName("PacketName") val packetName: String?,
         @SerializedName("BranchType") val branchType: String?,
+        @SerializedName("Stones")
+        val stones: List<Stone>?,
+
+        @SerializedName("Diamonds")
+        val Diamonds: List<Diamond>?,
+
 
 
 

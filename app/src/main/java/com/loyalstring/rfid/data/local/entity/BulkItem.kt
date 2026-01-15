@@ -4,6 +4,10 @@ import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
+import com.loyalstring.rfid.data.local.converters.StoneDiamondConverter
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
@@ -13,6 +17,7 @@ import kotlinx.parcelize.Parcelize
     tableName = "bulk_items",
     indices = [Index(value = ["epc"], unique = true)]
 )
+@TypeConverters(StoneDiamondConverter::class)
 data class BulkItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val productName: String?,
@@ -68,7 +73,8 @@ data class BulkItem(
     var isScanned: Boolean = false,
     val totalWt: Double?,
 
-) : Parcelable {
+
+    ) : Parcelable {
     // ❗ Declare outside constructor, so it's excluded from Parcelable
     @IgnoredOnParcel
     var uhfTagInfo: UHFTAGInfo? = null

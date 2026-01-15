@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.ui.utils
 
 import com.loyalstring.rfid.data.local.entity.BulkItem
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
 
 
@@ -64,6 +66,7 @@ rfid=this.rfidCode?:"",
         packetName = this.packetName ?: "",
             branchType = this.branchType ?: "",
             totalWt = this.totalWeight?.toDoubleOrNull() ?: 0.0,
+
 
     ).apply {
         uhfTagInfo = null

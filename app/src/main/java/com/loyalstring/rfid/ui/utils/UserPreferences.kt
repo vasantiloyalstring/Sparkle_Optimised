@@ -175,7 +175,13 @@ class UserPreferences @Inject constructor(
     }
 
     fun getInt(key: String, default: Int = 0): Int {
-        return prefs.getInt(key, default)
+        try {
+            return prefs.getInt(key, default)
+        }catch (e : Exception)
+        {
+            return default
+        }
+
     }
 
     fun saveCustomApi(url: String) {

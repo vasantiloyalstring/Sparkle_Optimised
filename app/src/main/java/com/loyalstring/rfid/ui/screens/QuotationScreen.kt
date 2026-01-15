@@ -265,11 +265,11 @@ fun QuotationScreen(
     /*itemcode*/
     LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
+        Log.d("query", "query: ${query}")
         if (query.isEmpty()) return@LaunchedEffect
 
         val matchedItem = allItems.firstOrNull {
-            it.itemCode.equals(query, ignoreCase = true) ||
-                    it.rfid.equals(query, ignoreCase = true)
+            it.itemCode.equals(query, ignoreCase = true)
         }
 
         if (matchedItem != null) {
@@ -277,7 +277,7 @@ fun QuotationScreen(
             Log.d("ManualEntry", "Found: ${matchedItem.itemCode}")
 
             // Prevent duplicates by RFID
-            if (productList.any { it.RFIDCode.equals(matchedItem.rfid, ignoreCase = true) }) {
+            if (productList.any { it.ItemCode.equals(matchedItem.itemCode, ignoreCase = true) }) {
                 Log.d("ManualEntry", "⚠️ Already exists: ${matchedItem.itemCode}")
                 return@LaunchedEffect
             }
@@ -509,8 +509,8 @@ fun QuotationScreen(
             }
 
             // 3️⃣ Duplicate skip
-            if (productList.any { it.RFIDCode == matchedItem.rfid }) {
-                Log.d("RFIDScan", "⚠️ Duplicate RFID skipped: ${matchedItem.rfid}")
+            if (productList.any { it.tid == matchedItem.tid }) {
+                Log.d("RFIDScan", "⚠️ Duplicate RFID skipped: ${matchedItem.tid}")
                 return@forEach
             }
 
@@ -671,7 +671,7 @@ fun QuotationScreen(
                 //CustomerName = ""
             )
 
-            if (productList.none { it.RFIDCode == productDetail.RFIDCode }) {
+            if (productList.none { it.ItemCode == productDetail.ItemCode }) {
                 productList.add(productDetail)
                 Log.d("RFIDScan", "✅ Added ${productDetail.ItemCode} (${productDetail.RFIDCode})")
             } else {
@@ -712,12 +712,12 @@ fun QuotationScreen(
 
             // ✅ Match multiple fields: RFID + ItemCode + ProductCode + TID
             val matchedItem = currentItems.firstOrNull { item ->
-                val codeRfid     = normalize(item.rfid)
+               // val codeRfid     = normalize(item.rfid)
                 val codeItemCode = normalize(item.itemCode)
                 val codeProduct  = normalize(item.productCode)
                 val codeTid      = normalize(item.tid)
 
-                val candidates = listOf(codeRfid, codeItemCode, codeProduct, codeTid)
+                val candidates = listOf( codeItemCode, codeProduct, codeTid)
 
                 candidates.any { code ->
                     code == scanned ||           // exact match
@@ -732,8 +732,8 @@ fun QuotationScreen(
             }
 
             // 2️⃣ Duplicate skip
-            if (productList.any { it.RFIDCode.equals(matchedItem.rfid, ignoreCase = true) }) {
-                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.itemCode}")
+            if (productList.any { it.tid.equals(matchedItem.tid, ignoreCase = true) }) {
+                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.tid}")
                 return@setOnBarcodeScanned
             }
 

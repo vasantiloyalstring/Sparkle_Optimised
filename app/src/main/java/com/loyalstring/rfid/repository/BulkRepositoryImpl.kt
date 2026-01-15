@@ -8,6 +8,8 @@ import com.loyalstring.rfid.data.local.dao.EpcDao
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
@@ -120,7 +122,7 @@ class BulkRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getAllLabeledStock(requestBody)
             if (response.isSuccessful) {
-                Log.d("## response","response"+response)
+               // Log.d("## response","response"+response)
                 response.body() ?: emptyList()
             } else {
                 emptyList()
@@ -192,6 +194,30 @@ class BulkRepositoryImpl @Inject constructor(
     suspend fun getItemCountByEpcs(epcs: List<String>): Int {
         return bulkItemDao.getItemCountByEpcs(epcs)
     }
+
+    suspend fun insertBulkItemWithDetails(
+        bulkItem: BulkItem,
+        stones: List<Stone>,
+        diamonds: List<Diamond>
+    ) {
+        // 1️⃣ insert parent
+        val bulkItemId = bulkItemDao.insertSingleItem(bulkItem).toInt()
+
+        // 2️⃣ insert stones
+        if (stones.isNotEmpty()) {
+            bulkItemDao.insertStones(
+                stones.map { it.copy(bulkItemId = bulkItemId) }
+            )
+        }
+
+        // 3️⃣ insert diamonds
+        if (diamonds.isNotEmpty()) {
+            bulkItemDao.insertDiamonds(
+                diamonds.map { it.copy(bulkItemId = bulkItemId) }
+            )
+        }
+    }
+
 
 
 }

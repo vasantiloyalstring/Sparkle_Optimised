@@ -1,9 +1,28 @@
 package com.loyalstring.rfid.data.model.order
 import android.os.Parcelable
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import com.loyalstring.rfid.data.local.entity.BulkItem
 import kotlinx.parcelize.Parcelize
-
+@Entity(
+    tableName = "bulk_item_diamonds",
+    foreignKeys = [
+        ForeignKey(
+            entity = BulkItem::class,
+            parentColumns = ["id"],
+            childColumns = ["bulkItemId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("bulkItemId")]
+)
 @Parcelize
-data class Diamond( val id: Int,
+data class Diamond(   @PrimaryKey(autoGenerate = true)
+                      val id: Int = 0,
+
+                      val bulkItemId: Int,
                     val diamondName: String?,
                     val diamondProductName: String?,
                     val diamondWeight: String?,

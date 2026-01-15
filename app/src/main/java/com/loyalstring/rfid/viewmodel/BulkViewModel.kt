@@ -23,6 +23,9 @@ import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.ScannedItem
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.model.order.Diamond
+import com.loyalstring.rfid.data.model.order.Stone
+
 import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
@@ -1185,7 +1188,8 @@ class BulkViewModel @Inject constructor(
                     packetId = 0,
                     packetName = "",
                     branchType = "",
-                    totalWt = 0.0
+                    totalWt = 0.0,
+
                 ).apply {
                     uhfTagInfo = tag
                 }
@@ -1667,6 +1671,83 @@ class BulkViewModel @Inject constructor(
                             Log.e("SYNC_NOT_SYNCED", info)
                         } else {
                             processedItems.add(updatedItem)
+
+                            val apiItem = response.first { it.itemCode == updatedItem.itemCode }
+
+                            val stones: List<Stone> = apiItem.stones?.map { s ->
+                                Stone(
+                                    bulkItemId = s.bulkItemId,              // REQUIRED FK
+
+                                    StoneName = s.StoneName,
+                                    StoneWeight = s.StoneWeight,
+                                    StonePieces = s.StonePieces,
+                                    StoneRate = s.StoneRate,
+                                    StoneAmount = s.StoneAmount,
+                                    Description = s.Description,
+                                    ClientCode = s.ClientCode,
+                                    LabelledStockId = s.LabelledStockId,
+                                    CompanyId = s.CompanyId,
+                                    CounterId = s.CounterId,
+                                    BranchId = s.BranchId,
+                                    EmployeeId = s.EmployeeId,
+                                    CreatedOn = s.CreatedOn,
+                                    LastUpdated = s.LastUpdated,
+                                    StoneLessPercent = s.StoneLessPercent,
+                                    StoneCertificate = s.StoneCertificate,
+                                    StoneSettingType = s.StoneSettingType,
+                                    StoneRatePerPiece = s.StoneRatePerPiece,
+                                    StoneRateKarate = s.StoneRateKarate,
+                                    StoneStatusType = s.StoneStatusType
+                                )
+                            } ?: emptyList()
+                            val diamonds = apiItem.Diamonds?.map { d ->
+                                Diamond(
+                                    bulkItemId = 0,
+                                    diamondName = d.diamondName,
+                                    diamondProductName = d.diamondProductName,
+                                    diamondWeight = d.diamondWeight,
+                                    diamondSellRate = d.diamondSellRate,
+                                    diamondPieces = d.diamondPieces,
+                                    diamondClarity = d.diamondClarity,
+                                    diamondClarityName = d.diamondClarityName,
+                                    diamondColour = d.diamondColour,
+                                    diamondColourName = d.diamondColourName,
+                                    diamondCut = d.diamondCut,
+                                    diamondShape = d.diamondShape,
+                                    diamondShapeName = d.diamondShapeName,
+                                    diamondSize = d.diamondSize,
+                                    certificate = d.certificate,
+                                    settingType = d.settingType,
+                                    diamondSellAmount = d.diamondSellAmount,
+                                    diamondPurchaseAmount = d.diamondPurchaseAmount,
+                                    description = d.description,
+                                    clientCode = d.clientCode,
+                                    labelledStockId = d.labelledStockId ?: 0,
+                                    companyId = d.companyId ?: 0,
+                                    counterId = d.counterId ?: 0,
+                                    branchId = d.branchId ?: 0,
+                                    employeeId = d.employeeId ?: 0,
+                                    createdOn = d.createdOn ?: "",
+                                    lastUpdated = d.lastUpdated ?: "",
+                                    diamondMargin = d.diamondMargin,
+                                    totalDiamondWeight = d.totalDiamondWeight,
+                                    diamondSleve = d.diamondSleve,
+                                    diamondRate = d.diamondRate,
+                                    diamondAmount = d.diamondAmount,
+                                    diamondPacket = d.diamondPacket,
+                                    diamondBox = d.diamondBox,
+                                    diamondDescription = d.diamondDescription,
+                                    diamondSettingType = d.diamondSettingType,
+                                    diamondDeduct = d.diamondDeduct
+                                )
+                            } ?: emptyList()
+
+                            bulkRepository.insertBulkItemWithDetails(
+                                updatedItem,
+                                stones,
+                                diamonds
+                            )
+
                             synced++
                         }
 

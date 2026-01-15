@@ -38,8 +38,10 @@ import com.loyalstring.rfid.data.model.addSingleItem.PurityModel
 import com.loyalstring.rfid.data.model.addSingleItem.SKUModel
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
+import com.loyalstring.rfid.data.model.order.Diamond
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.model.setting.LocationItem
 
 @TypeConverters(UHFTAGInfoConverter::class)
@@ -67,7 +69,9 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         PageControlEntity::class,
         PendingOrderEntity::class,
         PendingEmployeeEntity::class,
-        OrderListCacheEntity::class
+        OrderListCacheEntity::class,
+        Stone::class,
+        Diamond::class
 
     ],
     version = 1

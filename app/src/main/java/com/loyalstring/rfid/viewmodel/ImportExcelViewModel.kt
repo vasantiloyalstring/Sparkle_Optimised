@@ -269,7 +269,8 @@ class ImportExcelViewModel @Inject constructor(
                             packetId = 0,
                             packetName = "",
                             branchType = "",
-                            totalWt = 0.0
+                            totalWt = 0.0,
+
                         )
                         items.add(item)
                         imported++
@@ -441,6 +442,7 @@ class ImportExcelViewModel @Inject constructor(
             branchType = "",
             totalWt = 0.0
         )
+
     }
 
   /*  fun syncAndMapRow(itemCode: String): String {

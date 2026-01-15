@@ -90,12 +90,18 @@ class SyncDataWorker @AssistedInject constructor(
 
                 SYNC_DATA_WORKER -> {
                     // ✅ Perform your repo sync call
-                    repo.syncBulkItemsFromServer(
-                        ClientCodeRequest(
-                            userPreferences.getEmployee(Employee::class.java)?.clientCode
+                    try {
+                        repo.syncBulkItemsFromServer(
+                            ClientCodeRequest(
+                                userPreferences.getEmployee(Employee::class.java)?.clientCode
+                            )
                         )
-                    )
-                    Result.success()
+                        Result.success()
+                    }catch (e: Exception)
+                    {
+                        Log.e("SYNC_DATA_WORKER", "Error not sync data: ${e.message}", e)
+                        return Result.retry()
+                    }
                 }
 
                 else -> {
