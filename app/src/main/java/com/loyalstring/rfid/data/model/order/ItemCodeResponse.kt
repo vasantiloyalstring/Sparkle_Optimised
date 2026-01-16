@@ -26,7 +26,7 @@ data class ItemCodeResponse(
     @SerializedName("PurityId") var PurityId: Int? = null,
     @SerializedName("Colour") var Colour: String? = null,
     @SerializedName("Size") var Size: String? = null,
-    @SerializedName("WeightCategory") var WeightCategory: String? = null,
+
     @SerializedName("GrossWt") var GrossWt: String? = null,
     @SerializedName("NetWt") var NetWt: String? = null,
     @SerializedName("CollectionName") var CollectionName: String? = null,
@@ -132,7 +132,8 @@ data class ItemCodeResponse(
     @SerializedName("BulkOrderNo") var BulkOrderNo: String? = null,
     @SerializedName("BulkOrderId") var BulkOrderId: Int? = null,
     @SerializedName("PurchasedWastageWt") var PurchasedWastageWt: Double? = null,
-    @SerializedName("StatusType") var StatusType: Boolean? = null
+    @SerializedName("StatusType") var StatusType: Boolean? = null,
+    @SerializedName("WeightCategory") var weightCategory: Int? = 0,
 
 
     )

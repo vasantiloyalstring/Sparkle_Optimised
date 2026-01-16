@@ -99,7 +99,7 @@ data class AlllabelResponse(
         @SerializedName("PacketId") val packetId: Int?,
         @SerializedName("PacketName") val packetName: String?,
         @SerializedName("BranchType") val branchType: String?,
-        @SerializedName("WeightCategories") val WeightCategories: String?,
+        @SerializedName("WeightCategory") val WeightCategory: String?,
         @SerializedName("Stones")
         val stones: List<Stone>?,
 

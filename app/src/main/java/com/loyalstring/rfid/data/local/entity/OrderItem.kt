@@ -59,5 +59,7 @@ data class OrderItem(
     val makingFixedAmt: String,
     val makingFixedWastage: String,
     val makingPerGram: String,
-    val CategoryWt:String
+    val CategoryWt:String,
+
+
 )

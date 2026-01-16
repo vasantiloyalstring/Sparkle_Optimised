@@ -1,7 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 
@@ -84,25 +83,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeRequest
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
-import com.itextpdf.io.image.ImageDataFactory
-import com.itextpdf.kernel.geom.PageSize
-import com.itextpdf.kernel.pdf.PdfDocument
-import com.itextpdf.kernel.pdf.PdfWriter
-import com.itextpdf.layout.Document
-import com.itextpdf.layout.element.AreaBreak
-import com.itextpdf.layout.element.Image
-import com.itextpdf.layout.element.Paragraph
-import com.itextpdf.layout.element.Table
-import com.itextpdf.layout.properties.AreaBreakType
-import com.itextpdf.layout.properties.HorizontalAlignment
-import com.itextpdf.layout.properties.TextAlignment
-import com.itextpdf.layout.properties.UnitValue
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.OrderItem
@@ -133,7 +118,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.net.URL
 import java.text.DecimalFormat
 import java.time.LocalDate
@@ -549,7 +533,7 @@ fun OrderScreenContent(
                     makingFixedAmt = coItem.MakingFixed,
                     makingFixedWastage = coItem.MakingFixedWastage,
                     makingPerGram = coItem.MakingPerGram.orEmpty(),
-                    CategoryWt = coItem.CategoryWt.toString()
+                    CategoryWt = coItem.WeightCategories.toString()
                 )
 
                 if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
@@ -1035,7 +1019,7 @@ fun OrderScreenContent(
                                 makingFixedAmt   = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
                                 makingPerGram    = selectedItem?.MakingPerGram?.toString() ?: "0",
-                                CategoryWt = selectedItem?.WeightCategory.toString()
+                                CategoryWt = selectedItem?.weightCategory.toString()
                             )
                             Log.d(
                                 "Added to Product List",
@@ -1162,7 +1146,7 @@ fun OrderScreenContent(
                 makingFixedAmt = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
                 makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
-                CategoryWt = selectedItem?.WeightCategory?.toString()?:""
+                CategoryWt = selectedItem?.weightCategory?.toString()?:""
 
 
             )
@@ -1327,7 +1311,7 @@ fun OrderScreenContent(
                             makingFixedWastage = selectedItem?.MakingFixedWastage?.toString()
                                 ?: "0",
                             makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
-                            CategoryWt = selectedItem?.WeightCategory?.toString() ?: ""
+                            CategoryWt = selectedItem?.weightCategory?.toString() ?: ""
 
 
                         )
@@ -1694,7 +1678,7 @@ fun OrderScreenContent(
                                                 HallmarkAmount =product.hallmarkAmt,
                                                 Stones = emptyList(),
                                                 Diamond = emptyList(),
-                                                CategoryWt = product.CategoryWt
+                                                WeightCategories = product.CategoryWt
                                             )
                                         },
 
@@ -1949,7 +1933,7 @@ fun OrderScreenContent(
                                             HallmarkAmount  =product.hallmarkAmt,
                                             Stones = emptyList(),
                                             Diamond = emptyList(),
-                                            CategoryWt = product.CategoryWt
+                                            WeightCategories = product.CategoryWt
                                         )
                                     },
 
@@ -2666,7 +2650,9 @@ fun CustomOrderRequest.toCustomOrderResponse(): CustomOrderResponse {
         ProductName = "",
         Id = 0,
         HallmarkAmount = this.HallmarkAmount.toString(),
-        WeightCategories = this.WeightCatogories.toString()
+        WeightCategories = this.WeightCatogories.toString(),
+        SKUId = this.SKUId?:0
+
     )
 }
 
@@ -2837,7 +2823,7 @@ fun mapItemCodeToOrderItem(
         makingFixedAmt = item.MakingFixedAmt ?: "",
         makingFixedWastage = item.MakingFixedWastage ?: "",
         makingPerGram = item.MakingPerGram ?: "",
-        CategoryWt = item.WeightCategory?:""
+        CategoryWt = item.weightCategory.toString()?:""
     )
 }
 

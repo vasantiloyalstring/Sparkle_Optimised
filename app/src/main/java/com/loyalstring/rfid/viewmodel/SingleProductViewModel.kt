@@ -489,7 +489,8 @@ class SingleProductViewModel @Inject constructor(
             branchType    = this.BranchType,
             designId      = this.DesignId,
             totalWt =  this.TotalWeight,
-            CategoryWt = this.WeightCategory
+            CategoryWt = this.WeightCategory,
+            SKUId = 0
 
         )
     }

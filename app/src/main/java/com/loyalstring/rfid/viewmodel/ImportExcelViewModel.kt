@@ -270,7 +270,8 @@ class ImportExcelViewModel @Inject constructor(
                             packetName = "",
                             branchType = "",
                             totalWt = 0.0,
-                            CategoryWt = ""
+                            CategoryWt = "",
+                            SKUId = 0
 
                         )
                         items.add(item)
@@ -442,7 +443,8 @@ class ImportExcelViewModel @Inject constructor(
             packetName = "",
             branchType = "",
             totalWt = 0.0,
-            CategoryWt = ""
+            CategoryWt = "",
+            SKUId = 0
         )
 
     }

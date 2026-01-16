@@ -333,7 +333,9 @@ fun OrderScreen(
                     makingFixedAmt = coItem.MakingFixed,
                     makingFixedWastage = coItem.MakingFixedWastage,
                     makingPerGram = coItem.MakingPerGram.orEmpty(),
-                    CategoryWt = coItem.CategoryWt.toString(),
+                    CategoryWt = coItem.WeightCategories.toString(),
+
+
                 )
 
                 if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
@@ -635,7 +637,7 @@ fun OrderScreen(
                 productId = matchedItem.productId ?: 0,
                 productCode = matchedItem.productCode.orEmpty(),
 
-                skuId = 0,
+                skuId = matchedItem.SKUId?:0,
 
                 designid = matchedItem.designId ?: 0,
                 designName = matchedItem.design.orEmpty(),
@@ -656,6 +658,8 @@ fun OrderScreen(
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
                 CategoryWt = matchedItem.CategoryWt.toString(),
+
+
 
             )
 
@@ -803,7 +807,7 @@ fun OrderScreen(
                 categoryName = matchedItem.category.orEmpty(),
                 productId = matchedItem.productId ?: 0,
                 productCode = matchedItem.productCode.orEmpty(),
-                skuId = 0,
+                skuId = matchedItem.SKUId?:0,
                 designid = matchedItem.designId ?: 0,
                 designName = matchedItem.design.orEmpty(),
                 purityid = 0,
@@ -819,6 +823,8 @@ fun OrderScreen(
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
                 CategoryWt = matchedItem.CategoryWt.toString(),
+
+
             )
 
             if (productList.none { it.itemCode == productDetail.itemCode }) {
@@ -977,7 +983,7 @@ fun OrderScreen(
                 categoryName = matchedItem.category.orEmpty(),
                 productId = matchedItem.productId ?: 0,
                 productCode = matchedItem.productCode.orEmpty(),
-                skuId = 0,                                       // if you don’t have SKUId yet
+                skuId = matchedItem.SKUId?:0,                                       // if you don’t have SKUId yet
                 designid = matchedItem.designId ?: 0,
                 designName = matchedItem.design.orEmpty(),
                 purityid = 0,                                    // if you don’t have purityId
@@ -993,7 +999,9 @@ fun OrderScreen(
                 makingFixedAmt = fixMakingFinal.toString(),
                 makingFixedWastage = fixWastageFinal.toString(),
                 makingPerGram = makingPerGramFinal.toString(),
-                CategoryWt = matchedItem.CategoryWt.toString()
+                CategoryWt = matchedItem.CategoryWt.toString(),
+
+
             )
 
             productList.add(newProduct)
@@ -1282,7 +1290,7 @@ fun OrderScreen(
 
                     Stones = emptyList(),
                     Diamond = emptyList(),
-                    CategoryWt = item.CategoryWt
+                    WeightCategories = item.CategoryWt
                 )
             },
 
@@ -1552,7 +1560,7 @@ fun OrderScreen(
                                    RFIDCode =product?.rfidCode.toString(),
                                    OrderDate = isoDateTimeOrNull(product.orderDate) ?: nowIsoDateTime(),
                                    DeliverDate = isoDateTimeOrNull(product.deliverDate) ?: nowIsoDateTime(),
-                                   SKUId = 0,
+                                   SKUId = editOrder?.SKUId ?: 0,
                                    SKU = product.sku,
                                    CategoryId = selectedItem?.CategoryId,
                                    VendorId = 0,
@@ -1630,7 +1638,7 @@ fun OrderScreen(
                                    Status = "",
                                    URDNo = "",
                                    HallmarkAmount =product.hallmarkAmt,
-                                   CategoryWt = product.CategoryWt,
+                                   WeightCategories = product.CategoryWt,
                                    Stones = emptyList(),
                                    Diamond = emptyList()
                                )
@@ -2150,7 +2158,7 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
         Remark  : ${item.Remark ?: "-"}
-        Category Wt : ${item.CategoryWt ?: "-"}
+        Category Wt : ${item.WeightCategories ?: "-"}
     """.trimIndent()
 
         } else
@@ -2515,7 +2523,7 @@ fun buildOrderRequest(
                 Status = null,
                 URDNo = null,
                 HallmarkAmount = item.hallmarkAmt,
-                CategoryWt = item.CategoryWt,
+                WeightCategories = item.CategoryWt,
 
                 Stones = emptyList(),
                 Diamond = emptyList()
@@ -2743,7 +2751,10 @@ private fun buildOrderItemFromSelectedItem(
         makingFixedWastage = selectedItem.MakingFixedWastage?.toString() ?: "0",
         makingPerGram = selectedItem.MakingPerGram?.toString() ?: "0",
         finePlusWt = "",
-        CategoryWt = selectedItem.WeightCategory.toString()
+        CategoryWt = selectedItem.weightCategory.toString(),
+
+
+
     )
 }
 
@@ -2799,6 +2810,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
         infoTable.setBorder(null)
         val leftText: String
         val rightText: String
+        Log.d("","order.WeightCategories"+order.WeightCategories)
 
 
         if (order.ClientCode.equals("LS000026")) {
@@ -2814,7 +2826,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
         Remark  : ${item.Remark ?: "-"}
-        Category Wt : ${item.CategoryWt ?: "-"}
+        Category Wt : ${item.WeightCategories ?: "-"}
     """.trimIndent()
 
         } else

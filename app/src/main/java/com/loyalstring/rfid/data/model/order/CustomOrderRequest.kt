@@ -101,6 +101,7 @@ data class CustomOrderRequest(
     @ColumnInfo(name = "LastUpdated")
     val LastUpdated: String? = null,
     val HallmarkAmount:String?=null,
-    val WeightCatogories:String?=null
+    val WeightCatogories:String?=null,
+    val SKUId:Int?=0
 
 )

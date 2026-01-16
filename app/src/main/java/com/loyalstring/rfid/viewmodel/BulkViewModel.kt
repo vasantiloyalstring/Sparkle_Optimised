@@ -1189,7 +1189,8 @@ class BulkViewModel @Inject constructor(
                     packetName = "",
                     branchType = "",
                     totalWt = 0.0,
-                    CategoryWt = ""
+                    CategoryWt = "",
+                    SKUId = 0
 
                 ).apply {
                     uhfTagInfo = tag
