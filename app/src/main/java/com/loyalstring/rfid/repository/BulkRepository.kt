@@ -5,8 +5,10 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
+import com.loyalstring.rfid.data.remote.data.SyncResult
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
 import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
+import com.loyalstring.rfid.ui.utils.toBulkItem
 import kotlinx.coroutines.flow.Flow
 
 interface BulkRepository {
@@ -46,6 +48,18 @@ interface BulkRepository {
     }
 
     suspend fun clearStockData(req: ClearStockDataModelReq): ClearStockDataModelResponse
+
+
+    suspend fun syncAndSaveBulkItems(clientCode: String) {
+        val response = syncBulkItemsFromServer(ClientCodeRequest(clientCode))
+
+        val bulkItems = response.map { it.toBulkItem() }
+
+        bulkItemDao.clearAllItems()
+        bulkItemDao.insertBulkItem(bulkItems)
+    }
+
+
 
 
 }

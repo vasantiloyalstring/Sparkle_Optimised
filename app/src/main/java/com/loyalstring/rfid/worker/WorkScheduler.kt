@@ -51,7 +51,7 @@ fun schedulePeriodicSync(
 
     WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
         taskType, // unique per type
-        ExistingPeriodicWorkPolicy.KEEP,
+        ExistingPeriodicWorkPolicy.REPLACE,
         request
     )
 

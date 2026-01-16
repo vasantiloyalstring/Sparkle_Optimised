@@ -14,6 +14,8 @@ import com.loyalstring.rfid.data.model.setting.LocationSyncRequest
 import com.loyalstring.rfid.repository.BulkRepository
 import com.loyalstring.rfid.repository.SettingRepository
 import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -91,10 +93,9 @@ class SyncDataWorker @AssistedInject constructor(
                 SYNC_DATA_WORKER -> {
                     // ✅ Perform your repo sync call
                     try {
-                        repo.syncBulkItemsFromServer(
-                            ClientCodeRequest(
-                                userPreferences.getEmployee(Employee::class.java)?.clientCode
-                            )
+                        repo.syncAndSaveBulkItems(
+                            userPreferences.getEmployee(Employee::class.java)?.clientCode.toString()
+
                         )
                         Result.success()
                     }catch (e: Exception)
@@ -102,6 +103,28 @@ class SyncDataWorker @AssistedInject constructor(
                         Log.e("SYNC_DATA_WORKER", "Error not sync data: ${e.message}", e)
                         return Result.retry()
                     }
+
+                   /* try {
+                        val employee = userPreferences.getEmployee(Employee::class.java)
+                            ?: return Result.failure()
+
+                        val tagType = userPreferences.getClient()?.rfidType
+                            ?.trim()?.lowercase() ?: "webreusable"
+
+                        val result = viewModel.syncItems(
+
+                        )
+
+                        Log.d(
+                            "SYNC_DATA_WORKER",
+                            "Auto sync done: ${result}/${result}, skipped=${result}"
+                        )
+
+                        Result.success()
+                    } catch (e: Exception) {
+                        Log.e("SYNC_DATA_WORKER", "Auto sync failed", e)
+                        Result.retry()
+                    }*/
                 }
 
                 else -> {

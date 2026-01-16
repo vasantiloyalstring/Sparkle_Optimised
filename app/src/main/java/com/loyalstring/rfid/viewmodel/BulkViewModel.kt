@@ -2129,6 +2129,8 @@ class BulkViewModel @Inject constructor(
     fun setLastEpc(epc: String) {
         _lastEpc.value = epc
     }
+
+
 }
 
 
