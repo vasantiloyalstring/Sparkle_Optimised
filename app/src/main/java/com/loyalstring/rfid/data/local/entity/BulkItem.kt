@@ -72,6 +72,7 @@ data class BulkItem(
     val designId: Int?,
     var isScanned: Boolean = false,
     val totalWt: Double?,
+    val   CategoryWt :String?,
 
 
     ) : Parcelable {

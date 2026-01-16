@@ -1,6 +1,4 @@
 package com.loyalstring.rfid.ui.screens
-
-
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -245,7 +243,7 @@ fun OrderOldScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             OrderScreenContent(
                 navController = navController,
-              //  itemCodeList = itemCodeList,
+                //  itemCodeList = itemCodeList,
                 userPreferences = userPreferences,
                 bulkViewModel = bulkViewModel,
                 selectedCustomer = selectedCustomer,
@@ -316,7 +314,7 @@ fun Customer?.toEmployeeList(): EmployeeList? {
 @Composable
 fun OrderScreenContent(
     navController: NavHostController,
-   // itemCodeList: List<ItemCodeResponse>,
+    // itemCodeList: List<ItemCodeResponse>,
     userPreferences: UserPreferences,
     bulkViewModel: BulkViewModel,
     selectedCustomer: EmployeeList?,
@@ -335,7 +333,7 @@ fun OrderScreenContent(
             itemCodeList = items   // assign collected items into your mutable state
         }
     }
-   //var itemCodeList by orderViewModel.itemCodeResponse.collectAsState()
+    //var itemCodeList by orderViewModel.itemCodeResponse.collectAsState()
     val context = LocalContext.current
     val isOnline = remember {
         NetworkUtils.isNetworkAvailable(context)
@@ -550,7 +548,8 @@ fun OrderScreenContent(
                     makingPercentage = coItem.MakingPercentage.orEmpty(),
                     makingFixedAmt = coItem.MakingFixed,
                     makingFixedWastage = coItem.MakingFixedWastage,
-                    makingPerGram = coItem.MakingPerGram.orEmpty()
+                    makingPerGram = coItem.MakingPerGram.orEmpty(),
+                    CategoryWt = coItem.CategoryWt.toString()
                 )
 
                 if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
@@ -813,7 +812,7 @@ fun OrderScreenContent(
 
     var searchQuery by remember { mutableStateOf("") }
 
-   // var searchQuery by remember { mutableStateOf("") }
+    // var searchQuery by remember { mutableStateOf("") }
     var filteredBulkList by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
     var isFiltering by remember { mutableStateOf(false) }
 
@@ -981,7 +980,7 @@ fun OrderScreenContent(
                             val rate = dailyRates.find { it.PurityName.equals(selectedItem?.PurityName, ignoreCase = true) }?.Rate?.toDoubleOrNull() ?: 0.0
 
                             val itemAmt: Double = (selectedItem?.NetWt?.toDoubleOrNull() ?: 0.0) * rate
-                                //totalStoneAmount + diamondAmount + safeMetalAmt + safeMakingAmt
+                            //totalStoneAmount + diamondAmount + safeMetalAmt + safeMakingAmt
 
                             // Create new OrderItem with necessary details
                             val newProduct = OrderItem(
@@ -1035,7 +1034,8 @@ fun OrderScreenContent(
                                 makingPercentage = selectedItem?.MakingPercentage?.toString() ?: "0",
                                 makingFixedAmt   = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
-                                makingPerGram    = selectedItem?.MakingPerGram?.toString() ?: "0"
+                                makingPerGram    = selectedItem?.MakingPerGram?.toString() ?: "0",
+                                CategoryWt = selectedItem?.WeightCategory.toString()
                             )
                             Log.d(
                                 "Added to Product List",
@@ -1161,7 +1161,8 @@ fun OrderScreenContent(
                 makingPercentage = selectedItem?.MakingPercentage?.toString() ?: "0",
                 makingFixedAmt = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
-                makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0"
+                makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
+                CategoryWt = selectedItem?.WeightCategory?.toString()?:""
 
 
             )
@@ -1325,7 +1326,8 @@ fun OrderScreenContent(
                             makingFixedAmt = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                             makingFixedWastage = selectedItem?.MakingFixedWastage?.toString()
                                 ?: "0",
-                            makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0"
+                            makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
+                            CategoryWt = selectedItem?.WeightCategory?.toString() ?: ""
 
 
                         )
@@ -1691,7 +1693,8 @@ fun OrderScreenContent(
                                                 URDNo = "",
                                                 HallmarkAmount =product.hallmarkAmt,
                                                 Stones = emptyList(),
-                                                Diamond = emptyList()
+                                                Diamond = emptyList(),
+                                                CategoryWt = product.CategoryWt
                                             )
                                         },
 
@@ -1864,8 +1867,8 @@ fun OrderScreenContent(
                                         CustomOrderItem(
                                             CustomOrderId = 0,
                                             RFIDCode =product?.rfidCode.toString(),
-                                             OrderDate = product.orderDate,
-                                             DeliverDate = product.deliverDate,
+                                            OrderDate = product.orderDate,
+                                            DeliverDate = product.deliverDate,
                                             SKUId = 0,
                                             SKU = product.sku,
                                             CategoryId = selectedItem?.CategoryId,
@@ -1945,7 +1948,8 @@ fun OrderScreenContent(
                                             URDNo = "",
                                             HallmarkAmount  =product.hallmarkAmt,
                                             Stones = emptyList(),
-                                            Diamond = emptyList()
+                                            Diamond = emptyList(),
+                                            CategoryWt = product.CategoryWt
                                         )
                                     },
 
@@ -2115,12 +2119,12 @@ fun OrderScreenContent(
 
                     val orderItem = mapItemCodeToOrderItem(it, dailyRates)
 
-                  /*  if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
-                        Log.d("itemAmt","itemAmt"+orderItem.itemAmt)
-                       // orderViewModel.insertOrderItemToRoom(orderItem)
-                        productList.add(orderItem)
+                    /*  if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
+                          Log.d("itemAmt","itemAmt"+orderItem.itemAmt)
+                         // orderViewModel.insertOrderItemToRoom(orderItem)
+                          productList.add(orderItem)
 
-                    }*/
+                      }*/
                     if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
                         val alreadyExists = productList.any { it.itemCode == orderItem.itemCode }
                         if (!alreadyExists) {
@@ -2563,7 +2567,7 @@ fun OrderScreenContent(
             orderSelectedItem,
             branchList,
             onDismiss = { showEditOrderDialog = false },
-           // edit = 1,
+            // edit = 1,
             onSave = { updatedItem ->
                 onSaveEditedItem(updatedItem)   // updates productList in parent
             }
@@ -2661,7 +2665,8 @@ fun CustomOrderRequest.toCustomOrderResponse(): CustomOrderResponse {
         syncStatus = this.syncStatus,
         ProductName = "",
         Id = 0,
-        HallmarkAmount = this.HallmarkAmount.toString()
+        HallmarkAmount = this.HallmarkAmount.toString(),
+        WeightCategories = this.WeightCatogories.toString()
     )
 }
 
@@ -2831,7 +2836,8 @@ fun mapItemCodeToOrderItem(
         makingPercentage = item.MakingPercentage ?: "",
         makingFixedAmt = item.MakingFixedAmt ?: "",
         makingFixedWastage = item.MakingFixedWastage ?: "",
-        makingPerGram = item.MakingPerGram ?: ""
+        makingPerGram = item.MakingPerGram ?: "",
+        CategoryWt = item.WeightCategory?:""
     )
 }
 
@@ -3851,14 +3857,3 @@ suspend fun loadImageBytesFromUrl(urlString: String): ByteArray? = withContext(D
     }
     context.startActivity(Intent.createChooser(intent, "Open PDF with..."))
 }*/
-
-
-
-
-
-
-
-
-
-
-

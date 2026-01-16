@@ -870,7 +870,8 @@ fun OrderDetailsDialogEditAndDisplay(
                                 makingPercentage = wastage,
                                 makingFixedAmt = stableItem?.makingFixedAmt.orEmpty(),
                                 makingFixedWastage = stableItem?.makingFixedWastage.orEmpty(),
-                                makingPerGram = stableItem?.makingPerGram.orEmpty()
+                                makingPerGram = stableItem?.makingPerGram.orEmpty(),
+                                CategoryWt = stableItem?.CategoryWt.toString()
                             )
 
                             orderViewModel.insertOrderItemToRoomORUpdate(orderItem)

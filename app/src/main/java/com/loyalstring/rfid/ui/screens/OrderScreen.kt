@@ -64,6 +64,7 @@ import com.itextpdf.layout.properties.AreaBreakType
 import com.itextpdf.layout.properties.HorizontalAlignment
 import com.itextpdf.layout.properties.TextAlignment
 import com.itextpdf.layout.properties.UnitValue
+import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.OrderItem
@@ -75,6 +76,7 @@ import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
+import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.NetworkUtils
@@ -96,12 +98,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.collections.forEach
-import androidx.compose.runtime.rememberCoroutineScope
-import com.loyalstring.rfid.MainActivity
-import com.loyalstring.rfid.data.reader.ScanKeyListener
-import kotlinx.coroutines.launch
-
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -336,7 +332,8 @@ fun OrderScreen(
                     makingPercentage = coItem.MakingPercentage.orEmpty(),
                     makingFixedAmt = coItem.MakingFixed,
                     makingFixedWastage = coItem.MakingFixedWastage,
-                    makingPerGram = coItem.MakingPerGram.orEmpty()
+                    makingPerGram = coItem.MakingPerGram.orEmpty(),
+                    CategoryWt = coItem.CategoryWt.toString(),
                 )
 
                 if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
@@ -658,6 +655,7 @@ fun OrderScreen(
                 makingFixedAmt = makingFixedAmt,
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
+                CategoryWt = matchedItem.CategoryWt.toString(),
 
             )
 
@@ -819,7 +817,8 @@ fun OrderScreen(
                 makingPercentage = makingPercent,
                 makingFixedAmt = makingFixedAmt,
                 makingFixedWastage = makingFixedWastage,
-                makingPerGram = makingPerGram
+                makingPerGram = makingPerGram,
+                CategoryWt = matchedItem.CategoryWt.toString(),
             )
 
             if (productList.none { it.itemCode == productDetail.itemCode }) {
@@ -993,7 +992,8 @@ fun OrderScreen(
                 makingPercentage = makingPercentFinal.toString(),
                 makingFixedAmt = fixMakingFinal.toString(),
                 makingFixedWastage = fixWastageFinal.toString(),
-                makingPerGram = makingPerGramFinal.toString()
+                makingPerGram = makingPerGramFinal.toString(),
+                CategoryWt = matchedItem.CategoryWt.toString()
             )
 
             productList.add(newProduct)
@@ -1281,7 +1281,8 @@ fun OrderScreen(
                     HallmarkAmount = item.hallmarkAmt ?: null,
 
                     Stones = emptyList(),
-                    Diamond = emptyList()
+                    Diamond = emptyList(),
+                    CategoryWt = item.CategoryWt
                 )
             },
 
@@ -1629,6 +1630,7 @@ fun OrderScreen(
                                    Status = "",
                                    URDNo = "",
                                    HallmarkAmount =product.hallmarkAmt,
+                                   CategoryWt = product.CategoryWt,
                                    Stones = emptyList(),
                                    Diamond = emptyList()
                                )
@@ -1884,7 +1886,11 @@ fun OrderScreen(
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
                             if (selectedItem == null) {
-                                Toast.makeText(context, "Please select Item first", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Please select Item first",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
                                 showOrderDetailsDialog = true
                             }
@@ -2126,7 +2132,30 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
         val infoTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 1f)))
         infoTable.setWidth(UnitValue.createPercentValue(100f))
         infoTable.setBorder(null)
-        val leftText = """
+
+        val leftText: String
+        val rightText: String
+
+
+        if (order.ClientCode.equals("LS000026")) {
+
+
+            // 🔹 Special client format
+            leftText = """
+        Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
+        Order No : ${item.OrderNo ?: "-"}
+        Design   : ${item.DesignName ?: "-"}
+    """.trimIndent()
+
+            rightText = """
+        Quantity : ${item.Quantity ?: "-"}
+        Remark  : ${item.Remark ?: "-"}
+        Category Wt : ${item.CategoryWt ?: "-"}
+    """.trimIndent()
+
+        } else
+        {
+            leftText = """
             Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
             Order No : ${item.OrderNo ?: "-"}
             Design   : ${item.DesignName ?: "-"}
@@ -2134,13 +2163,14 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
             Quantity  : ${item.Quantity ?: "-"}
         """.trimIndent()
 
-        // Right column text
-        val rightText = """
+            // Right column text
+            rightText = """
             Gross Wt : ${item.GrossWt ?: "-"}
             Stone Wt : ${item.StoneWt ?: "-"}
             Net Wt   : ${item.NetWt ?: "-"}
             Remark   : ${item.Remark ?: "-"}
         """.trimIndent()
+        }
         infoTable.addCell(Paragraph(leftText).setBorder(null))
         infoTable.addCell(Paragraph(rightText).setBorder(null))
         doc.add(infoTable)
@@ -2485,6 +2515,7 @@ fun buildOrderRequest(
                 Status = null,
                 URDNo = null,
                 HallmarkAmount = item.hallmarkAmt,
+                CategoryWt = item.CategoryWt,
 
                 Stones = emptyList(),
                 Diamond = emptyList()
@@ -2711,7 +2742,8 @@ private fun buildOrderItemFromSelectedItem(
         makingFixedAmt = selectedItem.MakingFixedAmt?.toString() ?: "0",
         makingFixedWastage = selectedItem.MakingFixedWastage?.toString() ?: "0",
         makingPerGram = selectedItem.MakingPerGram?.toString() ?: "0",
-        finePlusWt = ""
+        finePlusWt = "",
+        CategoryWt = selectedItem.WeightCategory.toString()
     )
 }
 
@@ -2765,7 +2797,29 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
         val infoTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 1f)))
         infoTable.setWidth(UnitValue.createPercentValue(100f))
         infoTable.setBorder(null)
-        val leftText = """
+        val leftText: String
+        val rightText: String
+
+
+        if (order.ClientCode.equals("LS000026")) {
+
+
+            // 🔹 Special client format
+            leftText = """
+        Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
+        Order No : ${item.OrderNo ?: "-"}
+        Design   : ${item.DesignName ?: "-"}
+    """.trimIndent()
+
+            rightText = """
+        Quantity : ${item.Quantity ?: "-"}
+        Remark  : ${item.Remark ?: "-"}
+        Category Wt : ${item.CategoryWt ?: "-"}
+    """.trimIndent()
+
+        } else
+        {
+            leftText = """
             Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
             Order No : ${item.OrderNo ?: "-"}
             Design   : ${item.DesignName ?: "-"}
@@ -2773,13 +2827,14 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
             Quantity  : ${item.Quantity ?: "-"}
         """.trimIndent()
 
-        // Right column text
-        val rightText = """
+            // Right column text
+            rightText = """
             Gross Wt : ${item.GrossWt ?: "-"}
             Stone Wt : ${item.StoneWt ?: "-"}
             Net Wt   : ${item.NetWt ?: "-"}
             Remark   : ${item.Remark ?: "-"}
         """.trimIndent()
+        }
         infoTable.addCell(Paragraph(leftText).setBorder(null))
         infoTable.addCell(Paragraph(rightText).setBorder(null))
         doc.add(infoTable)

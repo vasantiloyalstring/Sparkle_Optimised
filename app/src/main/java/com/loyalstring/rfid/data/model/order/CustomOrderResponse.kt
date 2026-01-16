@@ -97,5 +97,7 @@ data class CustomOrderResponse(
     val Customer: Customer,
     val syncStatus: Boolean = false,
     val ProductName: String,
-    val HallmarkAmount:String
+    val HallmarkAmount:String,
+    /*new parameter added for the GSM client*/
+    val WeightCategories:String
     ): Serializable, Parcelable

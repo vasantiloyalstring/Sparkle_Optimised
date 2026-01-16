@@ -66,6 +66,7 @@ rfid=this.rfidCode?:"",
         packetName = this.packetName ?: "",
             branchType = this.branchType ?: "",
             totalWt = this.totalWeight?.toDoubleOrNull() ?: 0.0,
+            CategoryWt = this.WeightCategories?:""
 
 
     ).apply {

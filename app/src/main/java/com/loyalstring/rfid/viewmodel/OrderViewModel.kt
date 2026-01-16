@@ -987,7 +987,9 @@ class OrderViewModel @Inject constructor(
 
             // non-null String
             ProductName = ""?.toString().orEmpty(),
-            HallmarkAmount=this.HallmarkAmount.toString()
+            HallmarkAmount=this.HallmarkAmount.toString(),
+            WeightCategories=this.WeightCatogories.toString()
+
         )
     }
 

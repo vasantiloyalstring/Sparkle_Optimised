@@ -103,28 +103,6 @@ class SyncDataWorker @AssistedInject constructor(
                         Log.e("SYNC_DATA_WORKER", "Error not sync data: ${e.message}", e)
                         return Result.retry()
                     }
-
-                   /* try {
-                        val employee = userPreferences.getEmployee(Employee::class.java)
-                            ?: return Result.failure()
-
-                        val tagType = userPreferences.getClient()?.rfidType
-                            ?.trim()?.lowercase() ?: "webreusable"
-
-                        val result = viewModel.syncItems(
-
-                        )
-
-                        Log.d(
-                            "SYNC_DATA_WORKER",
-                            "Auto sync done: ${result}/${result}, skipped=${result}"
-                        )
-
-                        Result.success()
-                    } catch (e: Exception) {
-                        Log.e("SYNC_DATA_WORKER", "Auto sync failed", e)
-                        Result.retry()
-                    }*/
                 }
 
                 else -> {
