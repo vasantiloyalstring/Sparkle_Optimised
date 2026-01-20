@@ -132,6 +132,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
 
 
+
+
     // Handle back navigation with delay to allow ripple animation to complete
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
@@ -267,14 +269,31 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
 
     val scannedFiltered by bulkViewModel.scannedFilteredItems
-    val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
 
+  //  val scannedFiltered by bulkViewModel.scannedFilteredItems.collectAsState(initial = emptySet())
+
+
+
+
+
+    val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
+/*
     val summaryItems by remember(navFilteredItems, matchedEpcs) {
         derivedStateOf {
             navFilteredItems.map { original ->
                 val keyEpc = original.epc?.trim()?.uppercase()
                 val status =
                     if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                original.copy(scannedStatus = status)
+            }
+        }
+    }*/
+
+    val summaryItems by remember(navFilteredItems, matchedEpcs) {
+        derivedStateOf {
+            navFilteredItems.map { original ->
+                val key = original.tagKey() // ✅ EPC or RFID both
+                val status = if (key != null && matchedEpcs.contains(key)) "Matched" else "Unmatched"
                 original.copy(scannedStatus = status)
             }
         }
@@ -308,6 +327,19 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var newEmail by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
+ //   val scannedFiltered by bulkViewModel.scannedFilteredItems.collectAsState(initial = emptySet())
+
+    val effectiveMatchedSet by remember(isScanning, scannedFiltered, matchedEpcs) {
+        derivedStateOf {
+            if (isScanning) {
+                scannedFiltered
+                    .mapNotNull { it.tagKey() }   // EPC/RFID normalize
+                    .toSet()
+            } else {
+                matchedEpcs
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         savedEmails = scanDisplayViewModel.getAllEmails()
@@ -343,29 +375,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
     // scopeItems overlay scanned status on filtered base set
- /*   val scopeItems by remember(
-        navFilteredItems,
-        selectedCategoriesKey,
-        selectedProductsKey,
-        selectedDesignsKey,
-        scannedFiltered
-    ) {
-        derivedStateOf {
-            if (navFilteredItems.isEmpty()) {
-                emptyList()
-            } else {
-                navFilteredItems.mapNotNull { original ->
-                    val keyEpc = original.epc?.trim()?.uppercase()
-                    val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
-                    val withScan = original.copy(scannedStatus = status)
-                    if ((selectedCategoriesKey.isEmpty() || withScan.category in selectedCategoriesKey) &&
-                        (selectedProductsKey.isEmpty() || withScan.productName in selectedProductsKey) &&
-                        (selectedDesignsKey.isEmpty() || withScan.design in selectedDesignsKey)
-                    ) withScan else null
-                }
-            }
-        }
-    }*/
+
     val scopeItems by remember(
         navFilteredItems,
         selectedCategoriesKey,
@@ -378,9 +388,12 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             if (navFilteredItems.isEmpty()) emptyList()
             else {
                 navFilteredItems.mapNotNull { original ->
-                    val keyEpc = original.epc?.trim()?.uppercase()
+                  /*  val keyEpc = original.epc?.trim()?.uppercase()
                     val status =
-                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"*/
+
+                    val key = original.tagKey()
+                    val status = if (key != null && matchedEpcs.contains(key)) "Matched" else "Unmatched"
 
                     val withScan = original.copy(scannedStatus = status)
 
@@ -395,25 +408,6 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
 
     // displayItems respects selectedMenu and sticky unmatched ids (existing logic preserved)
-  /*  val displayItems = remember(scopeItems, selectedMenu, bulkViewModel.filteredUnmatchedIds.collectAsState().value) {
-        if (scopeItems.isEmpty()) {
-            emptyList()
-        } else {
-            when (selectedMenu) {
-                MENU_MATCHED -> scopeItems.filter { it.scannedStatus == "Matched" }
-                MENU_UNMATCHED -> {
-                    val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
-                    val sticky = scopeItems.filter {
-                        val id = it.epc?.trim()?.uppercase()
-                        id != null && bulkViewModel.filteredUnmatchedIds.value.contains(id)
-                    }
-                    (unmatchedNow + sticky).distinctBy { it.epc }
-                }
-                else -> scopeItems
-            }
-        }
-    }
-*/
 
     val stickyUnmatchedIds by bulkViewModel.filteredUnmatchedIds.collectAsState()
 
@@ -426,10 +420,13 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 MENU_UNMATCHED -> {
                     val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
                     val sticky = scopeItems.filter {
-                        val id = it.epc?.trim()?.uppercase()
+                       /* val id = it.epc?.trim()?.uppercase()
+                        id != null && stickyUnmatchedIds.contains(id)*/
+
+                        val id = it.tagKey()
                         id != null && stickyUnmatchedIds.contains(id)
                     }
-                    (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                    (unmatchedNow + sticky).distinctBy { it.tagKey() }
                 }
 
                 else -> scopeItems
@@ -438,9 +435,51 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    val allMatched by remember(scopeItems) {
+   /* val allMatched by remember(scopeItems) {
         derivedStateOf { scopeItems.isNotEmpty() && scopeItems.all { it.scannedStatus == "Matched" } }
+    }*/
+
+ /*   val currentSelectionItems by remember(displayItems, selectedCategoriesKey, selectedProductsKey, selectedDesignsKey) {
+        derivedStateOf {
+            displayItems.filter {
+                (selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey) &&
+                        (selectedProductsKey.isEmpty() || it.productName in selectedProductsKey) &&
+                        (selectedDesignsKey.isEmpty() || it.design in selectedDesignsKey)
+            }
+        }
+    }*/
+
+    val scanScopeItems by remember(scopeItems) {
+        derivedStateOf { scopeItems }
     }
+
+/*    val allMatchedForFilter by remember(scanScopeItems) {
+        derivedStateOf {
+            val matchable = scanScopeItems.filter { it.tagKey() != null }
+            matchable.isNotEmpty() && matchable.all { it.scannedStatus == "Matched" }
+        }
+    }*/
+    val scannedKeys by bulkViewModel.scannedKeySet
+
+    val allMatchedForFilter by remember(isScanning, scanScopeItems, scannedKeys, matchedEpcs) {
+        derivedStateOf {
+            if (!isScanning) return@derivedStateOf false
+
+            val filterKeys = scanScopeItems.mapNotNull { it.tagKey() }.toSet()
+            if (filterKeys.isEmpty()) return@derivedStateOf false
+
+            // ✅ stop when ALL filtered keys are scanned
+            filterKeys.all { it in scannedKeys || it in matchedEpcs }
+        }
+    }
+
+
+    /*    val allMatchedForSelection by remember(currentSelectionItems) {
+            derivedStateOf {
+                currentSelectionItems.isNotEmpty() &&
+                        currentSelectionItems.all { it.scannedStatus == "Matched" }
+            }
+        }*/
 
     val activity = LocalContext.current as? MainActivity
 
@@ -453,7 +492,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             override fun onRfidKeyPressed() {
                 if (!isScanning) {
                     isScanning = true
-                    bulkViewModel.setFilteredItems(scopeItems)
+                    bulkViewModel.setFilteredItems(scanScopeItems)
                     bulkViewModel.startScanningInventory(selectedPower)
                 } else {
                     isScanning = false
@@ -473,7 +512,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }*/
 
-    LaunchedEffect(Unit) {
+   /* LaunchedEffect(Unit) {
         snapshotFlow { isScanning to allMatched }
             .collect { (isScanningValue, allMatchedValue) ->
 
@@ -492,10 +531,39 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     Toast.makeText(context, "All items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
                 }
             }
+    }*/
+    /*LaunchedEffect(Unit) {
+        snapshotFlow { isScanning to allMatchedForFilter }
+            .collect { (isScanningValue, allMatchedValue) ->
+                Log.d("AUTO_STOP", "isScanning=$isScanningValue allMatched=$allMatchedValue matched=${scanScopeItems.count{it.scannedStatus=="Matched"}} total=${scanScopeItems.size}")
+                if (isScanningValue && allMatchedValue) {
+                    bulkViewModel.stopScanningAndCompute()
+                    isScanning = false
+                    selectedMenu = MENU_MATCHED
+                    Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }*/
+
+    LaunchedEffect(isScanning, allMatchedForFilter) {
+        if (isScanning && allMatchedForFilter) {
+            bulkViewModel.stopScanningAndCompute()
+            isScanning = false
+            selectedMenu = MENU_MATCHED
+            Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    LaunchedEffect(isScanning, scopeItems.size) {
+
+  /*  LaunchedEffect(isScanning, scopeItems.size) {
         if (isScanning && scopeItems.isEmpty()) {
+            bulkViewModel.stopScanningAndCompute()
+            isScanning = false
+        }
+    }*/
+
+    LaunchedEffect(isScanning, scanScopeItems.size) {
+        if (isScanning && scanScopeItems.isEmpty()) {
             bulkViewModel.stopScanningAndCompute()
             isScanning = false
         }
@@ -505,23 +573,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     } }
 
-    LaunchedEffect(scopeItems) {
-        if (isScanning && scopeItems.isNotEmpty() && scopeItems.all { it.scannedStatus == "Matched" }) {
 
-            currentCategory = null
-            currentProduct = null
-            currentDesign = null
-            selectedCategories.clear()
-            selectedProducts.clear()
-            selectedDesigns.clear()
-
-
-            bulkViewModel.stopScanningAndCompute()
-            Toast.makeText(context, "All items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
-
-            isScanning = false
-        }
-    }
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
@@ -584,7 +636,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         if (!isScanning) {
                             isScanning = true
                             // bulkViewModel.resetScanResults()
-                            bulkViewModel.setFilteredItems(scopeItems)   // ✅ only current scope
+                            bulkViewModel.setFilteredItems(scanScopeItems)   // ✅ only current scope
                             bulkViewModel.startScanningInventory(selectedPower)
                         } else {
                             isScanning = false
@@ -1064,7 +1116,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     // optional: sticky ids set (agar tumhe sticky behaviour chahiye)
                                     val ids = scopeItems.asSequence()
                                         .filter { it.scannedStatus.equals("Unmatched", true) }
-                                        .mapNotNull { it.epc?.trim()?.uppercase() }
+                                        .mapNotNull { it.tagKey() }
                                         .distinct()
                                         .toList()
                                     bulkViewModel.rememberUnmatchedIds(ids)
@@ -1341,7 +1393,7 @@ private fun BulkItem.tagKey(): String? =
 
 private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
     return all
-        .distinctBy { it.epc?.trim()?.uppercase() ?: it.itemCode ?: it.hashCode().toString() }
+        .distinctBy { it.tagKey() ?: it.itemCode ?: it.hashCode().toString() }
         .map { b ->
             val status = when (b.scannedStatus?.trim()?.lowercase()) {
                 "matched" -> "match"

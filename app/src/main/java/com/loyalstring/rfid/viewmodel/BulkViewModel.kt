@@ -222,6 +222,12 @@ class BulkViewModel @Inject constructor(
     private val _pendingSingleIndex = MutableStateFlow<Int?>(null)
     val pendingSingleIndex = _pendingSingleIndex.asStateFlow()
 
+    private val _scannedKeySet = mutableStateOf<Set<String>>(emptySet())
+    val scannedKeySet: State<Set<String>> = _scannedKeySet
+
+    private fun String.normalizeTagKey(): String =
+        trim().uppercase()
+
 
 
     // 🔸 add this
@@ -579,6 +585,7 @@ class BulkViewModel @Inject constructor(
 
     fun startScanningInventory(selectedPower: Int) {
         //if (!success || _isScanning.value) return
+        _scannedKeySet.value = emptySet()
         scanJob?.cancel()
         _isScanning.value = true
         viewModelScope.launch(Dispatchers.IO) {
@@ -869,6 +876,7 @@ class BulkViewModel @Inject constructor(
             _matchedItems.clear()
             _unmatchedItems.clear()
             scannedEpcList.clear()
+            _scannedKeySet.value = emptySet()
             delay(50) // Allow recomposition to process empty lists
             _matchedEpcSet.value = emptySet()
             // _matchedTidSet.value = emptySet() // TID matching disabled
