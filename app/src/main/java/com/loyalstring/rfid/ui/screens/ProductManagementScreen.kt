@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,11 +70,10 @@ import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.ImportExcelViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -159,6 +158,11 @@ fun ProductManagementScreen(
     )
     var isSheetProcessed by remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
+
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     // Handle back navigation with delay to allow ripple animation to complete
     LaunchedEffect(shouldNavigateBack) {
@@ -288,7 +292,7 @@ fun ProductManagementScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Product",
+                title = localizedContext.getString(R.string.product),
                 navigationIcon = {
                     IconButton(onClick = { shouldNavigateBack = true }) {
                         Icon(
@@ -305,7 +309,8 @@ fun ProductManagementScreen(
                 selectedCount = selectedCount,
                 onCountSelected = {
                     selectedCount = it
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {
@@ -335,14 +340,14 @@ fun ProductManagementScreen(
 
 
         val productItems = listOf(
-            ProductGridItem("Add Single\nProduct", R.drawable.add_single_prod, true, "add product"),
-            ProductGridItem("Add Bulk\nProducts", R.drawable.add_bulk_prod, true, "bulk products"),
-            ProductGridItem("Import\nExcel", R.drawable.import_excel, false, "import excel"),
-            ProductGridItem("Export\nExcel", R.drawable.export_excel, false, ""),
-            ProductGridItem("Click to\nSync Data", R.drawable.ic_sync_data, false, ""),
-            ProductGridItem("Scan to\nDesktop", R.drawable.barcode_reader, false, "scan_web"),
-            ProductGridItem("CLick to\nSync Sheet Data", R.drawable.ic_sync_sheet_data, false, ""),
-            ProductGridItem("Click to Upload\nData to Server", R.drawable.upload_data, false, "")
+            ProductGridItem(localizedContext.getString(R.string.add_single_product), R.drawable.add_single_prod, true, "add product"),
+            ProductGridItem(localizedContext.getString(R.string.add_bulk_products), R.drawable.add_bulk_prod, true, "bulk products"),
+            ProductGridItem(localizedContext.getString(R.string.import_excel), R.drawable.import_excel, false, "import excel"),
+            ProductGridItem(localizedContext.getString(R.string.export_excel), R.drawable.export_excel, false, ""),
+            ProductGridItem(localizedContext.getString(R.string.sync_data), R.drawable.ic_sync_data, false, ""),
+            ProductGridItem(localizedContext.getString(R.string.scan_to_desktop), R.drawable.barcode_reader, false, "scan_web"),
+            ProductGridItem(localizedContext.getString(R.string.sync_sheet_data), R.drawable.ic_sync_sheet_data, false, ""),
+            ProductGridItem(localizedContext.getString(R.string.upload_data_to_server), R.drawable.upload_data, false, "")
         )
 
 

@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -213,7 +214,8 @@ fun EditProductScreen(
                             tint = Color.White
                         )
                     }
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

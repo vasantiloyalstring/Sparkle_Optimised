@@ -27,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loyalstring.rfid.ui.utils.poppins
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,13 +40,14 @@ fun GradientTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     showCounter: Boolean = false,
     selectedCount: Int = 1,
-    onCountSelected: (Int) -> Unit = {}
+    onCountSelected: (Int) -> Unit = {},
+    titleTextSize: TextUnit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     navigationIcon?.let {
         TopAppBar(
-            title = { Text(title, color = Color.White, fontFamily = poppins) },
+            title = { Text(title, color = Color.White, fontFamily = poppins, fontSize = titleTextSize,maxLines = 1) },
             navigationIcon = it,
             actions = {
                 actions()
@@ -66,7 +69,8 @@ fun GradientTopBar(
                             color = Color.Red,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = poppins
+                            fontFamily = poppins,
+
                         )
                     }
 

@@ -32,6 +32,7 @@ import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.DropdownRepository
+import com.loyalstring.rfid.ui.screens.hexToAscii
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.toBulkItem
@@ -1860,58 +1861,73 @@ class BulkViewModel @Inject constructor(
     }
 
 
-    fun sendScannedData(tags: List<UHFTAGInfo>, androidId: String, context: Context) {
-        Log.d("send scanned items", "CALLED")
-        val currentDateTime = LocalDateTime.now()
-        val formatted = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-
-        val clientCode = employee?.clientCode
+    fun sendScannedData(
+        tags: List<UHFTAGInfo>,
+        androidId: String,
+        context: Context
+    ) {
+        Log.d("send scanned items", "CALLED tags=${tags.size}")
 
         if (tags.isEmpty()) {
-            Log.e("SEND_DATA", "Tags list is empty, skipping sending data.")
+            Log.e("SEND_DATA", "Tags list is empty")
             return
         }
 
-        val data = _rfidMap.value.mapNotNull { (index, rfid) ->
-            rfid.let {
-                ScannedDataToService(
-                    tIDValue = tags.get(index).tid,
-                    rFIDCode = it,
-                    createdOn = formatted,
-                    lastUpdated = formatted,
-                    id = 0,
-                    clientCode = clientCode,
-                    statusType = true,
-                    deviceId = androidId
+        val formatted = LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 
-                )
+        val clientCode = employee?.clientCode
 
+        val data = tags.mapIndexed { index, tag ->
 
-            }
-        }
+            val rfid = _rfidMap.value[index]   // optional
+            val epc = tag.epc.trim().uppercase()
+            val ascii = hexToAscii(epc)
 
-        Log.d("DATA", data.toString())
-        if (data.isNotEmpty()) {
-
-
-            viewModelScope.launch {
-                val response = apiService.addAllScannedData(data)
-                if (response.isSuccessful) {
-                    response.body() ?: emptyList()
-                    ToastUtils.showToast(context, "Items Saved successfully")
-                    _reloadTrigger.value = !_reloadTrigger.value // triggers recomposition
-                    Log.d("API_SUCCESS", "Received response: ${response.body()}")
-
-                } else {
-                    Log.e("API_ERROR", "Error: ${response.code()}")
-                    ToastUtils.showToast(context, "Failed to scan")
-                }
+            val finalCode = when {
+                !rfid.isNullOrBlank() -> rfid
+                ascii.isNotBlank() -> ascii
+                else -> epc               // ✅ LAST FALLBACK
             }
 
+            Log.d(
+                "DEBUG_SEND",
+                "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
+            )
 
+            ScannedDataToService(
+                tIDValue = tag.epc,
+                rFIDCode = finalCode,
+                createdOn = formatted,
+                lastUpdated = formatted,
+                id = 0,
+                clientCode = clientCode,
+                statusType = true,
+                deviceId = androidId
+            )
         }
 
+        Log.e(
+            "FINAL_SEND",
+            "tags=${tags.size}, rfidMap=${_rfidMap.value.size}, data=${data.size}"
+        )
 
+        if (data.isEmpty()) {
+            ToastUtils.showToast(context, "Nothing to save")
+            return
+        }
+
+        viewModelScope.launch {
+            val response = apiService.addAllScannedData(data)
+            if (response.isSuccessful) {
+                ToastUtils.showToast(context, "Items Saved successfully")
+                _reloadTrigger.value = !_reloadTrigger.value
+                Log.d("API_SUCCESS", "Saved ${data.size} items")
+            } else {
+                Log.e("API_ERROR", "Error: ${response.code()}")
+                ToastUtils.showToast(context, "Failed to scan")
+            }
+        }
     }
 
     /*fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
@@ -2138,6 +2154,21 @@ class BulkViewModel @Inject constructor(
 
     fun setLastEpc(epc: String) {
         _lastEpc.value = epc
+    }
+
+
+    /*added itemcode map for the single use tag*/
+    private val _itemCodeMap = MutableStateFlow<Map<String, String>>(emptyMap())
+    val itemCodeMap: StateFlow<Map<String, String>> = _itemCodeMap
+
+    fun loadItemCodeForEpc(epc: String) {
+        viewModelScope.launch {
+            val code = bulkRepository.getItemCodeByEpc(epc)
+            if (code.isNotBlank()) {
+                _itemCodeMap.value =
+                    _itemCodeMap.value + (epc to code)
+            }
+        }
     }
 
 

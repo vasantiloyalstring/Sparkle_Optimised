@@ -57,7 +57,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -604,7 +603,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     },
                     showCounter = true,
                     selectedCount = selectedPower,
-                    onCountSelected = { selectedPower = it }
+                    onCountSelected = { selectedPower = it },
+                    titleTextSize = 20.sp
                 )
             }
         },

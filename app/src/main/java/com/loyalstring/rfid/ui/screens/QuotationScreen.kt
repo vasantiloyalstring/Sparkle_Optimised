@@ -54,12 +54,7 @@ import com.loyalstring.rfid.data.model.quotation.QuotationItem
 import com.loyalstring.rfid.data.model.quotation.QuotationPrintData
 import com.loyalstring.rfid.data.model.quotation.QuotationPrintItem
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutIssueItem
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintData
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintItem
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutUpdateRequest
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -72,7 +67,6 @@ import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 import kotlin.collections.forEach
@@ -1116,7 +1110,8 @@ fun QuotationScreen(
                 selectedCount = selectedPower,
                 onCountSelected = {
                     selectedPower = it
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

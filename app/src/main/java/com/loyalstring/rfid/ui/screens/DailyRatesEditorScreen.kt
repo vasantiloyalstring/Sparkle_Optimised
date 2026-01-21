@@ -107,9 +107,8 @@ fun DailyRatesEditorScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
-                showCounter = false,
                 selectedCount = 0,
-                onCountSelected = {}
+                titleTextSize = 20.sp
             )
         },
         containerColor = Color.White // 🔹 White screen background

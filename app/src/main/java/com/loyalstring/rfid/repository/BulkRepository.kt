@@ -58,6 +58,10 @@ interface BulkRepository {
         bulkItemDao.clearAllItems()
         bulkItemDao.insertBulkItem(bulkItems)
     }
+/*added this one for single use tag*/
+    suspend fun getItemCodeByEpc(epc: String): String {
+        return bulkItemDao.getItemCodeByEpc(epc) ?: ""
+    }
 
 
 

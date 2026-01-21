@@ -123,7 +123,7 @@ fun QuotationListScreen(
                     )
                 }
             },
-            showCounter = false
+            titleTextSize = 20.sp
         )
 
         QuotationSearchBar(

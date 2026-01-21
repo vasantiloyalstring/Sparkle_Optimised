@@ -831,7 +831,8 @@ fun SampleInScreen(
                 selectedCount = selectedPower,
                 onCountSelected = {
                     selectedPower = it
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

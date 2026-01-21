@@ -40,7 +40,7 @@
     <string name="select_transfer_warning">Please select at least one transfer</string>
 
     <!-- Table Headers -->
-    <string name="header_sr">Sr</string>
+    <string name="header_sr">Sr No</string>
     <string name="header_from">From</string>
     <string name="header_to">To</string>
     <string name="header_gwt">G Wt</string>
@@ -161,7 +161,7 @@
     <string name="vendor_type">Vendor</string>
 
     <!-- Table Headers -->
-    <string name="sr_header">Sr</string>
+    <string name="sr_header">Sr No</string>
     <string name="from_header">From</string>
     <string name="to_header">To</string>
     <string name="gross_wt_header">G Wt</string>
@@ -348,6 +348,43 @@
     <string name="quotation_List">Quotatation List</string>
     <string name="return_label">Return</string>
     <string name="non_return_label">Non Return</string>
+
+    <!--product main screen-->
+    <string name="product">Product</string>
+    <string name="add_single_product">Add Single\nProduct</string>
+    <string name="add_bulk_products">Add Bulk\nProducts</string>
+    <string name="import_excel">Import\nExcel</string>
+    <string name="export_excel">Export\nExcel</string>
+    <string name="sync_data">Click to\nSync Data</string>
+    <string name="scan_to_desktop">Scan to\nDesktop</string>
+    <string name="scan_to_desktop_title">Scan to Desktop</string>
+    <string name="sync_sheet_data">Click to\nSync Sheet Data</string>
+    <string name="upload_data_to_server">Click to Upload\nData to Server</string>
+
+
+    <string name="lbl_epc">EPC</string>
+    <string name="lbl_vendor">Vendor</string>
+    <string name="lbl_sku">SKU</string>
+    <string name="lbl_rfid_code">RFID Code</string>
+
+    <string name="lbl_category">Category</string>
+    <string name="lbl_product">Product</string>
+    <string name="lbl_design">Design</string>
+    <string name="lbl_purity">Purity</string>
+
+    <string name="lbl_gross_weight">Gross Weight</string>
+    <string name="lbl_stone_weight">Stone Weight</string>
+    <string name="lbl_diamond_weight">Diamond Weight</string>
+    <string name="lbl_net_weight">Net Weight</string>
+
+    <string name="lbl_making_per_gram">Making/Gram</string>
+    <string name="lbl_making_percent">Making %</string>
+    <string name="lbl_fix_making">Fix Making</string>
+    <string name="lbl_fix_wastage">Fix Wastage</string>
+
+    <string name="lbl_stone_amount">Stone Amount</string>
+    <string name="lbl_diamond_amount">Diamond Amount</string>
+    <string name="total_items">Total Items: %1$d</string>
 
 
 

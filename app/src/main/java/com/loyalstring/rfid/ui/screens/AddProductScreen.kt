@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -99,6 +100,7 @@ import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -166,6 +168,10 @@ fun AddProductScreen(
     val photoUri = remember { mutableStateOf<Uri?>(null) }
     val shouldLaunchCamera = remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
@@ -418,7 +424,7 @@ fun AddProductScreen(
             },
         topBar = {
             GradientTopBar(
-                title = "Add Single Product",
+                title = localizedContext.getString(R.string.add_single_product),
 
                 navigationIcon = {
                     IconButton(onClick = { shouldNavigateBack = true }, modifier = Modifier.size(40.dp)) {
@@ -428,7 +434,8 @@ fun AddProductScreen(
                             tint = Color.White
                         )
                     }
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

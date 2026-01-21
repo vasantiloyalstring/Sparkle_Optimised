@@ -47,8 +47,6 @@ import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.ClientCodeRequest
-import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
-import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
@@ -70,12 +68,9 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
-import com.loyalstring.rfid.worker.SampleOutPdfGenerator
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import kotlin.text.orEmpty
 
 @SuppressLint("UnrememberedMutableState")
@@ -1206,7 +1201,8 @@ fun SampleOutScreen(
                 selectedCount = selectedPower,
                 onCountSelected = {
                     selectedPower = it
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

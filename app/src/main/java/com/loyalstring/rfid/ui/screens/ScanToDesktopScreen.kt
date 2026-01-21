@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.provider.Settings
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,14 +45,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.MainActivity
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.navigation.GradientTopBar
-import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @SuppressLint("HardwareIds")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +65,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     val tags by viewModel.scannedTags.collectAsState()
     val items by viewModel.scannedItems.collectAsState()
     val rfidMap by viewModel.rfidMap.collectAsState()
+    val itemCodeMap by viewModel.itemCodeMap.collectAsState()
 
     var firstPress by remember { mutableStateOf(false) }
 
@@ -94,6 +97,10 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     val error by viewModel.clearError.collectAsState()
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     var showClearDialog by remember { mutableStateOf(false) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     // ✅ IMPORTANT: whenever tags change → auto fill RFID from DB
     LaunchedEffect(tags) {
@@ -138,6 +145,17 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
+    LaunchedEffect(tags) {
+        tags.forEach { tag ->
+            val epc = tag.epc.trim().uppercase()
+
+            // avoid duplicate DB calls
+            if (!itemCodeMap.containsKey(epc)) {
+                viewModel.loadItemCodeForEpc(epc)
+            }
+        }
+    }
+
 
 
     // ✅ success / error message show once
@@ -164,7 +182,8 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Scan to Desktop",
+                title =  localizedContext.getString(R.string.scan_to_desktop_title),
+
                 navigationIcon = {
                     IconButton(onClick = { shouldNavigateBack = true }) {
                         Icon(
@@ -177,19 +196,23 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                 actions = {},
                 showCounter = true,
                 selectedCount = selectedPower,
-                onCountSelected = { selectedPower = it }
+
+                onCountSelected = { selectedPower = it },
+                titleTextSize = 20.sp
+
+
             )
         },
         bottomBar = {
             ScanBottomBarDesktop(
                 onSave = {
                     viewModel.barcodeReader.close()
-                    Log.d("save scanned items", "CLICKED")
+                    Log.d("save scanned items", "CLICKED"+tags.size)
 
 
 
                     // ✅ Better check: tags exist + at least one RFID mapped
-                    if (tags.isNotEmpty() && rfidMap.isNotEmpty()) {
+                    if (tags.isNotEmpty()) {
                         viewModel.sendScannedData(tags, shortSerial(userPreferences.getDeviceId().toString()), context)
                         viewModel.resetScanResults()
                         viewModel.stopBarcodeScanner()
@@ -243,7 +266,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Sr No",
+                    localizedContext.getString(R.string.sr_header),
                     Modifier.weight(0.8f),
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -251,7 +274,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                     fontSize = 13.sp
                 )
                 Text(
-                    "EPC",
+                    localizedContext.getString(R.string.lbl_epc),
                     Modifier.weight(2.2f),
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -259,7 +282,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
                     fontSize = 13.sp
                 )
                 Text(
-                    "RFIDCode",
+                    localizedContext.getString(R.string.rfid_code),
                     Modifier.weight(2f),
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -304,8 +327,14 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
 
                             // ✅ AUTO-FILLED FROM DB (via viewModel.autoFillRfidFromDb)
                             val rfid = rfidMap[index]
-                            val isScanned = !rfid.isNullOrBlank()
-                            val displayText = rfid ?: "scan here"
+                            val itemCode = hexToAscii(item.epc) ?: ""
+                            Log.d("itemCode","itemCode"+itemCode)
+
+                            val displayText =
+                                if (!rfid.isNullOrBlank()) rfid
+                                else itemCode.toString().ifBlank { "scan here" }
+                            val isScanned = !rfid.isNullOrBlank() || !itemCode.isNullOrBlank()
+                           // val displayText = if (isScanned) rfid!! else itemCode.ifBlank { "scan here" }
                             val textColor = if (!isScanned) Color.Blue else Color.DarkGray
                             val style = if (!isScanned) TextDecoration.Underline else TextDecoration.None
 
@@ -346,7 +375,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
             ) {
                 Text("", color = Color.White, fontFamily = poppins)
                 Text(
-                    "Total Items: ${tags.size}",
+                    text = localizedContext.getString(R.string.total_items, tags.size),
                     color = Color.White,
                     fontFamily = poppins,
                     fontSize = 12.sp
@@ -390,6 +419,27 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
         )
     }
 }
+
+fun hexToAscii(hex: String): String {
+    val cleanHex = hex.replace(" ", "").uppercase()
+
+    if (cleanHex.length % 2 != 0) return ""
+
+    return try {
+        buildString {
+            for (i in cleanHex.indices step 2) {
+                val part = cleanHex.substring(i, i + 2)
+                val char = part.toInt(16).toChar()
+                if (char.code in 32..126) { // printable ASCII only
+                    append(char)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        ""
+    }
+}
+
 
 fun shortSerial(serial: String?): String {
     if (serial.isNullOrBlank()) return "A"

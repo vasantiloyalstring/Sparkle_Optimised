@@ -1,7 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
-import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -119,7 +118,7 @@ fun SampleInListScreen(
                     )
                 }
             },
-            showCounter = false
+            titleTextSize = 20.sp
         )
 
         SampleInSearchBar(

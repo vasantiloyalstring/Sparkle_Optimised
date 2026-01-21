@@ -234,7 +234,8 @@ fun StockTransferScreen(
                 onCountSelected = {
                     selectedPower = it
 
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

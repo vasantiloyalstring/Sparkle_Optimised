@@ -182,9 +182,9 @@ fun ProductListScreen(
                         )
                     }
                 },
-                showCounter = false,
                 selectedCount = selectedCount,
-                onCountSelected = { selectedCount = it }
+                onCountSelected = { selectedCount = it },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

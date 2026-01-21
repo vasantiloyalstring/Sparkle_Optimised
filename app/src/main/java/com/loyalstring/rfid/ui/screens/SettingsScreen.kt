@@ -457,9 +457,8 @@ fun SettingsScreen(
                         )
                     }
                 },
-                showCounter = false,
                 selectedCount = 0,
-                onCountSelected = {}
+                titleTextSize = 20.sp
             )
         }
     ) { padding ->

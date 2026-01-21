@@ -214,13 +214,13 @@ fun OrderOldScreen(
                         )
                     }
                 },
-                actions = {},
                 showCounter = true,
                 selectedCount = selectedPower,
                 onCountSelected = {
                     selectedPower = it
 
-                }
+                },
+                titleTextSize = 20.sp
             )
         }
     ) { innerPadding ->

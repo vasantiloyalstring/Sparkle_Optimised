@@ -50,7 +50,6 @@ import com.loyalstring.rfid.ui.utils.BackgroundGradient
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -144,7 +143,8 @@ fun InventoryMenuScreen(
                             tint = Color.White
                         )
                     }
-                }
+                },
+                titleTextSize = 20.sp
             )
         }
     ) { innerPadding ->

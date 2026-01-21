@@ -121,7 +121,7 @@ fun SampleOutListScreen(
                     )
                 }
             },
-            showCounter = false
+            titleTextSize = 20.sp
         )
 
         SampleOutSearchBar(

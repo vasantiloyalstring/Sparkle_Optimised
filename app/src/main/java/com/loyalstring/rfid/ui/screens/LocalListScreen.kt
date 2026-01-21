@@ -17,8 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.loyalstring.rfid.data.model.setting.LocationGetRequest
-import com.loyalstring.rfid.data.model.setting.LocationGetResponse
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -179,9 +177,8 @@ fun LocationListScreen(
                     )
                 }
             },
-            showCounter = false,
             selectedCount = 0,
-            onCountSelected = {}
+            titleTextSize = 20.sp
         ) }
     ) { padding ->
         Box(

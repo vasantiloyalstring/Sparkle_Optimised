@@ -65,7 +65,6 @@ import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import com.loyalstring.rfid.data.model.login.Employee
-import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
@@ -2063,7 +2062,8 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 selectedCount = selectedPower,
                 onCountSelected = {
                     selectedPower = it
-                }
+                },
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

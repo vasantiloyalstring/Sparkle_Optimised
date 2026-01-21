@@ -2,6 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 
@@ -35,12 +36,14 @@ import androidx.lifecycle.viewModelScope
 
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.MainActivity
+import com.loyalstring.rfid.R
 
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.*
 import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,6 +80,10 @@ fun BulkProductScreen(
 
 
     var selectedPower by remember { mutableIntStateOf(5) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     LaunchedEffect(Unit) {
         selectedPower = UserPreferences.getInstance(context).getInt(
@@ -173,7 +180,7 @@ fun BulkProductScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Add Bulk Products",
+                title =  localizedContext.getString(R.string.add_bulk_products),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },
@@ -186,10 +193,10 @@ fun BulkProductScreen(
                         )
                     }
                 },
-                actions = {},
                 showCounter = true,
                 selectedCount = selectedPower,
-                onCountSelected = { selectedPower = it }
+                onCountSelected = { selectedPower = it },
+                titleTextSize = 20.sp
             )
         },
 
@@ -336,15 +343,15 @@ fun BulkProductScreen(
             ) {
 
                 Box(Modifier.width(50.dp), contentAlignment = Alignment.Center) {
-                    Text("Sr No.", color = Color.White, fontSize = 13.sp, fontFamily = poppins)
+                    Text( localizedContext.getString(R.string.header_sr), color = Color.White, fontSize = 13.sp, fontFamily = poppins)
                 }
 
                 Box(Modifier.width(150.dp), contentAlignment = Alignment.Center) {
-                    Text("Item Code", color = Color.White, fontSize = 13.sp, fontFamily = poppins)
+                    Text(localizedContext.getString(R.string.itemcode), color = Color.White, fontSize = 13.sp, fontFamily = poppins)
                 }
 
                 Box(Modifier.width(150.dp), contentAlignment = Alignment.Center) {
-                    Text("RFID Code", color = Color.White, fontSize = 13.sp, fontFamily = poppins)
+                    Text(localizedContext.getString(R.string.rfid_code), color = Color.White, fontSize = 13.sp, fontFamily = poppins)
                 }
             }
 

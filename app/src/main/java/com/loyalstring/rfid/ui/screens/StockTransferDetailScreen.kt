@@ -148,7 +148,7 @@ fun StockTransferDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                     }
                 },
-                showCounter = false
+                titleTextSize = 20.sp
             )
         },
         bottomBar = {

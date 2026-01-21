@@ -38,7 +38,6 @@ import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SearchViewModel
-import com.rscja.deviceapi.RFIDWithUHFUART
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -236,7 +235,9 @@ fun SearchScreen(
                 onCountSelected = {
                     selectedPower = it
 
-                }            )
+                },
+                titleTextSize = 20.sp
+            )
         },
         bottomBar = {
             ScanBottomBar(

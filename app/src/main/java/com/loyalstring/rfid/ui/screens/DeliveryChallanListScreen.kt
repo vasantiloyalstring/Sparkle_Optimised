@@ -1,7 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.content.Context
-import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
@@ -35,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
-import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
@@ -137,7 +135,7 @@ fun DeliveryChallanListScreen(
                     )
                 }
             },
-            showCounter = false
+            titleTextSize = 20.sp
         )
 
         DeliverySearchBar(

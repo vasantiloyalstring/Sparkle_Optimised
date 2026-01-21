@@ -338,6 +338,43 @@
     <string name="return_label">Return</string>
     <string name="non_return_label">Non Return</string>
 
+    <!--product main screen-->
+    <string name="product">منتج</string>
+    <string name="add_single_product">إضافة\nمنتج واحد</string>
+    <string name="add_bulk_products">إضافة منتجات\nبالجملة</string>
+    <string name="import_excel">استيراد\nإكسل</string>
+    <string name="export_excel">تصدير\nإكسل</string>
+    <string name="sync_data">مزامنة\nالبيانات</string>
+    <string name="scan_to_desktop">مسح إلى\nسطح المكتب</string>
+    <string name="sync_sheet_data">مزامنة\nبيانات الجدول</string>
+    <string name="upload_data_to_server">رفع البيانات\nإلى الخادم</string>
+
+    <string name="lbl_epc">EPC</string>
+    <string name="lbl_vendor">المورّد</string>
+    <string name="lbl_sku">SKU</string>
+    <string name="lbl_rfid_code">رمز RFID</string>
+
+    <string name="lbl_category">الفئة</string>
+    <string name="lbl_product">المنتج</string>
+    <string name="lbl_design">التصميم</string>
+    <string name="lbl_purity">النقاوة</string>
+
+    <string name="lbl_gross_weight">الوزن الإجمالي</string>
+    <string name="lbl_stone_weight">وزن الحجر</string>
+    <string name="lbl_diamond_weight">وزن الألماس</string>
+    <string name="lbl_net_weight">الوزن الصافي</string>
+
+    <string name="lbl_making_per_gram">المصنعية/جرام</string>
+    <string name="lbl_making_percent">المصنعية %</string>
+    <string name="lbl_fix_making">مصنعية ثابتة</string>
+    <string name="lbl_fix_wastage">هالك ثابت</string>
+
+    <string name="lbl_stone_amount">قيمة الحجر</string>
+    <string name="lbl_diamond_amount">قيمة الألماس</string>
+    <string name="total_items">إجمالي العناصر: %1$d</string>
+    <string name="scan_to_desktop_title">Scan to Desktop</string>
+
+
 
 
 

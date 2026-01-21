@@ -339,4 +339,42 @@
     <string name="quotation_List">Quotatation List</string>
     <string name="return_label">Return</string>
     <string name="non_return_label">Non Return</string>
+
+    <!--product main screen-->
+    <string name="product">उत्पाद</string>
+
+    <string name="add_single_product">एकल\nउत्पाद जोड़ें</string>
+    <string name="add_bulk_products">बल्क\nउत्पाद जोड़ें</string>
+    <string name="import_excel">एक्सेल\nआयात करें</string>
+    <string name="export_excel">एक्सेल\nनिर्यात करें</string>
+    <string name="sync_data">डेटा\nसिंक करें</string>
+    <string name="scan_to_desktop">डेस्कटॉप पर\nस्कैन करें</string>
+    <string name="sync_sheet_data">शीट डेटा\nसिंक करें</string>
+    <string name="upload_data_to_server">डेटा सर्वर पर\nअपलोड करें</string>
+
+    <string name="lbl_epc">ईपीसी</string>
+    <string name="lbl_vendor">विक्रेता</string>
+    <string name="lbl_sku">एसकेयू</string>
+    <string name="lbl_rfid_code">आरएफआईडी कोड</string>
+
+    <string name="lbl_category">श्रेणी</string>
+    <string name="lbl_product">उत्पाद</string>
+    <string name="lbl_design">डिज़ाइन</string>
+    <string name="lbl_purity">शुद्धता</string>
+
+    <string name="lbl_gross_weight">कुल वजन</string>
+    <string name="lbl_stone_weight">स्टोन वजन</string>
+    <string name="lbl_diamond_weight">डायमंड वजन</string>
+    <string name="lbl_net_weight">शुद्ध वजन</string>
+
+    <string name="lbl_making_per_gram">मेकिंग/ग्राम</string>
+    <string name="lbl_making_percent">मेकिंग %</string>
+    <string name="lbl_fix_making">फिक्स मेकिंग</string>
+    <string name="lbl_fix_wastage">फिक्स वेस्टेज</string>
+
+    <string name="lbl_stone_amount">स्टोन राशि</string>
+    <string name="lbl_diamond_amount">डायमंड राशि</string>
+    <string name="total_items">कुल आइटम: %1$d</string>
+    <string name="scan_to_desktop_title">Scan to Desktop</string>
+
 </resources>
