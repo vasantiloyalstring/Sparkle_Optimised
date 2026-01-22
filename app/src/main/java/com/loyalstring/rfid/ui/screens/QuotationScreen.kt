@@ -259,11 +259,11 @@ fun QuotationScreen(
     /*itemcode*/
     LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
-        Log.d("query", "query: ${query}")
         if (query.isEmpty()) return@LaunchedEffect
 
         val matchedItem = allItems.firstOrNull {
-            it.itemCode.equals(query, ignoreCase = true)
+            it.itemCode.equals(query, ignoreCase = true) ||
+                    it.rfid.equals(query, ignoreCase = true)
         }
 
         if (matchedItem != null) {

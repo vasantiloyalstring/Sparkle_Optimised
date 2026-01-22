@@ -1290,7 +1290,7 @@ fun OrderScreen(
 
                     Stones = emptyList(),
                     Diamond = emptyList(),
-                    WeightCategories = item.CategoryWt
+                    WeightCategories = "0"
                 )
             },
 
@@ -1639,7 +1639,7 @@ fun OrderScreen(
                                    Status = "",
                                    URDNo = "",
                                    HallmarkAmount =product.hallmarkAmt,
-                                   WeightCategories = product.CategoryWt,
+                                   WeightCategories = "0",
                                    Stones = emptyList(),
                                    Diamond = emptyList()
                                )
@@ -2811,7 +2811,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
         infoTable.setBorder(null)
         val leftText: String
         val rightText: String
-        Log.d("","order.WeightCategories"+order.WeightCategories)
+      //  Log.d("","order.WeightCategories"+order.WeightCategories)
 
 
         if (order.ClientCode.equals("LS000026")) {

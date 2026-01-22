@@ -374,6 +374,12 @@
     <string name="total_items">إجمالي العناصر: %1$d</string>
     <string name="scan_to_desktop_title">Scan to Desktop</string>
 
+    <string name="scan_display">عرض المسح</string>
+    <string name="scan_counter">عداد المسح</string>
+    <string name="scan_box">صندوق المسح</string>
+    <string name="scan_branch">فرع المسح</string>
+    <string name="exhibition">المعرض</string>
+
 
 
 

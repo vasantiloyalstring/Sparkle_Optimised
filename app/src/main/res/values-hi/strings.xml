@@ -377,4 +377,10 @@
     <string name="total_items">कुल आइटम: %1$d</string>
     <string name="scan_to_desktop_title">Scan to Desktop</string>
 
+    <string name="scan_display">स्कैन डिस्प्ले</string>
+    <string name="scan_counter">स्कैन काउंटर</string>
+    <string name="scan_box">स्कैन बॉक्स</string>
+    <string name="scan_branch">स्कैन शाखा</string>
+    <string name="exhibition">प्रदर्शनी</string>
+
 </resources>

@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,7 @@ import com.loyalstring.rfid.ui.utils.BackgroundGradient
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,6 +117,10 @@ fun InventoryMenuScreen(
     var dialogItems by remember { mutableStateOf(listOf<String>()) }
     var onItemSelected by remember { mutableStateOf<(String) -> Unit>({}) }
 
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
 //    LaunchedEffect(Unit) {
 //        showDialog = false
 //        dialogTitle = ""
@@ -124,11 +130,11 @@ fun InventoryMenuScreen(
 
 
     val menuItems = listOf(
-        "Scan Display" to R.drawable.scan_barcode,
-        "Scan Counter" to R.drawable.scan_counter,
-        "Scan Box" to R.drawable.scan_box,
-        "Scan Branch" to R.drawable.scan_branch,
-        "Exhibition" to R.drawable.scan_exhibition
+        localizedContext.getString(R.string.scan_display) to R.drawable.scan_barcode,
+        localizedContext.getString(R.string.scan_counter) to R.drawable.scan_counter,
+        localizedContext.getString(R.string.scan_box) to R.drawable.scan_box,
+        localizedContext.getString(R.string.scan_branch) to R.drawable.scan_branch,
+        localizedContext.getString(R.string.exhibition) to R.drawable.scan_exhibition
     )
 
     Scaffold(

@@ -386,6 +386,12 @@
     <string name="lbl_diamond_amount">Diamond Amount</string>
     <string name="total_items">Total Items: %1$d</string>
 
+    <string name="scan_display">Scan Display</string>
+    <string name="scan_counter">Scan Counter</string>
+    <string name="scan_box">Scan Box</string>
+    <string name="scan_branch">Scan Branch</string>
+    <string name="exhibition">Exhibition</string>
+
 
 
 
