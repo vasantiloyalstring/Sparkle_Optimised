@@ -112,9 +112,15 @@ private const val MENU_MATCHED = "MATCHED"
 private const val MENU_UNMATCHED = "UNMATCHED"
 private const val MENU_SEARCH = "SEARCH"
 
+enum class NavDirection {
+    FORWARD,
+    BACKWARD
+}
+
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
+    var navDirection by rememberSaveable { mutableStateOf(NavDirection.FORWARD) }
     val scope = rememberCoroutineScope()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     val productListViewModel: ProductListViewModel = hiltViewModel()
@@ -123,6 +129,22 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val context: Context = LocalContext.current
     var shouldNavigateBack by remember { mutableStateOf(false) }
     val emailStatus by scanDisplayViewModel.emailStatus.collectAsState()
+    var scannedDesignScope by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastScanMatchedKeys by rememberSaveable {
+        mutableStateOf<Map<String, Set<String>>>(emptyMap())
+    }
+
+    var designMatchedMap by remember {
+        mutableStateOf<Map<String, Set<String>>>(emptyMap())
+    }
+
+    var productMatchedMap by remember {
+        mutableStateOf<Map<String, Set<String>>>(emptyMap())
+    }
+
+    var categoryMatchedMap by remember {
+        mutableStateOf<Map<String, Set<String>>>(emptyMap())
+    }
 
     val loading by scanDisplayViewModel.loading.collectAsState()
     val error by scanDisplayViewModel.error.collectAsState()
@@ -130,16 +152,116 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var isSending by remember { mutableStateOf(false) }
 
 
+    var previousLevel by rememberSaveable { mutableStateOf<String?>(null) }
+    var previousCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var previousProducts by remember { mutableStateOf<List<String>>(emptyList()) }
+    var previousDesigns by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    var currentLevel by rememberSaveable { mutableStateOf("Category") }
+    var currentCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var currentProduct by rememberSaveable { mutableStateOf<String?>(null) }
+    var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Multi-select filters
+    val selectedCategories = remember { mutableStateListOf<String>() }
+    val selectedProducts = remember { mutableStateListOf<String>() }
+    val selectedDesigns = remember { mutableStateListOf<String>() }
+
+
+// stable snapshot keys
+    val selectedCategoriesKey = selectedCategories.toList()
+    val selectedProductsKey = selectedProducts.toList()
+    val selectedDesignsKey = selectedDesigns.toList()
+
+    var selectedMenu by rememberSaveable { mutableStateOf(MENU_ALL) }
+
+    fun normalizeFiltersForLevel(level: String) {
+        when (level) {
+            "Category" -> {
+                selectedCategories.clear()
+                selectedProducts.clear()
+                selectedDesigns.clear()
+
+                currentCategory = null
+                currentProduct = null
+                currentDesign = null
+            }
+
+            "Product" -> {
+                selectedProducts.clear()
+                selectedDesigns.clear()
+
+                currentProduct = null
+                currentDesign = null
+            }
+
+            "Design" -> {
+                selectedDesigns.clear()
+                currentDesign = null
+            }
+
+            "DesignItems" -> {
+                // keep everything
+            }
+        }
+    }
+    fun handleToolbarBack(): Boolean {
+        return when {
+
+            // Exit matched / unmatched
+            selectedMenu == MENU_MATCHED || selectedMenu == MENU_UNMATCHED -> {
+                selectedMenu = MENU_ALL
+                bulkViewModel.clearStickyUnmatched()
+
+                currentLevel = previousLevel ?: "Category"
+                selectedCategories.clear()
+                selectedCategories.addAll(previousCategories)
+                selectedProducts.clear()
+                selectedProducts.addAll(previousProducts)
+                selectedDesigns.clear()
+                selectedDesigns.addAll(previousDesigns)
+                true
+            }
+
+            currentLevel == "DesignItems" -> {
+                selectedMenu = MENU_ALL
+                bulkViewModel.clearStickyUnmatched()
+                navDirection = NavDirection.BACKWARD
+                currentLevel = "Design"
+                normalizeFiltersForLevel("Design")
+                true
+            }
+
+            currentLevel == "Design" -> {
+                selectedMenu = MENU_ALL
+                bulkViewModel.clearStickyUnmatched()
+                navDirection = NavDirection.BACKWARD
+                currentLevel = "Product"
+                normalizeFiltersForLevel("Product")
+                true
+            }
+
+            currentLevel == "Product" -> {
+                selectedMenu = MENU_ALL
+                bulkViewModel.clearStickyUnmatched()
+                navDirection = NavDirection.BACKWARD
+                currentLevel = "Category"
+                normalizeFiltersForLevel("Category")
+                true
+            }
+
+            else -> false
+        }
+    }
 
 
     // Handle back navigation with delay to allow ripple animation to complete
-    LaunchedEffect(shouldNavigateBack) {
+  /*  LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
             kotlinx.coroutines.delay(50) // Small delay for ripple animation
             onBack()
         }
-    }
+    }*/
 
     var showRfidDialog by remember { mutableStateOf(false) }
     if (showRfidDialog) {
@@ -226,16 +348,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    // Multi-select filters
-    val selectedCategories = remember { mutableStateListOf<String>() }
-    val selectedProducts = remember { mutableStateListOf<String>() }
-    val selectedDesigns = remember { mutableStateListOf<String>() }
 
-
-// stable snapshot keys
-    val selectedCategoriesKey = selectedCategories.toList()
-    val selectedProductsKey = selectedProducts.toList()
-    val selectedDesignsKey = selectedDesigns.toList()
 
 
     val allCategories = remember(navFilteredItems) {
@@ -262,10 +375,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    var currentLevel by rememberSaveable { mutableStateOf("Category") }
-    var currentCategory by rememberSaveable { mutableStateOf<String?>(null) }
-    var currentProduct by rememberSaveable { mutableStateOf<String?>(null) }
-    var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
+
 
     val scannedFiltered by bulkViewModel.scannedFilteredItems
 
@@ -303,7 +413,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var showDialog by remember { mutableStateOf(false) }
     var filterType by remember { mutableStateOf("Category") }
 
-    var selectedMenu by rememberSaveable { mutableStateOf(MENU_ALL) }
+
 
 
     var selectedItem by remember { mutableStateOf<BulkItem?>(null) }
@@ -585,6 +695,19 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
+    LaunchedEffect(isScanning, allMatchedForFilter) {
+        if (isScanning && allMatchedForFilter) {
+            bulkViewModel.stopScanningAndCompute()
+            isScanning = false
+            selectedMenu = MENU_MATCHED
+            Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+
+
+
     // Avoid feeding UI projection back into VM during scanning to reduce churn
 
     Scaffold(
@@ -593,7 +716,16 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 GradientTopBar(
                     title = it,
                     navigationIcon = {
-                        IconButton(onClick = { shouldNavigateBack = true }) {
+                        IconButton(onClick = {
+                            //shouldNavigateBack = true
+
+                            val handled = handleToolbarBack()
+                            if (!handled) {
+                                navController.popBackStack()
+                             //   shouldNavigateBack = true
+                            }
+
+                        }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
@@ -612,7 +744,18 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             Column {
 
               //  SummaryRow(currentLevel, displayItems, selectedMenu)
-                SummaryRow(currentLevel, displayItems, selectedMenu)
+                /*vasanti*/
+                SummaryRow(
+                    currentLevel = currentLevel,
+                    items = displayItems,
+                    selectedMenu = selectedMenu,
+                    designMatchedMap = designMatchedMap,
+                    productMatchedMap= productMatchedMap,   // ✅ ADD
+                categoryMatchedMap= categoryMatchedMap,
+                    isScanning = isScanning,
+                    scannedKeys = scannedKeys,
+                    matchedEpcs = matchedEpcs
+                )
                 ScanBottomBarInventory(
                     onSave = { /* save */
 
@@ -641,6 +784,32 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         } else {
                             isScanning = false
                             bulkViewModel.stopScanningAndCompute()
+                            val matchedKeys =
+                                scanScopeItems
+                                    .filter { it.scannedStatus == "Matched" }
+                                    .mapNotNull { it.tagKey() }
+                                    .toSet()
+
+                            when (currentLevel) {
+                                "DesignItems" -> {
+                                    currentDesign?.let { d ->
+                                        designMatchedMap = designMatchedMap + (d to matchedKeys)
+                                    }
+                                }
+
+                                "Product" -> {
+                                    currentProduct?.let { p ->
+                                        productMatchedMap = productMatchedMap + (p to matchedKeys)
+                                    }
+                                }
+
+                                "Category" -> {
+                                    currentCategory?.let { c ->
+                                        categoryMatchedMap = categoryMatchedMap + (c to matchedKeys)
+                                    }
+                                }
+                            }
+
                         }
                     },
                     onEmail = {
@@ -731,14 +900,24 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                             val grouped = displayItems.groupBy { it.category ?: "Unknown" }
                             grouped.forEach { (label, items) ->
                                 item {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
-                                        // drill down to product for the chosen category (single-select drill)
+                                    TableDataRow(
+                                        row = TableRow(label, items),
+                                        currentLevel = currentLevel,
+                                        designMatchedMap = designMatchedMap,
+                                        isScanning = isScanning,
+                                        scannedKeys = scannedKeys,
+                                        matchedEpcs = matchedEpcs,
+                                        productMatchedMap=productMatchedMap,
+                                        categoryMatchedMap=categoryMatchedMap,
+                                        navDirection=navDirection
+                                    ) {
                                         currentCategory = label
                                         selectedCategories.clear()
                                         selectedCategories.add(label)
                                         selectedProducts.clear()
                                         selectedDesigns.clear()
                                         currentLevel = "Product"
+                                        normalizeFiltersForLevel("Product")
                                     }
                                 }
                             }
@@ -751,15 +930,26 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                             grouped.forEach { (label, items) ->
                                 item {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
-                                        // when clicking product row, drill to design level
+                                    TableDataRow(
+                                        row = TableRow(label, items),
+                                        currentLevel = currentLevel,
+                                        designMatchedMap = designMatchedMap,
+                                        isScanning = isScanning,
+                                        scannedKeys = scannedKeys,
+                                        matchedEpcs = matchedEpcs,
+                                        productMatchedMap=productMatchedMap,
+                                        categoryMatchedMap=categoryMatchedMap,
+                                        navDirection=navDirection
+                                    ) {
                                         currentProduct = label
-                                        if (!selectedProducts.contains(label)) selectedProducts.add(
-                                            label
-                                        )
+                                        selectedProducts.clear()
+                                        selectedProducts.add(label)
                                         selectedDesigns.clear()
                                         currentLevel = "Design"
+                                        normalizeFiltersForLevel("Design")
                                     }
+
+
                                 }
                             }
                         }
@@ -768,19 +958,33 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                             val grouped = displayItems
                                 .filter {
                                     (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                            (selectedProducts.isEmpty() || it.productName in selectedProducts)
+                                            (selectedProducts.isEmpty() || it.productName in selectedProducts) &&
+                                            (selectedDesigns.isEmpty() || it.design in selectedDesigns)
+
                                 }
                                 .groupBy { it.design ?: "Unknown" }
 
                             grouped.forEach { (label, items) ->
                                 item {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
+                                    TableDataRow(
+                                        row = TableRow(label, items),
+                                        currentLevel = currentLevel,
+                                        designMatchedMap = designMatchedMap,
+                                        isScanning = isScanning,
+                                        scannedKeys = scannedKeys,
+                                        matchedEpcs = matchedEpcs,
+                                        productMatchedMap=productMatchedMap,
+                                        categoryMatchedMap=categoryMatchedMap,
+                                        navDirection=navDirection
+                                    ) {
                                         currentDesign = label
-                                        if (!selectedDesigns.contains(label)) selectedDesigns.add(
-                                            label
-                                        )
+                                        scannedDesignScope = label
+                                        selectedDesigns.clear()
+                                        selectedDesigns.add(label)
                                         currentLevel = "DesignItems"
+                                        normalizeFiltersForLevel("DesignItems")
                                     }
+
                                 }
                             }
                         }
@@ -788,8 +992,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         "DesignItems" -> {
                             val itemsList = displayItems.filter {
                                 (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                        (selectedProducts.isEmpty() || it.productName in selectedProducts) &&
-                                        (selectedDesigns.isEmpty() || it.design in selectedDesigns)
+                                        (selectedProducts.isEmpty() || it.productName in selectedProducts)
+
                             }
 
                             // Use pagination for large lists
@@ -1103,6 +1307,15 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     bulkViewModel.loadUnmatchedFast(scopeItems)
                                     selectedMenu = MENU_UNMATCHED
                                     currentLevel = "DesignItems"*/
+
+                                    /*vasanti new imple*/
+                                    // 🔐 Save current state
+                                    previousLevel = currentLevel
+                                    previousCategories = selectedCategories.toList()
+                                    previousProducts = selectedProducts.toList()
+                                    previousDesigns = selectedDesigns.toList()
+
+                                    currentLevel = "DesignItems"
                                     selectedMenu = MENU_UNMATCHED
                                    /* currentLevel = "DesignItems"
 
@@ -1164,6 +1377,15 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 selectedCategories.clear()
                                 selectedProducts.clear()
                                 selectedDesigns.clear()*/
+                                /*vasanti new imple*/
+                                // 🔐 Save current state
+                                previousLevel = currentLevel
+                                previousCategories = selectedCategories.toList()
+                                previousProducts = selectedProducts.toList()
+                                previousDesigns = selectedDesigns.toList()
+
+
+                                currentLevel = "DesignItems"
                                 selectedMenu = MENU_MATCHED
                                 bulkViewModel.clearStickyUnmatched()
 
@@ -1336,6 +1558,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }*/
 
 }
+
+
 
 @Composable
 fun GradientButtonNew(
@@ -1698,18 +1922,48 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
     }
 }*/
 
+
 @Composable
-fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
+fun SummaryRow(
+    currentLevel: String,
+    items: List<BulkItem>,
+    selectedMenu: String,
+    designMatchedMap: Map<String, Set<String>>,
+    productMatchedMap: Map<String, Set<String>>,   // ✅ ADD
+    categoryMatchedMap: Map<String, Set<String>>,
+    isScanning: Boolean,
+    scannedKeys: Set<String>,
+    matchedEpcs: Set<String>
+){
 
     val totals = remember(items) {
         val totalQty = items.size
         val totalWt = items.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-        val matched = items.filter { it.scannedStatus == "Matched" }
+/*vasanti*/
+       /* val matchedItems = items.filter {
+            isItemMatched(
+                it,
+                currentLevel,
+                designMatchedMap,
+                productMatchedMap,
+                categoryMatchedMap,
+                isScanning,
+                scannedKeys,
+                matchedEpcs
+            )
+        }*/
+        val matchedItems = items.filter { it.scannedStatus == "Matched" }
+
+        val matchedQty = matchedItems.size
+        val matchedWt = matchedItems.fold(BigDecimal.ZERO) {
+                acc, it -> acc + parseWeightToBigDecimal(it.grossWeight)
+        }
+     /*   val matched = items.filter { it.scannedStatus == "Matched" }
         val matchedQty = matched.size
         val matchedWt = matched.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-        val unmatchedQty = totalQty - matchedQty
+       */ val unmatchedQty = totalQty - matchedQty
         val unmatchedWt = totalWt.subtract(matchedWt)
 
         Triple(
@@ -1814,9 +2068,38 @@ fun TableHeader(currentLevel: String) {
 }
 
 @Composable
-fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
+fun TableDataRow(
+    row: TableRow,
+    currentLevel: String,
+    designMatchedMap: Map<String, Set<String>>,
+    isScanning: Boolean,
+    scannedKeys: Set<String>,
+    matchedEpcs: Set<String>,
+    productMatchedMap: Map<String, Set<String>>,
+    categoryMatchedMap: Map<String, Set<String>>,
+    navDirection: NavDirection,
+    onRowClick: () -> Unit,
+
+) {
     val qty = row.items.size
-    val matchedItems = row.items.filter { it.scannedStatus == "Matched" }
+ //  val matchedItems = row.items.filter { it.scannedStatus == "Matched" }
+    /*vasanti*/
+   /*val matchedItems = row.items.filter {
+        it.scannedStatus == "Matched" &&
+               (selectedDesigns.isEmpty() || it.design in selectedDesigns)
+    }*/
+
+
+
+    val matchedItems = when (currentLevel) {
+         "DesignItems" -> row.items.filter {
+             isItemMatched( it,
+                 currentLevel,
+                 designMatchedMap,
+                 productMatchedMap, categoryMatchedMap, isScanning, scannedKeys, matchedEpcs )
+         } // ✅ ALL forward levels use finalized state
+     else -> row.items.filter { it.scannedStatus == "Matched" } }
+
     val matchedQty = matchedItems.size
     val grossWeight = row.items
         .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
@@ -1838,15 +2121,78 @@ fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
         TableCell(formatTo3Decimals(grossWeight), colWeightWidth)
         TableCell("$matchedQty", colMatchedQtyWidth)
         TableCell(formatTo3Decimals(matchedWeight), colMatchedWtWidth)
-        val status = when {
+       /* val status = when {
             row.items.all { it.scannedStatus == "Matched" } -> "Matched"
             row.items.all { it.scannedStatus == "Unmatched" } -> "Unmatched"
             else -> "Unmatched"
+        }*/
+
+        val status = when {
+            matchedQty == 0 -> "Unmatched"
+            matchedQty == row.items.size -> "Matched"
+            else -> "Unmatched" // partial match → still Unmatched icon
         }
         StatusIconCell(status, colStatusWidth)
     }
 
 }
+
+private fun isItemMatched(
+    item: BulkItem,
+    currentLevel: String,
+    designMatchedMap: Map<String, Set<String>>,
+    productMatchedMap: Map<String, Set<String>>,
+    categoryMatchedMap: Map<String, Set<String>>,
+    isScanning: Boolean,
+    scannedKeys: Set<String>,
+    matchedEpcs: Set<String>
+): Boolean {
+    val key = item.tagKey() ?: return false
+
+    return when {
+        // 🔥 Live scan — always show while scanning
+        isScanning -> {
+            key in scannedKeys || key in matchedEpcs
+        }
+
+        // ✅ Design scope
+        currentLevel == "Design" || currentLevel == "DesignItems" -> {
+            val design = item.design ?: return false
+            designMatchedMap[design]?.contains(key) == true
+        }
+
+        // ✅ Product scope → fallback to Design matches
+        currentLevel == "Product" -> {
+            val product = item.productName ?: return false
+
+            // 1️⃣ If product-level scan exists, use it
+            productMatchedMap[product]?.contains(key)
+            // 2️⃣ Otherwise, derive from design scan
+                ?: run {
+                    val design = item.design ?: return false
+                    designMatchedMap[design]?.contains(key) == true
+                }
+        }
+
+// ✅ Category scope → fallback to Design matches
+        currentLevel == "Category" -> {
+            val category = item.category ?: return false
+
+            // 1️⃣ If category-level scan exists, use it
+            categoryMatchedMap[category]?.contains(key)
+            // 2️⃣ Otherwise, derive from design scan
+                ?: run {
+                    val design = item.design ?: return false
+                    designMatchedMap[design]?.contains(key) == true
+                }
+        }
+
+        else -> false
+    }
+}
+
+
+
 
 @Composable
 fun TableCell(text: String, width: Dp) {
