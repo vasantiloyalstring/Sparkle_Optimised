@@ -759,20 +759,33 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 ScanBottomBarInventory(
                     onSave = { /* save */
 
-                        val clientCode = employee?.clientCode       // 🔁 replace
 
-                        val scannedItems = buildItemsForUpload(scopeItems)
+                            val clientCode = employee?.clientCode ?: return@ScanBottomBarInventory
 
-                        Log.d("SAVE_DEBUG", "scopeItems=${scopeItems.size} " +
-                                "matched=${scopeItems.count { it.scannedStatus == "Matched" }} " +
-                                "unmatched=${scopeItems.count { it.scannedStatus == "Unmatched" }}")
+                            // ✅ FINAL scan state
+                            val finalItems = scopeItems.map { item ->
+                                val key = item.tagKey()
+                                val finalStatus =
+                                    if (key != null && effectiveMatchedSet.contains(key)) "Matched"
+                                    else "Unmatched"
 
-                        Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
-                                "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
-                                "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
-                        //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
-                        //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
-                        scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 500)
+                                item.copy(scannedStatus = finalStatus)
+                            }
+
+                            // ✅ 1. LOCAL SAVE (THIS WAS MISSING)
+                            bulkViewModel.saveScanResultLocally(finalItems)
+
+                            // ✅ 2. REMOTE SAVE (existing)
+                            val payload = buildItemsForUpload(finalItems)
+                            scanDisplayViewModel.uploadStockVerification(
+                                clientCode,
+                                payload,
+                                batchSize = 500
+                            )
+
+                            Toast.makeText(context, "Scan saved locally & uploaded", Toast.LENGTH_SHORT).show()
+
+
                     },
                     onList = { showMenu = true },
                     onScan = {
@@ -1438,6 +1451,18 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     //showToast(context, "End")
                                 }
 
+                            }
+
+                            "Resume Scan"->{
+                                bulkViewModel.restoreScanFromSavedBulkItems(allItems)
+                                selectedMenu = MENU_ALL
+                                currentLevel = "DesignItems"
+
+                                Toast.makeText(
+                                    context,
+                                    "Previous scan restored",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
 

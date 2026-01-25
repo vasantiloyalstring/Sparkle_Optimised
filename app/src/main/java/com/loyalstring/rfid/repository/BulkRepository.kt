@@ -63,6 +63,10 @@ interface BulkRepository {
         return bulkItemDao.getItemCodeByEpc(epc) ?: ""
     }
 
+    suspend fun updateScanStatus(items: List<BulkItem>) {
+        bulkItemDao.updateBulkItems(items)
+    }
+
 
 
 

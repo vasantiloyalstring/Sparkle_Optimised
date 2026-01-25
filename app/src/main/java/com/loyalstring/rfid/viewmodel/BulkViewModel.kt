@@ -2172,6 +2172,25 @@ class BulkViewModel @Inject constructor(
     }
 
 
+
+    fun restoreScanFromSavedBulkItems(items: List<BulkItem>) {
+        val restoredMatched = items
+            .filter { it.scannedStatus.equals("Matched", true) }
+            .mapNotNull { it.epc ?: it.rfid }
+            .map { it.trim().uppercase() }
+            .toSet()
+
+        _matchedEpcSet.value = restoredMatched
+    }
+
+
+
+    fun saveScanResultLocally(items: List<BulkItem>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            bulkRepository.updateScanStatus(items)
+        }
+    }
+
 }
 
 

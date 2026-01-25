@@ -126,4 +126,7 @@ interface BulkItemDao {
     @Query("SELECT itemCode FROM bulk_items WHERE epc = :epc LIMIT 1")
     suspend fun getItemCodeByEpc(epc: String): String?
 
+    @Update
+    suspend fun updateBulkItems(items: List<BulkItem>)
+
 }

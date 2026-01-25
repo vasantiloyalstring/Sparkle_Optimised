@@ -32,7 +32,7 @@ class ProductListViewModel @Inject constructor(
                 _isLoading.value = true
                 repository.getAllBulkItems().collect { items ->
                     for (item in items) {
-                        if (item.rfid == "SJ4227") {
+                        if (item.rfid == "SJ4199") {
                             val json = Gson().toJson(item)
                             Log.d("ProductListVM", "🎯 Matched BulkItem: $json")
                         }
