@@ -727,6 +727,13 @@ fun DeliveryChalanScreen(
             // 4. FineWt = NetWt * Fine%  (agar chahiye)
             val finePercent = safeDouble(matchedItem.makingPercent) // ya alag field
             val fineWt = netWt * finePercent / 100.0
+            val fixedWastage = (makingFixedWastage?.toDoubleOrNull() ?: 0.0)
+            val net = netWt?.toDouble() ?: 0.0
+            fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
+
+            val finePlusWt = fmt3(
+                (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
+            )
 
             // --- Build ChallanDetails ---
             val productDetail = ChallanDetails(
@@ -782,7 +789,7 @@ fun DeliveryChalanScreen(
 
                 SKUId = 0,
                 SKU = matchedItem.sku.orEmpty(),
-                FineWastageWt = matchedItem.fixWastage ?: "0.0",
+                FineWastageWt = finePlusWt ?: "0.0",
                 TotalItemAmount = itemAmt.toString(),
                 ItemAmount = itemAmt.toString(),
                 ItemGSTAmount = "0.0",
@@ -1192,21 +1199,45 @@ fun DeliveryChalanScreen(
             )
         }
 
-        val touchMatch = touchList.firstOrNull {
+        /*val touchMatch = touchList.firstOrNull {
             it.CustomerId == customerId &&
                     it.StockKeepingUnit.equals(matchedItem.sku, true)
+        }*/
+
+        if(!touchList.isEmpty()) {
+            val touchMatch = touchList.firstOrNull { touch ->
+                val customerOk = touch.CustomerId == customerId
+                val skuOk = touch.StockKeepingUnit
+                    ?.trim()
+                    ?.equals(matchedItem.sku, ignoreCase = true) == true
+
+                Log.d(
+                    "TOUCH_MATCH_DEBUG",
+                    "checking → CustomerId=${touch.CustomerId}, SKU=${touch.StockKeepingUnit}, " +
+                            "customerOk=$customerOk, skuOk=$skuOk"
+                )
+
+                customerOk && skuOk
+            }
+
+
+            val challanItem = buildChallanDetails(
+                matchedItem = matchedItem,
+                touchMatch = touchMatch,
+                dailyRates = dailyRates,
+                employee = employee
+            )
+
+            productList.add(challanItem)
+            if (!matchedItem.toString().isNullOrBlank()) {
+                itemCode = TextFieldValue("")
+            }
         }
-
-        val challanItem = buildChallanDetails(
-            matchedItem = matchedItem,
-            touchMatch = touchMatch,
-            dailyRates = dailyRates,
-            employee = employee
-        )
-
-        productList.add(challanItem)
-        if (!matchedItem.toString().isNullOrBlank()) {
-            itemCode = TextFieldValue("")
+        else
+        {
+            Log.d(
+                "TOUCH_MATCH_DEBUG",
+                "checking → tounchlist=${touchList.size}")
         }
 
        // itemCode = TextFieldValue("") // clear input safely
@@ -1767,7 +1798,12 @@ MakingPerGram=${touchMatch.MakingPerGram}
         val imageString = matchedItem.imageUrl.orEmpty()
         val lastImagePath = imageString.split(",").lastOrNull()?.trim()
         val finalImageUrl = if (!lastImagePath.isNullOrBlank()) "$baseUrl$lastImagePath" else ""
-
+        val fixedWastage = (makingFixedWastage?.toDoubleOrNull() ?: 0.0)
+        val net = netWt?.toDouble() ?: 0.0
+        fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
+        val finePlusWt = fmt3(
+            (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
+        )
         // 🔹 NOW add product
         val newProduct = ChallanDetails(
             ChallanId = 0,
@@ -1825,7 +1861,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             TotalDiamondAmount = matchedItem.diamondAmount ?: "0.0",
             SKUId = 0,
             SKU = matchedItem.sku.orEmpty(),
-            FineWastageWt = matchedItem.fixWastage ?: "0.0",
+            FineWastageWt = finePlusWt?: "0.0",
 
             ItemGSTAmount = "0.0",
             ClientCode = employee?.clientCode ?: "",
@@ -2267,18 +2303,21 @@ fun buildChallanDetails(
 ): ChallanDetails {
 
     fun safeDouble(v: String?) = v?.toDoubleOrNull() ?: 0.0
-
+     fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
     // 🔹 Touch overrides (default from item)
     var makingPercent = matchedItem.makingPercent ?: "0.0"
     var makingFixedWastage = matchedItem.fixWastage ?: "0.0"
     var makingFixedAmt = matchedItem.fixMaking ?: "0.0"
     var makingPerGram = matchedItem.makingPerGram ?: "0.0"
 
+
+
     if (touchMatch != null) {
         makingPercent = touchMatch.MakingPercentage ?: makingPercent
         makingFixedWastage = touchMatch.MakingFixedWastage ?: makingFixedWastage
         makingFixedAmt = touchMatch.MakingFixedAmt ?: makingFixedAmt
         makingPerGram = touchMatch.MakingPerGram ?: makingPerGram
+
     }
 
     // 🔹 Rate by purity
@@ -2299,6 +2338,13 @@ fun buildChallanDetails(
     val metalAmt = netWt * rate
     val itemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
 
+    val percent = (makingPercent?.toDoubleOrNull() ?: 0.0)
+    val fixedWastage = (makingFixedWastage?.toDoubleOrNull() ?: 0.0)
+    val net = netWt?.toDouble() ?: 0.0
+
+    val finePlusWt = fmt3(
+        (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
+    )
     return ChallanDetails(
         ChallanId = 0,
         MRP = matchedItem.mrp?.toString() ?: "0.0",
@@ -2349,7 +2395,7 @@ fun buildChallanDetails(
         TotalDiamondAmount = matchedItem.diamondAmount ?: "0.0",
         SKUId =0 ?: 0,
         SKU = matchedItem.sku.orEmpty(),
-        FineWastageWt = matchedItem.fixWastage ?: "0.0",
+        FineWastageWt = finePlusWt ?: "0.0",
         TotalItemAmount ="".toString() ?: "0.0",
         ItemAmount = itemAmt.toString() ?: "0.0",
         ItemGSTAmount = "0.0",
