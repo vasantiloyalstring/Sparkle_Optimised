@@ -2176,7 +2176,7 @@ class BulkViewModel @Inject constructor(
     fun restoreScanFromSavedBulkItems(items: List<BulkItem>) {
         val restoredMatched = items
             .filter { it.scannedStatus.equals("Matched", true) }
-            .mapNotNull { it.epc ?: it.rfid }
+            .mapNotNull { it.epc ?: it.itemCode }
             .map { it.trim().uppercase() }
             .toSet()
 

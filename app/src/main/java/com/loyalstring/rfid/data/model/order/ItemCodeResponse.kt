@@ -43,7 +43,7 @@ data class ItemCodeResponse(
     @SerializedName("TotalDiamondPieces") var TotalDiamondPieces: String? = null,
     @SerializedName("TotalDiamondAmount") var TotalDiamondAmount: String? = null,
     @SerializedName("Featured") var Featured: String? = null,
-    @SerializedName("Pieces") var Pieces: String? = null,
+    @SerializedName("Pieces") var pieces: String? = null,
     @SerializedName("HallmarkAmount") var HallmarkAmount: String? = null,
     @SerializedName("HUIDCode") var HUIDCode: String? = null,
     @SerializedName("MRP") var MRP: String? = null,
@@ -134,6 +134,7 @@ data class ItemCodeResponse(
     @SerializedName("PurchasedWastageWt") var PurchasedWastageWt: Double? = null,
     @SerializedName("StatusType") var StatusType: Boolean? = null,
     @SerializedName("WeightCategory") var weightCategory: Int? = 0,
+
 
 
     )

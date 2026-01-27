@@ -2606,7 +2606,7 @@ fun BulkItem.toItemCodeResponse(): ItemCodeResponse {
         PacketName = this.packetName.orEmpty(),
         VendorName = this.vendor.orEmpty(),
         Images = this.imageUrl.orEmpty(),
-        Pieces = this.pcs?.toString().orEmpty(),
+        pieces = this.pcs?.toString().orEmpty(),
         TotalWeight = this.totalGwt ?: 0.0,
         MRP = this.mrp?.toString().orEmpty(),
         CounterId = this.counterId ?: 0,

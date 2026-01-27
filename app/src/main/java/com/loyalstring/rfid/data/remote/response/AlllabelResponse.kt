@@ -36,7 +36,7 @@ data class AlllabelResponse(
         @SerializedName("Quantity") val quantity: String?,
         @SerializedName("TotalWeight") val totalWeight: String?,
         @SerializedName("PackingWeight") val packingWeight: String?,
-        @SerializedName("Pieces") val pieces: String?,
+
         @SerializedName("MRP") val mrp: String?,
         @SerializedName("ClipWeight") val clipWeight: String?,
         @SerializedName("ClipQuantity") val clipQuantity: String?,
@@ -100,6 +100,7 @@ data class AlllabelResponse(
         @SerializedName("PacketName") val packetName: String?,
         @SerializedName("BranchType") val branchType: String?,
         @SerializedName("WeightCategory") val WeightCategory: String?,
+        @SerializedName("Pieces") val pieces: String?,
         @SerializedName("Stones")
         val stones: List<Stone>?,
 
