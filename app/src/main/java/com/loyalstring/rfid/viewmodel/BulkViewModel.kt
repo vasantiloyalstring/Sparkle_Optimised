@@ -2191,7 +2191,7 @@ class BulkViewModel @Inject constructor(
         }
     }
 
-    /*remove the item from unmatch once scanned*/
+    /*remove the item from unmatch once scan and matched*/
     fun removeFromStickyUnmatched(matchedKeys: Set<String>) {
         _filteredUnmatchedIds.value =
             _filteredUnmatchedIds.value.filterNot { it in matchedKeys }
