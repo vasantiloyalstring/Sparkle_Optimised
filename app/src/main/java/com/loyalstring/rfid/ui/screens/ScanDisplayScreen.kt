@@ -802,7 +802,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     .filter { it.scannedStatus == "Matched" }
                                     .mapNotNull { it.tagKey() }
                                     .toSet()
-
+                            bulkViewModel.removeFromStickyUnmatched(matchedKeys)
                             when (currentLevel) {
                                 "DesignItems" -> {
                                     currentDesign?.let { d ->
