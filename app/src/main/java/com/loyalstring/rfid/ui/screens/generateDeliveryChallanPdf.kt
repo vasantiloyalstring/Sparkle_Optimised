@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.ui.utils.formatDate_ddMMyyyy
@@ -137,6 +138,8 @@ fun generateDeliveryChallanPdf(
             drawTextLeft(canvas, "Phone : ${data.phone}", margin, y, textPaint)
 
             // Right
+
+
             val d = dateOnly(formatDate_ddMMyyyy(data.createdDateTime))
             drawTextRight(canvas, "Date: $d", rightX, margin + 14f, textPaint)
             drawTextRight(canvas, "Status: Order Summary", rightX, margin + 30f, textPaint)

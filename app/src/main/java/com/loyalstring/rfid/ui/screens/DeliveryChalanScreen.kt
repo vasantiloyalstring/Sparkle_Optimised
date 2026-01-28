@@ -184,8 +184,20 @@ fun DeliveryChalanScreen(
                     // ✅ Step 3: Prefill UI fields
                     customerName = selected.CustomerName.toString()
                     customerId = selected.CustomerId
+                    Log.d("@@","customerName"+customerName+" "+customerId)
                     productList.clear()
-                    selected.ChallanDetails?.let { productList.addAll(it) }
+                   // selected.ChallanDetails?.let { productList.addAll(it) }
+                    selected.ChallanDetails?.forEach { item ->
+                        val newItem = item   // same object reference
+
+                        newItem.CustomerName = customerName
+                        newItem.CustomerId = customerId!!
+                        // copy other common fields if needed
+                        // newItem.BranchId = selected.BranchId
+
+                        productList.add(newItem)
+                    }
+
                 }
             }
         }
@@ -1152,59 +1164,122 @@ fun DeliveryChalanScreen(
         }
     }
 */
-
+    var pendingMatchedItem by remember { mutableStateOf<BulkItem?>(null) }
     LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
         if (query.isEmpty()) return@LaunchedEffect
 
         val matchedItem = allItems.firstOrNull { item ->
             val hasRfid = !item.rfid.isNullOrBlank()
-
-            if (hasRfid) {
-                item.rfid.equals(query, ignoreCase = true)
-            } else {
-                item.itemCode.equals(query, ignoreCase = true)
-            }
+            if (hasRfid) item.rfid.equals(query, true)
+            else item.itemCode.equals(query, true)
         } ?: return@LaunchedEffect
 
-        Log.d("@@","matchedItem"+matchedItem)
-
-        // ✅ Prevent duplicate by TID (BEST)
         val isDuplicate = productList.any { product ->
-            if (!matchedItem.rfid.isNullOrBlank()) {
-                product.RFIDCode.equals(matchedItem.rfid, ignoreCase = true)
-            } else {
-                product.ItemCode.equals(matchedItem.itemCode, ignoreCase = true)
-            }
+            if (!matchedItem.rfid.isNullOrBlank())
+                product.RFIDCode.equals(matchedItem.rfid, true)
+            else
+                product.ItemCode.equals(matchedItem.itemCode, true)
         }
 
         if (isDuplicate) {
-            Log.d("ManualEntry", "⚠️ Duplicate skipped: ${matchedItem.itemCode}")
             itemCode = TextFieldValue("")
             return@LaunchedEffect
         }
-        Log.d("@@","matchedItem after last"+matchedItem)
 
-        // ✅ Add to queue (NOT overwrite)
-        pendingItem.add(matchedItem)
+        pendingMatchedItem = matchedItem
+        itemCode = TextFieldValue("")   // ✅ safe now
 
-        Log.d("@@","matchedItem after last"+pendingItem.toString())
-
-
-        // Fetch touch once
         if (touchList.isEmpty()) {
             deliveryChallanViewModel.fetchCustomerTunch(
                 employee?.clientCode.orEmpty(),
                 employee?.id?.toInt() ?: 0
             )
         }
+    }
 
-        /*val touchMatch = touchList.firstOrNull {
+    LaunchedEffect(pendingMatchedItem, touchList) {
+        val matchedItem = pendingMatchedItem ?: return@LaunchedEffect
+
+        // 🔹 Try to find touch match (may be null)
+        val touchMatch = touchList.firstOrNull { touch ->
+            touch.CustomerId == customerId &&
+                    touch.StockKeepingUnit
+                        ?.trim()
+                        ?.equals(matchedItem.sku, true) == true
+        }
+
+        // 🔹 Build even if touchMatch == null
+        val challanItem = buildChallanDetails(
+            matchedItem = matchedItem,
+            touchMatch = touchMatch,   // ✅ null-safe
+            dailyRates = dailyRates,
+            employee = employee
+        )
+
+        productList.add(challanItem)
+        pendingMatchedItem = null
+    }
+
+
+
+    /* LaunchedEffect(itemCode.text) {
+         val query = itemCode.text.trim()
+         if (query.isEmpty()) return@LaunchedEffect
+
+         val matchedItem = allItems.firstOrNull { item ->
+             val hasRfid = !item.rfid.isNullOrBlank()
+
+             if (hasRfid) {
+                 item.rfid.equals(query, ignoreCase = true)
+             } else {
+                 item.itemCode.equals(query, ignoreCase = true)
+             }
+         } ?: return@LaunchedEffect
+
+         Log.d("@@","matchedItem"+matchedItem)
+
+         // ✅ Prevent duplicate by TID (BEST)
+         val isDuplicate = productList.any { product ->
+             if (!matchedItem.rfid.isNullOrBlank()) {
+                 product.RFIDCode.equals(matchedItem.rfid, ignoreCase = true)
+             } else {
+                 product.ItemCode.equals(matchedItem.itemCode, ignoreCase = true)
+             }
+         }
+
+         if (isDuplicate) {
+             Log.d("ManualEntry", "⚠️ Duplicate skipped: ${matchedItem.itemCode}")
+             itemCode = TextFieldValue("")
+             return@LaunchedEffect
+         }
+         Log.d("@@","matchedItem after last"+matchedItem)
+
+         // ✅ Add to queue (NOT overwrite)
+         pendingItem.add(matchedItem)
+
+         Log.d("@@","matchedItem after last"+pendingItem.toString())
+
+
+         // Fetch touch once
+         // Fetch touch once
+         if (touchList.isEmpty()) {
+             deliveryChallanViewModel.fetchCustomerTunch(
+                 employee?.clientCode.orEmpty(),
+                 employee?.id?.toInt() ?: 0
+             )
+
+             Log.d("TOUCH_MATCH_DEBUG", "Touch list empty → fetching, wait...")
+             return@LaunchedEffect   // 🔥 THIS WAS MISSING
+         }
+
+
+         *//*val touchMatch = touchList.firstOrNull {
             it.CustomerId == customerId &&
                     it.StockKeepingUnit.equals(matchedItem.sku, true)
-        }*/
+        }*//*
 
-        if(!touchList.isEmpty()) {
+      //  if(!touchList.isEmpty()) {
             val touchMatch = touchList.firstOrNull { touch ->
                 val customerOk = touch.CustomerId == customerId
                 val skuOk = touch.StockKeepingUnit
@@ -1232,16 +1307,16 @@ fun DeliveryChalanScreen(
             if (!matchedItem.toString().isNullOrBlank()) {
                 itemCode = TextFieldValue("")
             }
-        }
+       *//* }
         else
         {
             Log.d(
                 "TOUCH_MATCH_DEBUG",
                 "checking → tounchlist=${touchList.size}")
-        }
+        }*//*
 
        // itemCode = TextFieldValue("") // clear input safely
-    }
+    }*/
 
    /* LaunchedEffect(touchList, pendingItem) {
 
@@ -1347,7 +1422,7 @@ fun DeliveryChalanScreen(
             // Prepare print data from your screen state
             val itemsForPrint = productList.map { detail ->
                 DeliveryChallanItemPrint(
-                    itemName = detail.ProductName ?: "",
+                    itemName = detail.DesignName ?: "",
                     purity = detail.Purity ?: "",
                     pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
                     grossWt = detail.GrossWt ?: "0.000 gm",
@@ -1398,7 +1473,8 @@ fun DeliveryChalanScreen(
 
             //val activity = LocalContext.current.findActivity()
 
-            ensureBluetoothPermissions(context) {
+          /*  BT printer call
+           ensureBluetoothPermissions(context) {
                 CoroutineScope(Dispatchers.IO).launch {
 
                     BluetoothThermalPrinterHelper.printDeliveryChallan(
@@ -1407,7 +1483,7 @@ fun DeliveryChalanScreen(
                         printerName = "4B-2043PB-B799"
                     )
                 }
-            }
+            }*/
             //Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
             deliveryChallanViewModel.clearAddChallanResponse()
         }
@@ -1958,10 +2034,13 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 onSave = {
                     if (isEditMode) {
                         // ✅ 1️⃣ Create the update request object
+
+                        Log.d("@@","@@"+deliveryChallanViewModel.selectedChallan.value+"      "+deliveryChallanViewModel.selectedChallan.value!!.CustomerId)
                         val updateRequest = UpdateDeliveryChallanRequest(
                             Id = deliveryChallanViewModel.selectedChallan.value?.Id ?: 0,
                             StatusType = true,
-                            CustomerId = customerId.toString(),
+                            CustomerId = deliveryChallanViewModel.selectedChallan.value!!.CustomerId,
+                            CustomerName = deliveryChallanViewModel.selectedChallan.value!!.CustomerName.toString(),
                             VendorId = 0,
                             BranchId = productList.get(0).BranchId,
                             TotalAmount = productList.sumOf { it.ItemAmount?.toDoubleOrNull() ?: 0.0 }.toString(),
@@ -2183,6 +2262,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 onTotalsChange = { base, gst, final ->
                     baseTotal = base
                     gstAmount = gst
+
                     totalWithGst = final
                 },
                 onItemUpdated = { index, updated ->

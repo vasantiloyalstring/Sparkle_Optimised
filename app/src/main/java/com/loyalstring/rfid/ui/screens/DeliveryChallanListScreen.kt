@@ -373,7 +373,7 @@ private fun DeliveryChallanResponseList.toDeliveryChallanPrintData(
 
  val    itemsForPrint =  this.ChallanDetails?.map { detail ->
         DeliveryChallanItemPrint(
-            itemName = detail.ProductName ?: "",
+            itemName = detail.DesignName ?: "",
             purity = detail.Purity ?: "",
             pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
             grossWt = detail.GrossWt ?: "0.000 gm",

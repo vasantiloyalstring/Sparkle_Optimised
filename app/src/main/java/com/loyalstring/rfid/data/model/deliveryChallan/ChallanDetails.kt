@@ -12,7 +12,7 @@ data class ChallanDetails(
     val GrossWt: String,
     val NetWt: String,
     val ProductId: Int,
-    val CustomerId: Int,
+    var CustomerId: Int,
     val MetalRate: String,
     val MakingCharg: String,
     val Price: String,
@@ -108,7 +108,7 @@ data class ChallanDetails(
     val fixMaking:String="",
     val fixWastage:String="",
     val TIDNumber:String="",
-    val CustomerName:String=""
+    var CustomerName:String=""
 
 
 )

@@ -57,7 +57,7 @@ fun ItemCodeInputRowData(
     val gradient = Brush.horizontalGradient(
         listOf(Color(0xFF5231A7), Color(0xFFD32940))
     )
-
+    val MAX_RESULTS = 50
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
@@ -67,7 +67,7 @@ fun ItemCodeInputRowData(
     val query = itemCode.text.trim()
 
     // ✅ Same filtering logic
-    val filteredResults = remember(query, filteredList) {
+   /* val filteredResults = remember(query, filteredList) {
         if (query.isEmpty()) emptyList()
         else {
             when {
@@ -87,7 +87,30 @@ fun ItemCodeInputRowData(
                 }
             }
         }
+    }*/
+
+    var debouncedQuery by remember { mutableStateOf("") }
+
+    LaunchedEffect(query) {
+        delay(300)
+        debouncedQuery = query
     }
+
+    val filteredResults = remember(debouncedQuery, filteredList) {
+        if (debouncedQuery.length < 2) emptyList()
+        else {
+            filteredList
+                .asSequence()
+                .filter {
+                    it.rfid?.contains(debouncedQuery, true) == true ||
+                            it.itemCode?.contains(debouncedQuery, true) == true
+                }
+                .take(50)
+                .toList()
+        }
+    }
+
+
 
     val ctx: Context = LocalContext.current
     val currentLocales = AppCompatDelegate.getApplicationLocales()
@@ -95,12 +118,22 @@ fun ItemCodeInputRowData(
     val localizedContext = LocaleHelper.applyLocale(ctx, currentLang ?: "en")
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        val shouldExpand = showDropdown && query.isNotEmpty() && (isLoading || filteredResults.isNotEmpty())
-
+     //   val shouldExpand = showDropdown && query.isNotEmpty() && (isLoading || filteredResults.isNotEmpty())
+        val shouldExpand =
+            showDropdown &&
+                    debouncedQuery.isNotEmpty() &&
+                    (isLoading || filteredResults.isNotEmpty())
         ExposedDropdownMenuBox(
             expanded = shouldExpand,
-            onExpandedChange = { expanded ->
+          /*  onExpandedChange = { expanded ->
                 if (query.isNotEmpty()) setShowDropdown(expanded) else setShowDropdown(false)
+            }*/
+            onExpandedChange = { expanded ->
+                if (debouncedQuery.isNotEmpty()) {
+                    setShowDropdown(expanded)
+                } else {
+                    setShowDropdown(false)
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -124,8 +157,9 @@ fun ItemCodeInputRowData(
 
                         // ✅ IME switching (text<->number) should NOT kill dropdown
                         scope.launch {
-                            delay(60)
-                            setShowDropdown(it.text.isNotEmpty())
+                           // delay(60)
+                           // setShowDropdown(it.text.isNotEmpty())
+                            setShowDropdown(true)
                         }
                     },
                     singleLine = true,
@@ -236,8 +270,8 @@ fun ItemCodeInputRowData(
                                 text = {
                                     Text(
                                         text = when {
-                                            item.rfid?.contains(query, ignoreCase = true) == true -> item.rfid ?: ""
-                                            item.itemCode?.contains(query, ignoreCase = true) == true -> item.itemCode ?: ""
+                                            item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
+                                            item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
                                             else -> item.itemCode ?: ""
                                         },
                                         fontSize = 13.sp,
@@ -246,8 +280,8 @@ fun ItemCodeInputRowData(
                                 },
                                 onClick = {
                                     val selectedText = when {
-                                        item.rfid?.contains(query, ignoreCase = true) == true -> item.rfid ?: ""
-                                        item.itemCode?.contains(query, ignoreCase = true) == true -> item.itemCode ?: ""
+                                        item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
+                                        item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
                                         else -> item.itemCode ?: ""
                                     }
 

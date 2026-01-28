@@ -3,10 +3,9 @@ package com.loyalstring.rfid.data.model.deliveryChallan
 import androidx.compose.runtime.snapshots.SnapshotStateList
 
 data class UpdateDeliveryChallanRequest(val Id: Int,
-
-
                                         val StatusType: Boolean,
-                                        val CustomerId: String,
+                                        val CustomerId: Int,
+                                        val CustomerName: String ,
                                         val VendorId: Int,
                                         val BranchId: Int,
                                         val TotalAmount: String,
