@@ -876,8 +876,10 @@ fun DeliveryChalanScreen(
     val lastChallanNo by deliveryChallanViewModel.lastChallanNo.collectAsState()
 
     LaunchedEffect(lastChallanNo, isSaving) {
+
         // Only run when a new value is emitted
         if (!isSaving) return@LaunchedEffect
+
         val lastNo = lastChallanNo ?: return@LaunchedEffect
         val newChallanNo = lastNo + 1
 
@@ -885,7 +887,13 @@ fun DeliveryChalanScreen(
         val branchId = UserPreferences.getInstance(context).getBranchID()!!.toInt()
 
         Log.d("DeliveryChallan", "➡️ Adding challan with No: $newChallanNo")
-
+        if (customerName.isNullOrBlank()) {
+            Toast
+                .makeText(context, "Please select customer name", Toast.LENGTH_SHORT)
+                .show()
+            isSaving = false
+            return@LaunchedEffect
+        }
         val request = AddDeliveryChallanRequest(
             BranchId = branchId,
             TransactionAmtType = "Cash",
