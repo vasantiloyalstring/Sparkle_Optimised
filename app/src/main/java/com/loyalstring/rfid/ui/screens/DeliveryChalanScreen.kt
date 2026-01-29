@@ -57,7 +57,6 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.DeliveryChallanItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.AddDeliveryChallanRequest
-import com.loyalstring.rfid.data.model.deliveryChallan.BluetoothThermalPrinterHelper
 import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
 import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchResponse
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
@@ -78,10 +77,9 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.bouncycastle.crypto.params.Blake3Parameters.context
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -831,7 +829,7 @@ fun DeliveryChalanScreen(
                 Purity = matchedItem.purity ?: "",
                 DesignName = matchedItem.design ?: "",
                 CompanyId = 0,
-                BranchId = matchedItem.branchId ?: 0,
+                BranchId = matchedItem.branchId ?:  UserPreferences.getInstance(context).getBranchID()!!.toInt(),
                 CounterId = matchedItem.counterId ?: 0,
                 EmployeeId = 0,
                 LabelledStockId = matchedItem.id ?: 0,
@@ -884,7 +882,7 @@ fun DeliveryChalanScreen(
         val newChallanNo = lastNo + 1
 
         val clientCode = employee?.clientCode ?: return@LaunchedEffect
-        val branchId = employee.branchNo ?: 1
+        val branchId = UserPreferences.getInstance(context).getBranchID()!!.toInt()
 
         Log.d("DeliveryChallan", "➡️ Adding challan with No: $newChallanNo")
 
@@ -1214,7 +1212,8 @@ fun DeliveryChalanScreen(
             matchedItem = matchedItem,
             touchMatch = touchMatch,   // ✅ null-safe
             dailyRates = dailyRates,
-            employee = employee
+            employee = employee,
+            context=context
         )
 
         productList.add(challanItem)
@@ -1963,7 +1962,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             Purity = matchedItem.purity ?: "",
             DesignName = matchedItem.design ?: "",
             CompanyId = 0,
-            BranchId = matchedItem.branchId ?: 0,
+            BranchId = matchedItem.branchId ?: UserPreferences.getInstance(context).getBranchID()!!.toInt(),
             CounterId = matchedItem.counterId ?: 0,
             EmployeeId = employee?.employeeId ?: 0,
             LabelledStockId = 0,
@@ -2120,7 +2119,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                     } else {
 
                         val clientCode = employee?.clientCode ?: return@ScanBottomBar
-                        val branchId = employee.branchNo ?: 1
+                        val branchId = employee.branchNo ?: UserPreferences.getInstance(context).getBranchID()!!.toInt()
 
                         // 🔹 Step 1: Fetch last challan no
                         isSaving = true
@@ -2344,19 +2343,21 @@ MakingPerGram=${touchMatch.MakingPerGram}
 
                 // 🔥 Yaha sab items pe same values set kar:
                 for (i in productList.indices) {
-                    val old = productList[i]
+
+                    val old = productList[i] ?: continue
+
+                    val resolvedBranchId = branchList
+                        ?.firstOrNull { it.BranchName == fields?.branchName }
+                        ?.Id
+                        ?: old.BranchId
+
                     productList[i] = old.copy(
-                        // yahan tu actual ChallanDetails fields map karega
-                        // example mapping:
-                        BranchId = branchList
-                            .firstOrNull { it.BranchName == fields.branchName }
-                            ?.Id ?: old.BranchId,
-                        FinePer = fields.fine,
-                        fixWastage = fields.wastage,
-                        // agar EmployeeId chahiye:
-                        // EmployeeId = ...
+                        BranchId = resolvedBranchId,
+                        FinePer = fields?.fine ?: old.FinePer,
+                        fixWastage = fields?.wastage ?: old.fixWastage
                     )
                 }
+
             }
         )
     }
@@ -2379,7 +2380,8 @@ fun buildChallanDetails(
     matchedItem: BulkItem,
     touchMatch: CustomerTunchResponse?,   // use your actual model name
     dailyRates: List<DailyRateResponse>?,
-    employee: Employee?
+    employee: Employee?,
+    context: Context
 ): ChallanDetails {
 
     fun safeDouble(v: String?) = v?.toDoubleOrNull() ?: 0.0
@@ -2425,6 +2427,7 @@ fun buildChallanDetails(
     val finePlusWt = fmt3(
         (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
     )
+
     return ChallanDetails(
         ChallanId = 0,
         MRP = matchedItem.mrp?.toString() ?: "0.0",
@@ -2503,7 +2506,7 @@ fun buildChallanDetails(
         Purity = matchedItem.purity ?: "",
         DesignName = matchedItem.design ?: "",
         CompanyId = 0?: 0,
-        BranchId = matchedItem.branchId ?: 0,
+        BranchId = matchedItem.branchId ?:UserPreferences.getInstance(context).getBranchID()!!.toInt(),
         CounterId = matchedItem.counterId ?: 0,
         EmployeeId = 0,
         LabelledStockId = 0 ?: 0,

@@ -118,6 +118,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 userPrefs.saveUserName(response.employee?.username.toString())
                 userPrefs.saveEmployee(response.employee)
                 userPrefs.setLoggedIn(true)
+                userPrefs.saveBranchId(response.employee!!.defaultBranchId)
                 userPrefs.saveClient(response.employee?.clients!!)
                 userPrefs.saveOrganization(response.employee?.clients!!.organisationName.toString())
 

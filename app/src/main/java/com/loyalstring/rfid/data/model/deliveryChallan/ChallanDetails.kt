@@ -94,20 +94,20 @@ data class ChallanDetails(
     val PacketId: Int,
 
     val RFIDCode: String,
-    val Image: String = "",
-    val DiamondWt: String = "",
-    val StoneAmt: String = "",
-    val DiamondAmt: String = "",
+    val Image: String? = "",
+    val DiamondWt: String? = "",
+    val StoneAmt: String? = "",
+    val DiamondAmt: String? = "",
 
-    val FinePer: String = "",
-    val FineWt: String = "",
+    val FinePer: String? = "",
+    val FineWt: String? = "",
     val qty:Int=0,
-    val tid:String="",
-    val totayRate:String="",
-    val makingPercent:String="",
-    val fixMaking:String="",
-    val fixWastage:String="",
-    val TIDNumber:String="",
+    val tid:String?="",
+    val totayRate:String?="",
+    val makingPercent:String?="",
+    val fixMaking:String?="",
+    val fixWastage:String?="",
+    val TIDNumber:String?="",
     var CustomerName:String=""
 
 

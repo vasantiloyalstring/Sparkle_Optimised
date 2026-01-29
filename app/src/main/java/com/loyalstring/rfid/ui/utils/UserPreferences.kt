@@ -123,6 +123,14 @@ class UserPreferences @Inject constructor(
         prefs.edit { putBoolean(KEY_LOGGED_IN, loggedIn) }
     }
 
+    fun saveBranchId(branchId: Int) {
+        prefs.edit { putInt(KEY_BRANCH_ID, branchId) }
+    }
+
+    fun getBranchID(): Int? {
+        return prefs.getInt(KEY_BRANCH_ID, 0)
+    }
+
     fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_LOGGED_IN, false)
 
     fun logout() {
