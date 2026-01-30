@@ -875,7 +875,7 @@ fun DeliveryChalanScreen(
     // 🔹 When last challan number updates → Add the challan
     val lastChallanNo by deliveryChallanViewModel.lastChallanNo.collectAsState()
 
-    LaunchedEffect(lastChallanNo, isSaving) {
+    LaunchedEffect(lastChallanNo) {
 
         // Only run when a new value is emitted
         if (!isSaving) return@LaunchedEffect
@@ -918,7 +918,7 @@ fun DeliveryChalanScreen(
             gstDiscout = "0.0",
             TDS = "0.0",
             ReceivedAmount = "0.0",
-            InvoiceStatus = "Pending",
+            ChallanStatus = "Sold",
             Visibility = "true",
             Offer = "0.0",
             CourierCharge = "0.0",
@@ -1973,7 +1973,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             BranchId = matchedItem.branchId ?: UserPreferences.getInstance(context).getBranchID()!!.toInt(),
             CounterId = matchedItem.counterId ?: 0,
             EmployeeId = employee?.employeeId ?: 0,
-            LabelledStockId = 0,
+            LabelledStockId = matchedItem.id,
             FineSilver = "0.0",
             FineGold = "0.0",
             DebitSilver = "0.0",
@@ -2517,7 +2517,7 @@ fun buildChallanDetails(
         BranchId = matchedItem.branchId ?:UserPreferences.getInstance(context).getBranchID()!!.toInt(),
         CounterId = matchedItem.counterId ?: 0,
         EmployeeId = 0,
-        LabelledStockId = 0 ?: 0,
+        LabelledStockId = matchedItem.id ?: 0,
         FineSilver = "0.0",
         FineGold = "0.0",
         DebitSilver = "0.0",

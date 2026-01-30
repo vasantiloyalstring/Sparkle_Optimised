@@ -1783,7 +1783,9 @@ class BulkViewModel @Inject constructor(
                     }
 
                     // ✅ Batch insert (with protection)
+
                     if (processedItems.size >= 100) {
+                        bulkRepository.clearAllItems()
                         try {
                             bulkRepository.insertBulkItems(processedItems.toList())
                         } catch (e: Exception) {
@@ -1797,7 +1799,9 @@ class BulkViewModel @Inject constructor(
 
                 Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}")
                 // ✅ Insert remaining
+
                 if (processedItems.isNotEmpty()) {
+                    bulkRepository.clearAllItems()
                     try {
                         bulkRepository.insertBulkItems(processedItems.toList())
                     } catch (e: Exception) {

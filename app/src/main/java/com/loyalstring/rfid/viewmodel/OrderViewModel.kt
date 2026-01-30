@@ -237,11 +237,11 @@ class OrderViewModel @Inject constructor(
                 val response = repository.getAllEmpList(ClientCodeRequest(clientCode)) // API call
 
                 if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
-                    val data = response.body()
+                    val data = response.body()!!
 
                     // Save to Room
-                    // repository.clearAllEmployees()
-                    repository.saveEmpListToRoom(data!!)
+                   //  repository.clearAllEmployees()
+                   // repository.saveEmpListToRoom(data!!)
 
                     _empListFlow.value = UiState.Success(data)
 

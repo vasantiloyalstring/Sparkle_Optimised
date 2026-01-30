@@ -20,6 +20,7 @@ import kotlinx.parcelize.Parcelize
 @TypeConverters(StoneDiamondConverter::class)
 data class BulkItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+
     val productName: String?,
     val itemCode: String?,
     val rfid: String?,

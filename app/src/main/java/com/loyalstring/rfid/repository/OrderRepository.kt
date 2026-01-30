@@ -35,6 +35,7 @@ class OrderRepository @Inject constructor(
     suspend fun getAllEmpList(clientCodeRequest: ClientCodeRequest): Response<List<EmployeeList>> {
         val res = apiService.getAllEmpList(clientCodeRequest)
         if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+            clearAllEmployees()
             saveEmpListToRoom(res.body()!!)
         }
         return apiService.getAllEmpList(clientCodeRequest)
