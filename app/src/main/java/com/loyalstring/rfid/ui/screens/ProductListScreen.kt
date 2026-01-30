@@ -601,7 +601,7 @@ fun ProductListScreen(
                     visible = showConfirmDelete,
                     productName = selectedItem?.productName,
                     onConfirm = {
-                        val id = selectedItem?.id ?: 0
+                        val id = selectedItem?.bulkItemId ?: 0
                         val clientCode = employee?.clientCode
                         if (id > 0) {
                             //deletingItemId = id // ✅ keep id safe

@@ -833,7 +833,7 @@ fun OrderScreenContent(
 
     fun BulkItem.toItemCodeResponse(): ItemCodeResponse {
         return ItemCodeResponse(
-            Id = this.id ?: 0,
+            Id = this.bulkItemId ?: 0,
             ProductTitle = this.productName.orEmpty(),
             ItemCode = this.itemCode.orEmpty(),
             RFIDCode = this.rfid.orEmpty(),

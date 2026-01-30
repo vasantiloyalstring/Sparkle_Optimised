@@ -79,7 +79,6 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.bouncycastle.crypto.params.Blake3Parameters.context
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -832,7 +831,7 @@ fun DeliveryChalanScreen(
                 BranchId = matchedItem.branchId ?:  UserPreferences.getInstance(context).getBranchID()!!.toInt(),
                 CounterId = matchedItem.counterId ?: 0,
                 EmployeeId = 0,
-                LabelledStockId = matchedItem.id ?: 0,
+                LabelledStockId = matchedItem.bulkItemId ?: 0,
                 FineSilver = "0.0",
                 FineGold = fineWt.toString(),
                 DebitSilver = "0.0",
@@ -1973,7 +1972,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             BranchId = matchedItem.branchId ?: UserPreferences.getInstance(context).getBranchID()!!.toInt(),
             CounterId = matchedItem.counterId ?: 0,
             EmployeeId = employee?.employeeId ?: 0,
-            LabelledStockId = matchedItem.id,
+            LabelledStockId = matchedItem.bulkItemId,
             FineSilver = "0.0",
             FineGold = "0.0",
             DebitSilver = "0.0",
@@ -2517,7 +2516,7 @@ fun buildChallanDetails(
         BranchId = matchedItem.branchId ?:UserPreferences.getInstance(context).getBranchID()!!.toInt(),
         CounterId = matchedItem.counterId ?: 0,
         EmployeeId = 0,
-        LabelledStockId = matchedItem.id ?: 0,
+        LabelledStockId = matchedItem.bulkItemId ?: 0,
         FineSilver = "0.0",
         FineGold = "0.0",
         DebitSilver = "0.0",
@@ -2716,7 +2715,7 @@ fun DeliveryChallanItem.toChallanDetails(): ChallanDetails {
 
 fun BulkItem.toItemCodeResponse(): ItemCodeResponse {
     return ItemCodeResponse(
-        Id = this.id ?: 0,
+        Id = this.bulkItemId ?: 0,
         ProductTitle = this.productName.orEmpty(),
         ItemCode = this.itemCode.orEmpty(),
         RFIDCode = this.rfid.orEmpty(),

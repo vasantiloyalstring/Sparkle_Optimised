@@ -1,8 +1,6 @@
 package com.loyalstring.rfid.ui.utils
 
 import com.loyalstring.rfid.data.local.entity.BulkItem
-import com.loyalstring.rfid.data.model.order.Diamond
-import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
 
 
@@ -32,7 +30,7 @@ rfid=this.rfidCode?:"",
         sku = this.sku ?: "",
         vendor = this.vendorName ?: "",
         tid = this.tidNumber ?: "",
-        id = this.id?:0,
+        bulkItemId = this.id?:0,
         epc = this.tidNumber.takeIf { !it.isNullOrBlank() } ?: this.rfidCode.takeIf { !it.isNullOrBlank() } ?: "", // Prioritize tidNumber for epc, fallback to rfidCode
 
         box = "",

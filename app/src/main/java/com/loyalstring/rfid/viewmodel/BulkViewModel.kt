@@ -1199,7 +1199,8 @@ class BulkViewModel @Inject constructor(
                     branchType = "",
                     totalWt = 0.0,
                     CategoryWt = "",
-                    SKUId = 0
+                    SKUId = 0,
+                    bulkItemId = 0
 
                 ).apply {
                     uhfTagInfo = tag
@@ -1785,7 +1786,7 @@ class BulkViewModel @Inject constructor(
                     // ✅ Batch insert (with protection)
 
                     if (processedItems.size >= 100) {
-                        bulkRepository.clearAllItems()
+                        //bulkRepository.clearAllItems()
                         try {
                             bulkRepository.insertBulkItems(processedItems.toList())
                         } catch (e: Exception) {
@@ -1801,7 +1802,7 @@ class BulkViewModel @Inject constructor(
                 // ✅ Insert remaining
 
                 if (processedItems.isNotEmpty()) {
-                    bulkRepository.clearAllItems()
+                    //bulkRepository.clearAllItems()
                     try {
                         bulkRepository.insertBulkItems(processedItems.toList())
                     } catch (e: Exception) {

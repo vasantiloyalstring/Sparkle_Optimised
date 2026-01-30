@@ -6,8 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.loyalstring.rfid.data.local.converters.StoneDiamondConverter
-import com.loyalstring.rfid.data.model.order.Diamond
-import com.loyalstring.rfid.data.model.order.Stone
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
@@ -19,7 +17,9 @@ import kotlinx.parcelize.Parcelize
 )
 @TypeConverters(StoneDiamondConverter::class)
 data class BulkItem(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true)
+    val id:Int =0,
+    val bulkItemId: Int,
 
     val productName: String?,
     val itemCode: String?,

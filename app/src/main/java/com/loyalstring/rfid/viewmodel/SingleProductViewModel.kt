@@ -1,6 +1,5 @@
 package com.loyalstring.rfid.viewmodel
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,8 +23,6 @@ import com.loyalstring.rfid.data.model.addSingleItem.ProductModel
 import com.loyalstring.rfid.data.model.addSingleItem.PurityModel
 import com.loyalstring.rfid.data.model.addSingleItem.SKUModel
 import com.loyalstring.rfid.data.model.addSingleItem.VendorModel
-import com.loyalstring.rfid.data.model.order.Diamond
-import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.data.EditDataRequest
@@ -34,7 +31,6 @@ import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.BulkRepository
 import com.loyalstring.rfid.repository.DropdownRepository
 import com.loyalstring.rfid.repository.SingleProductRepository
-import com.loyalstring.rfid.ui.utils.ToastUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -430,7 +426,7 @@ class SingleProductViewModel @Inject constructor(
 
     fun EditDataRequest.toBulkItem(): BulkItem {
         return BulkItem(
-            id = this.Id,  // matches PrimaryKey (if API Id = local DB Id)
+            bulkItemId = this.Id,  // matches PrimaryKey (if API Id = local DB Id)
 
             productName   = this.ProductTitle,
             itemCode      = this.ItemCode,

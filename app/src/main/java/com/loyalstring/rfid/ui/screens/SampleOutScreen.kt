@@ -561,7 +561,7 @@ fun SampleOutScreen(
                 BranchId = matchedItem.branchId ?: 0,
                 CounterId = matchedItem.counterId ?: 0,
                 EmployeeId = 0,
-                LabelledStockId = matchedItem.id ?: 0,
+                LabelledStockId = matchedItem.bulkItemId ?: 0,
                 FineSilver = "0.0",
                 FineGold = fineWt.toString(),
                 DebitSilver = "0.0",

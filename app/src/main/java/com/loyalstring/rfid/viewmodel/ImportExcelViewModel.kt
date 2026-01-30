@@ -218,7 +218,7 @@ class ImportExcelViewModel @Inject constructor(
 
                     try {
                         val item = BulkItem(
-                            id = 0,
+                            bulkItemId = 0,
                             productName = row[fieldMapping["productName"]],
                             itemCode = row[fieldMapping["itemCode"]],
                             rfid = rfid,
@@ -339,7 +339,7 @@ class ImportExcelViewModel @Inject constructor(
         rfid: String?
     ): BulkItem {
         return BulkItem(
-            id = 0,
+            bulkItemId = 0,
             productName = getStringFromRow(
                 row,
                 rawHeaderIndexMap,

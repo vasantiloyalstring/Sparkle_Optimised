@@ -26,7 +26,7 @@ interface BulkItemDao {
     suspend fun insertSingleItem(item: BulkItem): Long
 
     //@Query("SELECT * FROM bulk_items")
-    @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design FROM bulk_items")
+    @Query("SELECT  id,bulkItemId, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design FROM bulk_items")
     fun getMinimalItemsFlow(): Flow<List<BulkItem>>
 
     @Query("SELECT * FROM bulk_items")
@@ -67,7 +67,7 @@ interface BulkItemDao {
     @Update
     suspend fun updateBulkItem(item: BulkItem)
 
-    @Query("SELECT * FROM bulk_items WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM bulk_items WHERE bulkItemId = :id LIMIT 1")
     suspend fun getById(id: Int): BulkItem?
 
     @Query("UPDATE bulk_items SET scannedStatus = :status WHERE UPPER(TRIM(epc)) = :epc")
@@ -76,19 +76,19 @@ interface BulkItemDao {
     @Query("UPDATE bulk_items SET scannedStatus = ''")
     suspend fun resetAllScannedStatus()
 
-    @Query("DELETE FROM bulk_items WHERE id = :id")
+    @Query("DELETE FROM bulk_items WHERE bulkItemId = :id")
     suspend fun deleteById(id: Int): Int   // ✅ rows deleted
 
     //@Query("DELETE FROM bulk_items WHERE id = :id")
     //suspend fun deleteById(id: Int): Int   // ✅ rows deleted
     // Pagination queries for efficient large dataset handling
-    @Query("SELECT id, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items ORDER BY id LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
     suspend fun getMinimalItemsPaged(limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items")
     suspend fun getTotalItemCount(): Int
 
-    @Query("SELECT id, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items WHERE scannedStatus = :status ORDER BY id LIMIT :limit OFFSET :offset")
+    @Query("SELECT id,bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items WHERE scannedStatus = :status ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
     suspend fun getItemsByStatusPaged(status: String, limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items WHERE scannedStatus = :status")
@@ -97,7 +97,7 @@ interface BulkItemDao {
 
     /*@Query("DELETE FROM bulk_items WHERE id = :id")
     suspend fun deleteById(id: Int): Int   // ✅ rows deleted*/
-    @Query("SELECT id, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs) ORDER BY id LIMIT :limit OFFSET :offset")
+    @Query("SELECT id,bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs) ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
     suspend fun getItemsByEpcsPaged(epcs: List<String>, limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items WHERE UPPER(TRIM(epc)) IN (:epcs)")

@@ -5,7 +5,6 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
-import com.loyalstring.rfid.data.remote.data.SyncResult
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
 import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
 import com.loyalstring.rfid.ui.utils.toBulkItem
@@ -35,7 +34,7 @@ interface BulkRepository {
     suspend fun getPacketIdFromName(name: String): Int?
 
     suspend fun updateBulkItem(item: BulkItem) {
-        val existing = bulkItemDao.getById(item.id)
+        val existing = bulkItemDao.getById(item.bulkItemId)
         if (existing == null) {
            // bulkItemDao.insertBulkItem(List<BulkItem>)
         } else {

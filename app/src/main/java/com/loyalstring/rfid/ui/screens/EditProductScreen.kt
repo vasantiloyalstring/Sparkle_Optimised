@@ -242,7 +242,7 @@ fun EditProductScreen(
                     }
 
                     val request = EditDataRequest(
-                        Id = item.id ?: 0,
+                        Id = item.bulkItemId ?: 0,
                         ProductTitle = productName,
                         ClipWeight = "",
                         ClipQuantity = "",
