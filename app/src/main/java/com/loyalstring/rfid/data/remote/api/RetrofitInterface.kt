@@ -301,6 +301,13 @@ interface RetrofitInterface {
     @POST("api/ProductMaster/AddStockVerificationBySession")
     suspend fun uploadStock(@Body body: RequestBody): Response<ScanSessionResponse>
 
+    @Multipart
+    @POST("api/ProductMaster/AddStockVerificationWithBatchFile")
+    suspend fun uploadStockVerificationFile(
+        @Part("ClientCode") clientCode: RequestBody,
+        @Part jsonFile: MultipartBody.Part
+    ): ScanSessionResponse
+
 
     @POST("/api/RFIDDevice/DeleteRFIDByClientAndDevice")
     suspend fun clearStockData(@Body req: ClearStockDataModelReq): Response<ClearStockDataModelResponse>

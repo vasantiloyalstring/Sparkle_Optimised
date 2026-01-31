@@ -1873,8 +1873,8 @@ class ScanDisplayViewModel @Inject constructor(
     fun uploadStockVerification(
         clientCode: String,
         items: List<Item>,
-        batchSize: Int = 3000,
-        parallelUploads: Int = 3
+        batchSize: Int = 2000,
+        parallelUploads: Int = 1
     ) {
         viewModelScope.launch(Dispatchers.IO) {
 
@@ -1947,6 +1947,50 @@ class ScanDisplayViewModel @Inject constructor(
                 _error.value = e.message ?: "Stock upload failed"
             } finally {
                 _loading.value  = false
+            }
+        }
+    }
+
+
+    fun uploadStockVerificationFile(
+        clientCode: String,
+        jsonFile: File
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+
+            _loading.value = true
+            _error.value = null
+            _successMsg.value = null
+
+            try {
+                if (clientCode.isBlank()) {
+                    _error.value = "ClientCode is missing"
+                    return@launch
+                }
+
+                if (!jsonFile.exists()) {
+                    _error.value = "JSON file not found"
+                    return@launch
+                }
+
+                Log.d("UPLOAD_FILE", "Uploading file: ${jsonFile.name}, size=${jsonFile.length()}")
+
+                val result = repository.uploadStockFile(
+                    clientCode = clientCode,
+                    file = jsonFile
+                )
+
+                result.onSuccess { response ->
+                    _successMsg.value = response.Message ?: "File uploaded successfully"
+                }.onFailure { e ->
+                    throw e
+                }
+
+            } catch (e: Exception) {
+                Log.e("UPLOAD_FILE", "Upload failed", e)
+                _error.value = e.message ?: "Upload failed"
+            } finally {
+                _loading.value = false
             }
         }
     }
