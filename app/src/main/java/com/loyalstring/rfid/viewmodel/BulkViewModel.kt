@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.viewmodel
 
 import ScannedDataToService
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
@@ -30,9 +32,12 @@ import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.ClearStockDataModelReq
+import com.loyalstring.rfid.data.remote.response.AlllabelResponse
+import com.loyalstring.rfid.di.SyncScope
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.DropdownRepository
 import com.loyalstring.rfid.ui.screens.hexToAscii
+import com.loyalstring.rfid.ui.screens.showToast
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.toBulkItem
@@ -80,7 +85,8 @@ class BulkViewModel @Inject constructor(
     private val bulkItemDao: BulkItemDao,
     private val bulkRepository: BulkRepositoryImpl,
     private val userPreferences: UserPreferences,
-    private val apiService: RetrofitInterface
+    private val apiService: RetrofitInterface,
+    private val syncScope: SyncScope
 ) : ViewModel() {
 
     //private val success = readerManager.initReader()
@@ -452,13 +458,13 @@ class BulkViewModel @Inject constructor(
                 isDataLoaded = true
             }
         }*/
-        viewModelScope.launch {
+        /*viewModelScope.launch {
             bulkRepository.getMinimalItemsFlow().collect { items ->
                 _allItems.value = items
                 preloadFilters(items)
                 _scannedFilteredItems.value = items
             }
-        }
+        }*/
     }
 
     // Call this method when user actually needs the data (e.g., when navigating to list screen)
@@ -761,7 +767,7 @@ class BulkViewModel @Inject constructor(
 
     fun stopScanningAndCompute() {
         stopScanning()
-
+        return
         // Quick guard: avoid re-entry early
         if (isComputing) return
 
@@ -817,16 +823,16 @@ class BulkViewModel @Inject constructor(
 
             if (dbEpc != null && scannedEpcSet.contains(dbEpc)) {
                 if (item.scannedStatus != "Matched") {
-                    matched.add(item.copy(scannedStatus = "Matched", rfid = item.rfid ))
+                    matched.add(item.copy(scannedStatus = "Matched", rfid = item.rfid ?: item.epc))
                 } else {
-                    matched.add(item.copy(rfid = item.rfid ))
+                    matched.add(item.copy(rfid = item.rfid ?: item.epc))
                 }
-                if (stayVisibleInUnmatched) unmatched.add(item.copy(rfid = item.rfid ))
+                if (stayVisibleInUnmatched) unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
             } else {
                 if (item.scannedStatus != "Unmatched") {
-                    unmatched.add(item.copy(scannedStatus = "Unmatched", rfid = item.rfid ))
+                    unmatched.add(item.copy(scannedStatus = "Unmatched", rfid = item.rfid ?: item.epc))
                 } else {
-                    unmatched.add(item.copy(rfid = item.rfid ))
+                    unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
                 }
             }
         }
@@ -1409,6 +1415,8 @@ class BulkViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
+        return@withContext //Unnecessary
+        /*Log.d("SYNC_ITEM", "Server API Called")
         if (syncedRFIDMap != null) return@withContext
 
         val employee = userPreferences.getEmployee(Employee::class.java)
@@ -1424,6 +1432,7 @@ class BulkViewModel @Inject constructor(
             { it.BarcodeNumber.orEmpty().trim().uppercase() },
             { it.TidValue.orEmpty().trim().uppercase() }
         )
+        Log.d("SYNC_ITEM", "Server API Called Finished")*/
     }
 
 
@@ -1437,7 +1446,7 @@ class BulkViewModel @Inject constructor(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-/*    fun syncItems() {
+    /*fun syncItems() {
         val skippedItems = mutableListOf<String>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -1488,28 +1497,15 @@ class BulkViewModel @Inject constructor(
 
                 for (item in bulkItems) {
                     var updatedItem = if (tagType == "webreusable") {
-                       *//* if (!item.rfid.isNullOrBlank()) {
+                        if (!item.rfid.isNullOrBlank()) {
                             if (item.epc.isNullOrBlank()) item.epc = syncAndMapRow(item.rfid!!)
                             item
-                        } else null*//*
-                        if (!item.rfid.isNullOrBlank()) {
-                            val mapped = syncAndMapRow(item.rfid!!).trim().uppercase()
-                            item.copy(
-                                epc = item.epc.takeIf { !it.isNullOrBlank() } ?: mapped,
-                                tid = item.tid.takeIf { !it.isNullOrBlank() } ?: mapped
-                            )
-                        }
-                        // ✅ if RFID blank but EPC/TID already exists, allow insert (don’t drop)
-                        else if (!item.epc.isNullOrBlank() || !item.tid.isNullOrBlank()) {
-                            item
-                        } else {
-                            null
-                        }
+                        } else null
                     } else {
                         if (!item.itemCode.isNullOrBlank()) {
                             val hexValue = item.itemCode.toByteArray()
                                 .joinToString("") { String.format("%02X", it) }
-                            item.copy(rfid = "", epc = hexValue, tid = hexValue)
+                            item.copy(rfid = item.itemCode, epc = hexValue, tid = hexValue)
                         } else null
                     }
 
@@ -1562,11 +1558,8 @@ class BulkViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _syncSkippedItemCodes.value = skippedItems.distinct()
                     _syncSyncedCount.value = synced
-                   // _toastMessage.emit("✅ Synced $synced of $total items successfully!")
-                    _syncStatusText.value = "Sync completed!"
-                }
-                viewModelScope.launch {
                     _toastMessage.emit("✅ Synced $synced of $total items successfully!")
+                    _syncStatusText.value = "Sync completed!"
                 }
 
             } finally {
@@ -1574,8 +1567,20 @@ class BulkViewModel @Inject constructor(
             }
         }
     }*/
+    private fun blockTouch(context: Context) {
+        val window = (context as Activity).window
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
+    }
 
-    fun syncItems() {
+    fun unblockTouch(context: Context) {
+        val window = (context as Activity).window
+        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+    }
+
+    /*fun syncItems() {
         val skippedItems = mutableListOf<String>()
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -1601,7 +1606,7 @@ class BulkViewModel @Inject constructor(
 
                 // ✅ API fetch
                 val response = bulkRepository.syncBulkItemsFromServer(request)
-
+                Log.d("response", "response=$response")
                 val bulkItems = response.asSequence()
                     .filter {
                         (it.status == "ApiActive" || it.status == "Active") &&
@@ -1652,24 +1657,11 @@ class BulkViewModel @Inject constructor(
                                 null
                             }
                         } else {
-
                             if (!item.itemCode.isNullOrBlank()) {
-
-                                val hexValue = convertToHex(item.itemCode)
-
-                                item.copy(
-                                    rfid = "",
-                                    epc = hexValue,
-                                    tid = hexValue
-                                )
-
+                                val hexValue = item.itemCode.toByteArray()
+                                    .joinToString("") { String.format("%02X", it) }
+                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
                             } else null
-
-//                            if (!item.itemCode.isNullOrBlank()) {
-//                                val hexValue = item.itemCode.toByteArray()
-//                                    .joinToString("") { String.format("%02X", it) }
-//                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
-//                            } else null
                         }
 
                     // ✅ VALIDATION + INSERT LIST
@@ -1683,83 +1675,6 @@ class BulkViewModel @Inject constructor(
                             Log.e("SYNC_NOT_SYNCED", info)
                         } else {
                             processedItems.add(updatedItem)
-
-                            val apiItem = response.first { it.itemCode == updatedItem.itemCode }
-
-                            val stones: List<Stone> = apiItem.stones?.map { s ->
-                                Stone(
-                                    bulkItemId = s.bulkItemId,              // REQUIRED FK
-
-                                    StoneName = s.StoneName,
-                                    StoneWeight = s.StoneWeight,
-                                    StonePieces = s.StonePieces,
-                                    StoneRate = s.StoneRate,
-                                    StoneAmount = s.StoneAmount,
-                                    Description = s.Description,
-                                    ClientCode = s.ClientCode,
-                                    LabelledStockId = s.LabelledStockId,
-                                    CompanyId = s.CompanyId,
-                                    CounterId = s.CounterId,
-                                    BranchId = s.BranchId,
-                                    EmployeeId = s.EmployeeId,
-                                    CreatedOn = s.CreatedOn,
-                                    LastUpdated = s.LastUpdated,
-                                    StoneLessPercent = s.StoneLessPercent,
-                                    StoneCertificate = s.StoneCertificate,
-                                    StoneSettingType = s.StoneSettingType,
-                                    StoneRatePerPiece = s.StoneRatePerPiece,
-                                    StoneRateKarate = s.StoneRateKarate,
-                                    StoneStatusType = s.StoneStatusType
-                                )
-                            } ?: emptyList()
-                            val diamonds = apiItem.Diamonds?.map { d ->
-                                Diamond(
-                                    bulkItemId = 0,
-                                    diamondName = d.diamondName,
-                                    diamondProductName = d.diamondProductName,
-                                    diamondWeight = d.diamondWeight,
-                                    diamondSellRate = d.diamondSellRate,
-                                    diamondPieces = d.diamondPieces,
-                                    diamondClarity = d.diamondClarity,
-                                    diamondClarityName = d.diamondClarityName,
-                                    diamondColour = d.diamondColour,
-                                    diamondColourName = d.diamondColourName,
-                                    diamondCut = d.diamondCut,
-                                    diamondShape = d.diamondShape,
-                                    diamondShapeName = d.diamondShapeName,
-                                    diamondSize = d.diamondSize,
-                                    certificate = d.certificate,
-                                    settingType = d.settingType,
-                                    diamondSellAmount = d.diamondSellAmount,
-                                    diamondPurchaseAmount = d.diamondPurchaseAmount,
-                                    description = d.description,
-                                    clientCode = d.clientCode,
-                                    labelledStockId = d.labelledStockId ?: 0,
-                                    companyId = d.companyId ?: 0,
-                                    counterId = d.counterId ?: 0,
-                                    branchId = d.branchId ?: 0,
-                                    employeeId = d.employeeId ?: 0,
-                                    createdOn = d.createdOn ?: "",
-                                    lastUpdated = d.lastUpdated ?: "",
-                                    diamondMargin = d.diamondMargin,
-                                    totalDiamondWeight = d.totalDiamondWeight,
-                                    diamondSleve = d.diamondSleve,
-                                    diamondRate = d.diamondRate,
-                                    diamondAmount = d.diamondAmount,
-                                    diamondPacket = d.diamondPacket,
-                                    diamondBox = d.diamondBox,
-                                    diamondDescription = d.diamondDescription,
-                                    diamondSettingType = d.diamondSettingType,
-                                    diamondDeduct = d.diamondDeduct
-                                )
-                            } ?: emptyList()
-
-                            bulkRepository.insertBulkItemWithDetails(
-                                updatedItem,
-                                stones,
-                                diamonds
-                            )
-
                             synced++
                         }
 
@@ -1784,9 +1699,7 @@ class BulkViewModel @Inject constructor(
                     }
 
                     // ✅ Batch insert (with protection)
-
                     if (processedItems.size >= 100) {
-                        //bulkRepository.clearAllItems()
                         try {
                             bulkRepository.insertBulkItems(processedItems.toList())
                         } catch (e: Exception) {
@@ -1800,9 +1713,7 @@ class BulkViewModel @Inject constructor(
 
                 Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}")
                 // ✅ Insert remaining
-
                 if (processedItems.isNotEmpty()) {
-                    //bulkRepository.clearAllItems()
                     try {
                         bulkRepository.insertBulkItems(processedItems.toList())
                     } catch (e: Exception) {
@@ -1837,7 +1748,111 @@ class BulkViewModel @Inject constructor(
             }
         }
     }
+*/
+    fun syncItems(context: Context) {
+        syncScope.scope.launch(Dispatchers.IO) {
 
+            val UI_UPDATE_INTERVAL = 700L
+            var lastUiUpdate = System.currentTimeMillis()
+
+            try {
+                withContext(Dispatchers.Main) {
+                    blockTouch(context)
+                    _isLoading.value = true
+                    _syncStatusText.value = "Downloading data..."
+                    _syncProgress.value = 0f
+                    _syncSyncedCount.value = 0
+                }
+
+                var totalItemsCount = 0
+                var totalSyncCount = 0
+                val clientCode = employee?.clientCode ?: return@launch
+                val tagType = userPreferences.getClient()?.rfidType
+                    ?.trim()
+                    ?.lowercase()
+                    ?: "webreusable"
+
+                // Clear old data first
+                bulkRepository.clearAllItems()
+
+                bulkRepository.syncBulkItemsFromServer(
+                    request = ClientCodeRequest(clientCode),
+                    tagType = tagType,
+
+                    // 🔹 Mapping stays in ViewModel (SAFE)
+                    mapItem = { serverItem ->
+                        mapServerItemToBulkItem(serverItem, tagType)
+                    },
+
+                    // 🔹 Progress callback (throttled)
+                    onProgress = { processed, synced, totalCount ->
+                        totalSyncCount = synced
+                        val now = System.currentTimeMillis()
+                        if (totalItemsCount == 0)
+                            totalItemsCount = totalCount
+                        if (now - lastUiUpdate > UI_UPDATE_INTERVAL) {
+                            val progress = processed.toFloat() / totalCount
+                            withContext(Dispatchers.Main) {
+                                //_syncSyncedCount.value = synced
+                                //_syncStatusText.value = "Processing $synced items"
+                                _syncProgress.value = progress
+                                _syncSyncedCount.value = synced
+                                _syncStatusText.value = "Processing $synced of $totalCount"
+                            }
+                            lastUiUpdate = now
+                        }
+                    }
+                )
+
+                withContext(Dispatchers.Main) {
+                    _syncTotalCount.value = totalItemsCount
+                    _syncSyncedCount.value = totalSyncCount
+                    _syncProgress.value = 1f
+                    _syncStatusText.value = "Sync completed"
+                    _toastMessage.emit("✅ Sync completed successfully")
+                }
+
+            } catch (e: SocketException) {
+                Log.e("SYNC", "Stream broke", e)
+                throw e // handled by retry layer
+            } catch (e: Exception) {
+                Log.e("SYNC_ERROR", "Sync failed", e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    unblockTouch(context)
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+
+    private fun mapServerItemToBulkItem(
+        serverItem: AlllabelResponse.LabelItem,
+        tagType: String
+    ): BulkItem? {
+
+        val item = serverItem.takeIf {
+            (it.status == "ApiActive" || it.status == "Active") &&
+                    (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
+        }?.toBulkItem() ?: return null
+
+        return when {
+            tagType == "webreusable" && !item.rfid.isNullOrBlank() -> {
+                if (item.epc.isNullOrBlank()) {
+                    item.epc = syncAndMapRow(item.rfid!!)   // ✅ stays here
+                }
+                item
+            }
+
+            tagType != "webreusable" && !item.itemCode.isNullOrBlank() -> {
+                val hex = item.itemCode.toByteArray()
+                    .joinToString("") { "%02X".format(it) }
+                item.copy(rfid = item.itemCode, epc = hex, tid = hex)
+            }
+
+            else -> null
+        }
+    }
     fun convertToHex(input: String): String {
         val hexBuilder = StringBuilder()
 
@@ -1866,74 +1881,128 @@ class BulkViewModel @Inject constructor(
     }
 
 
-    fun sendScannedData(
-        tags: List<UHFTAGInfo>,
-        androidId: String,
-        context: Context
-    ) {
-        Log.d("send scanned items", "CALLED tags=${tags.size}")
-
-        if (tags.isEmpty()) {
-            Log.e("SEND_DATA", "Tags list is empty")
-            return
-        }
-
-        val formatted = LocalDateTime.now()
-            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+   /* fun sendScannedData(tags: List<UHFTAGInfo>, androidId: String, context: Context) {
+        Log.d("send scanned items", "CALLED")
+        val currentDateTime = LocalDateTime.now()
+        val formatted = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 
         val clientCode = employee?.clientCode
 
-        val data = tags.mapIndexed { index, tag ->
-
-            val rfid = _rfidMap.value[index]   // optional
-            val epc = tag.epc.trim().uppercase()
-            val ascii = hexToAscii(epc)
-
-            val finalCode = when {
-                !rfid.isNullOrBlank() -> rfid
-                ascii.isNotBlank() -> ascii
-                else -> epc               // ✅ LAST FALLBACK
-            }
-
-            Log.d(
-                "DEBUG_SEND",
-                "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
-            )
-
-            ScannedDataToService(
-                tIDValue = tag.epc,
-                rFIDCode = finalCode,
-                createdOn = formatted,
-                lastUpdated = formatted,
-                id = 0,
-                clientCode = clientCode,
-                statusType = true,
-                deviceId = androidId
-            )
-        }
-
-        Log.e(
-            "FINAL_SEND",
-            "tags=${tags.size}, rfidMap=${_rfidMap.value.size}, data=${data.size}"
-        )
-
-        if (data.isEmpty()) {
-            ToastUtils.showToast(context, "Nothing to save")
+        if (tags.isEmpty()) {
+            Log.e("SEND_DATA", "Tags list is empty, skipping sending data.")
             return
         }
 
-        viewModelScope.launch {
-            val response = apiService.addAllScannedData(data)
-            if (response.isSuccessful) {
-                ToastUtils.showToast(context, "Items Saved successfully")
-                _reloadTrigger.value = !_reloadTrigger.value
-                Log.d("API_SUCCESS", "Saved ${data.size} items")
-            } else {
-                Log.e("API_ERROR", "Error: ${response.code()}")
-                ToastUtils.showToast(context, "Failed to scan")
+        val data = _rfidMap.value.mapNotNull { (index, rfid) ->
+            rfid.let {
+                ScannedDataToService(
+                    tIDValue = tags.get(index).tid,
+                    rFIDCode = it,
+                    createdOn = formatted,
+                    lastUpdated = formatted,
+                    id = 0,
+                    clientCode = clientCode,
+                    statusType = true,
+                    deviceId = androidId
+
+                )
+
+
             }
         }
-    }
+
+        Log.d("DATA", data.toString())
+        if (data.isNotEmpty()) {
+
+
+            viewModelScope.launch {
+                val response = apiService.addAllScannedData(data)
+                if (response.isSuccessful) {
+                    response.body() ?: emptyList()
+                    ToastUtils.showToast(context, "Items Saved successfully")
+                    _reloadTrigger.value = !_reloadTrigger.value // triggers recomposition
+                    Log.d("API_SUCCESS", "Received response: ${response.body()}")
+
+                } else {
+                    Log.e("API_ERROR", "Error: ${response.code()}")
+                    ToastUtils.showToast(context, "Failed to scan")
+                }
+            }
+
+
+        }
+
+
+    }*/
+   fun sendScannedData(
+       tags: List<UHFTAGInfo>,
+       androidId: String,
+       context: Context
+   ) {
+       Log.d("send scanned items", "CALLED tags=${tags.size}")
+
+       if (tags.isEmpty()) {
+           Log.e("SEND_DATA", "Tags list is empty")
+           return
+       }
+
+       val formatted = LocalDateTime.now()
+           .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+
+       val clientCode = employee?.clientCode
+
+       val data = tags.mapIndexed { index, tag ->
+
+           val rfid = _rfidMap.value[index]   // optional
+           val epc = tag.epc.trim().uppercase()
+           val ascii = hexToAscii(epc)
+
+           val finalCode = when {
+               !rfid.isNullOrBlank() -> rfid
+               ascii.isNotBlank() -> ascii
+               else -> epc               // ✅ LAST FALLBACK
+           }
+
+           Log.d(
+               "DEBUG_SEND",
+               "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
+           )
+
+           ScannedDataToService(
+               tIDValue = tag.epc,
+               rFIDCode = finalCode,
+               createdOn = formatted,
+               lastUpdated = formatted,
+               id = 0,
+               clientCode = clientCode,
+               statusType = true,
+               deviceId = androidId
+           )
+       }
+
+       Log.e(
+           "FINAL_SEND",
+           "tags=${tags.size}, rfidMap=${_rfidMap.value.size}, data=${data.size}"
+       )
+
+       if (data.isEmpty()) {
+           ToastUtils.showToast(context, "Nothing to save")
+           return
+       }
+
+       viewModelScope.launch {
+           val response = apiService.addAllScannedData(data)
+           if (response.isSuccessful) {
+               ToastUtils.showToast(context, "Items Saved successfully")
+               _reloadTrigger.value = !_reloadTrigger.value
+               Log.d("API_SUCCESS", "Saved ${data.size} items")
+           } else {
+               Log.e("API_ERROR", "Error: ${response.code()}")
+               ToastUtils.showToast(context, "Failed to scan")
+           }
+       }
+   }
+
 
     /*fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -2028,9 +2097,9 @@ class BulkViewModel @Inject constructor(
                 val processedItems = unmatchedItems.map { item ->
                     Log.d("UNMATCHED_ITEM_DEBUG", "ItemCode: ${item.itemCode}, RFID: ${item.rfid}, EPC: ${item.epc}")
                     if (item.scannedStatus != "Unmatched") {
-                        item.copy(scannedStatus = "Unmatched", rfid = item.rfid )
+                        item.copy(scannedStatus = "Unmatched", rfid = item.rfid ?: item.epc)
                     } else {
-                        item.copy(rfid = item.rfid )
+                        item.copy(rfid = item.rfid ?: item.epc)
                     }
                 }
 

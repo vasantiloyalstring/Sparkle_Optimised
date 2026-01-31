@@ -16,11 +16,24 @@ interface BulkRepository {
     suspend fun insertRFIDTags(items: List<EpcDto>)
     fun getAllBulkItems(): Flow<List<BulkItem>>
     fun getMinimalItemsFlow(): Flow<List<BulkItem>>
+    suspend fun getMinimalItemFlow(): List<BulkItem>
     fun getAllItemsFlow(): Flow<List<BulkItem>>
     fun getAllRFIDTags(): Flow<List<EpcDto>>
     suspend fun clearAllItems()
     suspend fun clearAllRFID()
     suspend fun syncBulkItemsFromServer(request: ClientCodeRequest): List<AlllabelResponse.LabelItem>
+    /*suspend fun syncBulkItemsFromServer(
+        request: ClientCodeRequest,
+        tagType: String,
+        mapItem: suspend (AlllabelResponse.LabelItem) -> BulkItem?,
+        onProgress: suspend (processed: Int, synced: Int) -> Unit = { _, _ -> }
+    )*/
+    suspend fun syncBulkItemsFromServer(
+        request: ClientCodeRequest,
+        tagType: String,
+        mapItem: suspend (AlllabelResponse.LabelItem) -> BulkItem?,
+        onProgress: suspend (processed: Int, synced: Int, totalCount: Int) -> Unit = { _, _,_ -> }
+    )
     suspend fun insertSingleItem(item: BulkItem)
     suspend fun syncRFIDItemsFromServer(request: ClientCodeRequest): List<EpcDto>
 

@@ -19,8 +19,16 @@ interface BulkItemDao {
     @Query("DELETE FROM bulk_items")
     suspend fun clearAllItems()
 
+    /*@Insert(onConflict = OnConflictStrategy.IGNORE)
+    //@Transaction
+    suspend fun insertBulkItem(items: List<BulkItem>): List<Long>*/
+
+    /*@Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBulkItem(items: List<BulkItem>)*/
+
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertBulkItem(items: List<BulkItem>): List<Long>
+    suspend fun insertBulkItem(items: List<BulkItem>)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSingleItem(item: BulkItem): Long
@@ -29,8 +37,15 @@ interface BulkItemDao {
     @Query("SELECT  id,bulkItemId, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design FROM bulk_items")
     fun getMinimalItemsFlow(): Flow<List<BulkItem>>
 
-    @Query("SELECT * FROM bulk_items")
+   /* @Query("SELECT * FROM bulk_items")
    // @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, productName, design, sku FROM bulk_items")
+    fun getAllItemsFlow(): Flow<List<BulkItem>>
+*/
+    @Query("SELECT id, bulkItemId,productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, design FROM bulk_items")
+    suspend fun getMinimalItemFlow(): List<BulkItem>
+
+    @Query("SELECT * FROM bulk_items")
+    // @Query("SELECT id, productName, itemCode, rfid, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, category, design, sku FROM bulk_items")
     fun getAllItemsFlow(): Flow<List<BulkItem>>
 
     @Query("SELECT * FROM bulk_items WHERE epc = :epc LIMIT 1")
@@ -82,7 +97,7 @@ interface BulkItemDao {
     //@Query("DELETE FROM bulk_items WHERE id = :id")
     //suspend fun deleteById(id: Int): Int   // ✅ rows deleted
     // Pagination queries for efficient large dataset handling
-    @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId, rfid, design FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId,category, rfid, design FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
     suspend fun getMinimalItemsPaged(limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items")
@@ -128,5 +143,31 @@ interface BulkItemDao {
 
     @Update
     suspend fun updateBulkItems(items: List<BulkItem>)
+
+
+
+    /*chetan changes*/
+
+    @Query("""
+    SELECT * FROM bulk_items
+    WHERE scannedStatus IN ('Unmatched','Not Found')
+    LIMIT :limit OFFSET :offset
+""")
+    /*@Query("""
+    SELECT * FROM bulk_items
+    WHERE
+    scannedStatus IN ('Unmatched','Not Found')
+    OR scannedStatus IS NULL
+    OR TRIM(scannedStatus) = ''
+""")*/
+    suspend fun getUnmatchedPaged(limit: Int, offset: Int): List<BulkItem>
+
+
+    @Query("""
+    SELECT * FROM bulk_items
+    WHERE scannedStatus IN ('Matched','Found')
+    LIMIT :limit OFFSET :offset
+""")
+    suspend fun getMatchedPaged(limit: Int, offset: Int): List<BulkItem>
 
 }

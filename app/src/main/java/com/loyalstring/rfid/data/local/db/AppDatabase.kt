@@ -74,7 +74,7 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         Diamond::class
 
     ],
-    version = 1
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): UHFTAGDao
@@ -102,7 +102,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_db"
                 )
-                 //  .fallbackToDestructiveMigration(false)
+                   .fallbackToDestructiveMigration(false)
+                    .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                     .build().also { INSTANCE = it }
             }
 
