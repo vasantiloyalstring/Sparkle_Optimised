@@ -203,28 +203,27 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    // ✅ Optimized: Use derivedStateOf and sequence for lazy evaluation
+    // ✅ Optimized: Use derivedStateOf and sequence for lazy evaluation, returning a Sequence
     val navFilteredItems by remember(allItems, filterTypeName, filterValue) {
         derivedStateOf {
             val filterStartTime = System.currentTimeMillis()
-            val result = if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
-                allItems
+            val sequence = if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
+                allItems.asSequence()
             } else {
                 when (filterTypeName.lowercase()) {
-                    "box" -> allItems.asSequence().filter { it.boxName == filterValue }.toList()
-                    "counter" -> allItems.asSequence().filter { it.counterName == filterValue }.toList()
-                    "branch" -> allItems.asSequence().filter { it.branchName == filterValue }.toList()
+                    "box" -> allItems.asSequence().filter { it.boxName == filterValue }
+                    "counter" -> allItems.asSequence().filter { it.counterName == filterValue }
+                    "branch" -> allItems.asSequence().filter { it.branchName == filterValue }
                     "exhibition" -> allItems.asSequence()
                         .filter { it.branchType == filterTypeName && it.branchName == filterValue }
-                        .toList()
-                    else -> allItems
+                    else -> allItems.asSequence()
                 }
             }
             val filterTime = System.currentTimeMillis() - filterStartTime
             if (filterTime > 10) { // Only log if filtering takes significant time
-                Log.d("ScanDisplayScreen", "🚀 [PERF] navFilteredItems computed in: ${filterTime}ms (${result.size} items)")
+                Log.d("ScanDisplayScreen", "🚀 [PERF] navFilteredItems (sequence) computed in: ${filterTime}ms")
             }
-            result
+            sequence // Return a Sequence directly
         }
     }
     /*  remember(allItems, filterTypeName, filterValue) {
@@ -266,7 +265,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     // ✅ Optimized: Use derivedStateOf and cache results
     val allCategories by remember(navFilteredItems) {
         derivedStateOf {
-            navFilteredItems.asSequence()
+            navFilteredItems
                 .mapNotNull { it.category }
                 .distinct()
                 .sorted()
@@ -277,14 +276,14 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val allProducts by remember(navFilteredItems, selectedCategoriesKey) {
         derivedStateOf {
             if (selectedCategoriesKey.isEmpty()) {
-                navFilteredItems.asSequence()
+                navFilteredItems
                     .mapNotNull { it.productName }
                     .distinct()
                     .sorted()
                     .toList()
             } else {
                 val categorySet = selectedCategoriesKey.toSet()
-                navFilteredItems.asSequence()
+                navFilteredItems
                     .filter { it.category in categorySet }
                     .mapNotNull { it.productName }
                     .distinct()
@@ -299,7 +298,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
             val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
 
-            navFilteredItems.asSequence()
+            navFilteredItems
                 .filter { categorySet == null || it.category in categorySet }
                 .filter { productSet == null || it.productName in productSet }
                 .mapNotNull { it.design }
@@ -316,6 +315,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
 
     val scannedFiltered by bulkViewModel.scannedFilteredItems
+
+    //val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
     val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
 
     // ✅ Optimized: Use sequence for lazy evaluation // Commented
@@ -331,7 +332,6 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 .toList()
         }
     }*/
-
 
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
@@ -412,95 +412,35 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }*/
-    // ✅ Process scopeItems on background thread to avoid blocking main thread and OOM
-    var scopeItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
-    var isComputingScopeItems by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(
-        navFilteredItems,
+    // New: scannedItemsSequence is a lazy sequence of ScannedBulkItem
+    val scannedItemsSequence by remember(
+        navFilteredItems, // Now a Sequence<BulkItem>
         selectedCategoriesKey,
         selectedProductsKey,
         selectedDesignsKey,
-        matchedEpcs,
-        scannedFiltered
+        matchedEpcs
     ) {
-        if (navFilteredItems.isEmpty()) {
-            scopeItems = emptyList()
-            return@LaunchedEffect
-        }
-        
-        // ✅ Compute on background thread to avoid blocking UI
-        isComputingScopeItems = true
-        val scopeStartTime = System.currentTimeMillis()
-        if (!isScanning)
-            _isLoadingUI.value = true
-        withContext(Dispatchers.Default) {
-            try {
-                // Pre-compute filter sets for O(1) lookups
-                val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
-                val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
-                val designSet = if (selectedDesignsKey.isEmpty()) null else selectedDesignsKey.toSet()
-                
-                val itemsToProcess = navFilteredItems
-                val resultList = mutableListOf<BulkItem>()
-                
-                // ✅ Process in smaller chunks (5k) with yields to allow GC
-                val chunkSize = 5000
-                val chunks = itemsToProcess.chunked(chunkSize)
+        derivedStateOf {
+            val scopeStartTime = System.currentTimeMillis()
+            val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
+            val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
+            val designSet = if (selectedDesignsKey.isEmpty()) null else selectedDesignsKey.toSet()
 
-                chunks.forEachIndexed { index, chunk ->
-                    val chunkResult = chunk.asSequence()
-                        .filter { categorySet == null || it.category in categorySet }
-                        .filter { productSet == null || it.productName in productSet }
-                        .filter { designSet == null || it.design in designSet }
-                        .map { original ->
-                            val keyEpc = original.epc?.trim()?.uppercase()
-                            val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
-                            // Only copy if status is different to save memory
-                            if (original.scannedStatus != status) {
-                                original.copy(scannedStatus = status)
-                            } else {
-                                original // Reuse to save memory
-                            }
-                        }
-                    resultList.addAll(chunkResult)
-                    //    .forEach { resultList.add(it) }
-                    
-                    // ✅ Yield every chunk to allow GC and prevent OOM
-                    kotlinx.coroutines.yield()
-                    
-                    // Log progress for very large lists
-                    if (itemsToProcess.size > 100000 && (index + 1) % 10 == 0) {
-                        Log.d("ScanDisplayScreen", "🚀 [PERF] Processed ${(index + 1) * chunkSize}/${itemsToProcess.size} items in scopeItems (background)")
-                    }
+            val sequence = navFilteredItems.asSequence() // Use the sequence from navFilteredItems
+                .filter { categorySet == null || it.category in categorySet }
+                .filter { productSet == null || it.productName in productSet }
+                .filter { designSet == null || it.design in designSet }
+                .map { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                    ScannedBulkItem(original, status) // Create ScannedBulkItem with derived status
                 }
-                
-                // Update UI on main thread
-                withContext(Dispatchers.Main) {
-                    scopeItems = resultList
-                    isComputingScopeItems = false
-                    val scopeTime = System.currentTimeMillis() - scopeStartTime
-                    if (scopeTime > 100) {
-                        _isLoadingUI.value = false
-                        Log.d("ScanDisplayScreen", "🚀 [PERF] scopeItems computed in: ${scopeTime}ms (${resultList.size} items from ${navFilteredItems.size} navFiltered) - Background thread")
-                    }
-                }
-            } catch (e: OutOfMemoryError) {
-                Log.e("ScanDisplayScreen", "❌ [PERF] OutOfMemoryError in scopeItems: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    // Fallback: use original items without processing
-                    scopeItems = navFilteredItems
-                    isComputingScopeItems = false
-                    _isLoadingUI.value = false
-                }
-            } catch (e: Exception) {
-                Log.e("ScanDisplayScreen", "❌ [PERF] Error computing scopeItems: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    scopeItems = navFilteredItems
-                    isComputingScopeItems = false
-                    _isLoadingUI.value = false
-                }
+
+            val scopeTime = System.currentTimeMillis() - scopeStartTime
+            if (scopeTime > 100) {
+                Log.d("ScanDisplayScreen", "🚀 [PERF] scannedItemsSequence computed in: ${scopeTime}ms")
             }
+            sequence // Return a Sequence directly
         }
     }
 
@@ -528,40 +468,43 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     val stickyUnmatchedIds by bulkViewModel.filteredUnmatchedIds.collectAsState()
 
-    // ✅ Optimized: Use sequence and pre-compute sets for better performance
-    val displayItems by remember(scopeItems, selectedMenu, stickyUnmatchedIds) {
-        derivedStateOf {
-            if (scopeItems.isEmpty()) {
+    val _asyncDisplayItems = remember { MutableStateFlow<List<ScannedBulkItem>>(emptyList()) }
+    val displayItems by _asyncDisplayItems.collectAsState() // Use collectAsState for flow
+
+    LaunchedEffect(scannedItemsSequence, selectedMenu, stickyUnmatchedIds) {
+        scope.launch(Dispatchers.Default) {
+            val currentScannedSequence = scannedItemsSequence
+
+            val computedItems = if (currentScannedSequence.iterator().hasNext().not()) { // Efficient check for empty sequence
                 emptyList()
             } else {
-                when (selectedMenu) {
+                val filteredSequence = when (selectedMenu) {
                     MENU_MATCHED -> {
-                        scopeItems.asSequence()
-                            .filter { it.scannedStatus == "Matched" }
-                            .toList()
+                        currentScannedSequence
+                            .filter { it.currentScannedStatus == "Matched" }
                     }
                     MENU_UNMATCHED -> {
                         val stickySet = stickyUnmatchedIds.toSet()
-                        val unmatchedNow = scopeItems.asSequence()
-                            .filter { it.scannedStatus == "Unmatched" }
-                            .toList()
-                        val sticky = scopeItems.asSequence()
+                        val unmatchedNow = currentScannedSequence
+                            .filter { it.currentScannedStatus == "Unmatched" }
+                        val sticky = currentScannedSequence
                             .filter {
                                 val id = it.epc?.trim()?.uppercase()
                                 id != null && stickySet.contains(id)
                             }
-                            .toList()
                         (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
                     }
-                    else -> scopeItems
+                    else -> currentScannedSequence
                 }
+                filteredSequence.toList() // Materialize only once at the end
             }
+            _asyncDisplayItems.value = computedItems
         }
     }
 
 
-    val allMatched by remember(scopeItems) {
-        derivedStateOf { scopeItems.isNotEmpty() && scopeItems.all { it.scannedStatus == "Matched" } }
+    val allMatched by remember(scannedItemsSequence) {
+        derivedStateOf { scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" } }
     }
 
     val activity = LocalContext.current as? MainActivity
@@ -575,7 +518,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             override fun onRfidKeyPressed() {
                 if (!isScanning) {
                     isScanning = true
-                    bulkViewModel.setFilteredItems(scopeItems)
+                    scope.launch(Dispatchers.Default) {
+                        bulkViewModel.setFilteredItems(scannedItemsSequence.map { it.originalBulkItem }.toList())
+                    }
                     bulkViewModel.startScanningInventory(selectedPower)
                 } else {
                     isScanning = false
@@ -616,8 +561,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
     }
 
-    LaunchedEffect(isScanning, scopeItems.size) {
-        if (isScanning && scopeItems.isEmpty()) {
+    LaunchedEffect(isScanning, scannedItemsSequence.toList().size) {
+        if (isScanning && scannedItemsSequence.toList().isEmpty()) {
             bulkViewModel.stopScanningAndCompute()
             isScanning = false
         }
@@ -627,8 +572,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     } }
 
-    LaunchedEffect(scopeItems) {
-        if (isScanning && scopeItems.isNotEmpty() && scopeItems.all { it.scannedStatus == "Matched" }) {
+    LaunchedEffect(scannedItemsSequence) {
+        if (isScanning && scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" }) { // Use currentScannedStatus
 
             currentCategory = null
             currentProduct = null
@@ -711,21 +656,22 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         scope.launch(Dispatchers.IO) {
                             val clientCode = employee?.clientCode       // 🔁 replace
 
-                            val scannedItems = buildItemsForUpload(scopeItems)
+                            val scannedItems = withContext(Dispatchers.Default) { buildItemsForUpload(scannedItemsSequence.toList()) } // Pass the materialized list here
 
-                            Log.d("SAVE_DEBUG", "scopeItems=${scopeItems.size} " +
-                                    "matched=${scopeItems.count { it.scannedStatus == "Matched" }} " +
-                                    "unmatched=${scopeItems.count { it.scannedStatus == "Unmatched" }}")
+                            Log.d("SAVE_DEBUG", "scopeItems=${scannedItemsSequence.count()} " +
+                                    "matched=${scannedItemsSequence.count { it.currentScannedStatus == "Matched" }} " +
+                                    "unmatched=${scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" }}")
 
                             Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
                                     "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
                                     "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
                             //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
                             //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
-                            /*val json = Gson().toJson(scannedItems)
+                            val json = Gson().toJson(scannedItems)
                             val file = writeToFile(context, json)
-                            Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")*/
-                            scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 5000)
+                            Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")
+                            //scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 2000)
+                            scanDisplayViewModel.uploadStockVerificationFile(clientCode.toString(),file)
                             withContext(Dispatchers.Main) {
                                 _isLoadingCommon.value = false
                             }
@@ -736,7 +682,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         if (!isScanning) {
                             isScanning = true
                             // bulkViewModel.resetScanResults()
-                            bulkViewModel.setFilteredItems(scopeItems)   // ✅ only current scope
+                            bulkViewModel.setFilteredItems(scannedItemsSequence.map { it.originalBulkItem }.toList())   // ✅ only current scope
                             bulkViewModel.startScanningInventory(selectedPower)
                         } else {
                             isScanning = false
@@ -758,7 +704,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 selectedProducts.clear()
                                 selectedDesigns.clear()
 
-                                bulkViewModel.setFilteredItems(allItems) // ✅ reset to full DB
+                                bulkViewModel.setFilteredItems(allItems.asSequence().map { it }.toList()) // ✅ reset to full DB, pass original BulkItem
                                 bulkViewModel.resetScanResults()
 
                                 selectedMenu = MENU_ALL
@@ -862,46 +808,85 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     when (currentLevel) {
                         "Category" -> {
-                            categoryGrouped.forEach { (label, items) ->
-                                item(key = "category_$label") {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
-                                        // drill down to product for the chosen category (single-select drill)
-                                        currentCategory = label
-                                        selectedCategories.clear()
-                                        selectedCategories.add(label)
-                                        selectedProducts.clear()
-                                        selectedDesigns.clear()
-                                        currentLevel = "Product"
+                            if (displayItems.isNotEmpty()) {
+                                categoryGrouped.forEach { (label, items) ->
+                                    item(key = "category_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            // drill down to product for the chosen category (single-select drill)
+                                            currentCategory = label
+                                            selectedCategories.clear()
+                                            selectedCategories.add(label)
+                                            selectedProducts.clear()
+                                            selectedDesigns.clear()
+                                            currentLevel = "Product"
+                                        }
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
                                     }
                                 }
                             }
                         }
 
                         "Product" -> {
-                            productGrouped.forEach { (label, items) ->
-                                item(key = "product_$label") {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
-                                        // when clicking product row, drill to design level
-                                        currentProduct = label
-                                        if (!selectedProducts.contains(label)) selectedProducts.add(
-                                            label
-                                        )
-                                        selectedDesigns.clear()
-                                        currentLevel = "Design"
+                            if (displayItems.isNotEmpty()) {
+                                productGrouped.forEach { (label, items) ->
+                                    item(key = "product_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            // when clicking product row, drill to design level
+                                            currentProduct = label
+                                            if (!selectedProducts.contains(label)) selectedProducts.add(
+                                                label
+                                            )
+                                            selectedDesigns.clear()
+                                            currentLevel = "Design"
+                                        }
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
                                     }
                                 }
                             }
                         }
 
                         "Design" -> {
-                            designGrouped.forEach { (label, items) ->
-                                item(key = "design_$label") {
-                                    TableDataRow(TableRow(label, items), currentLevel) {
-                                        currentDesign = label
-                                        if (!selectedDesigns.contains(label)) selectedDesigns.add(
-                                            label
-                                        )
-                                        currentLevel = "DesignItems"
+                            if (displayItems.isNotEmpty()) {
+                                designGrouped.forEach { (label, items) ->
+                                    item(key = "design_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            currentDesign = label
+                                            if (!selectedDesigns.contains(label)) selectedDesigns.add(
+                                                label
+                                            )
+                                            currentLevel = "DesignItems"
+                                        }
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
                                     }
                                 }
                             }
@@ -909,14 +894,27 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                         "DesignItems" -> {
                             // Use pagination for large lists
-                            items(
-                                designItemsList,
-                                key = {
-                                    it.epc ?: it.itemCode ?: it.design ?: it.hashCode().toString()
-                                }) { item ->
-                                DesignItemRow(item) { clickedItem ->
-                                    selectedItem = clickedItem
-                                    showItemDialog = true
+                            if (displayItems.isNotEmpty()) {
+                                items(
+                                    designItemsList,
+                                    key = {
+                                        it.epc ?: it.itemCode ?: it.design ?: it.originalBulkItem.hashCode().toString()
+                                    }) { item ->
+                                    DesignItemRow(item) { clickedItem ->
+                                        selectedItem = clickedItem.originalBulkItem
+                                        showItemDialog = true
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
                             }
 
@@ -1223,8 +1221,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                                         // build + generate file (IO)
                                         val reportFile = withContext(Dispatchers.IO) {
-                                            val summaryList = scanDisplayViewModel.buildSummary(itemsForReport)
-                                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport)
+                                            val summaryList = scanDisplayViewModel.buildSummary(itemsForReport.map { it.originalBulkItem })
+                                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport.map { it.originalBulkItem })
 
                                     /*scanDisplayViewModel.generateScanReportExcel(
                                         context, summaryList, matched, unmatched
@@ -1346,9 +1344,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }*/
-    var matchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Matched" } }
-    var unmatchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Unmatched" } }
-    val totalCount = remember(scopeItems) { scopeItems.size }
+    val matchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Matched" } }
+    val unmatchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" } }
+    val totalCount = remember(scannedItemsSequence) { scannedItemsSequence.count() }
     /*val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
     val unmatchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Unmatched" } }
     val totalCount = remember(summaryItems) { summaryItems.size }*/   // ✅ THIS LINE FIXED
@@ -1394,8 +1392,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     selectedDesigns.clear()*/
 
                                     // optional: sticky ids set (agar tumhe sticky behaviour chahiye)
-                                    val ids = scopeItems.asSequence()
-                                        .filter { it.scannedStatus.equals("Unmatched", true) }
+                                    val ids = scannedItemsSequence.asSequence()
+                                        .filter { it.currentScannedStatus.equals("Unmatched", true) }
                                         .mapNotNull { it.epc?.trim()?.uppercase() }
                                         .distinct()
                                         .toList()
@@ -1468,15 +1466,16 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     // delay(1000)
 
                                     val latestUnmatched = withContext(Dispatchers.Default) {
-                                        scopeItems
-                                            .filter { it.scannedStatus.equals("Unmatched", true) }
+                                        scannedItemsSequence
+                                            .filter { it.currentScannedStatus.equals("Unmatched", true) }
                                             .distinctBy { it.epc?.trim()?.uppercase() }
+                                            .toList() // Materialize here for passing to navController
                                     }
 
                                     if (latestUnmatched.isNotEmpty()) {
                                         navController.currentBackStackEntry?.savedStateHandle?.set(
                                             "unmatchedItems",
-                                            ArrayList(latestUnmatched)
+                                            ArrayList(latestUnmatched.map { it.toBulkItem() })
                                         )
                                         navController.navigate("search_screen/unmatched") {
                                             // This is the callback from SearchScreen
@@ -1671,11 +1670,11 @@ private fun String.normalizeTagKey(): String? =
 private fun BulkItem.tagKey(): String? =
     (this.epc ?: this.rfid)?.normalizeTagKey()
 
-private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
-    return all
+private fun buildItemsForUpload(all: List<ScannedBulkItem>): List<Item> { // Accepts List<ScannedBulkItem>
+    return all.asSequence()  // Start with a sequence
         .distinctBy { it.epc?.trim()?.uppercase() ?: it.itemCode ?: it.hashCode().toString() }
         .map { b ->
-            val status = when (b.scannedStatus?.trim()?.lowercase()) {
+            val status = when (b.currentScannedStatus.trim().lowercase()) { // Use currentScannedStatus
                 "matched" -> "match"
                 "unmatched" -> "unmatch"
                 "match" -> "match"
@@ -1684,9 +1683,10 @@ private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
             }
 
             Log.d("@@","status"+status)
-            b.toItem(status)
+            b.originalBulkItem.toItem(status) // Pass originalBulkItem to toItem
         }
         .filter { !it.itemCode.isNullOrBlank() }
+        .toList() // Materialize to a List at the very end
 }
 
 
@@ -1813,7 +1813,7 @@ fun FilterRow(
 }
 
 @Composable
-fun DesignItemRow(item: BulkItem, onClick: (BulkItem) -> Unit) {
+fun DesignItemRow(item: ScannedBulkItem, onClick: (ScannedBulkItem) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1830,7 +1830,7 @@ fun DesignItemRow(item: BulkItem, onClick: (BulkItem) -> Unit) {
         val formattedGwt = formatTo3Decimals(parseWeightToBigDecimal(item.grossWeight))
         TableCell(formattedGwt, colGWtWidth)
 
-        StatusIconCell(item.scannedStatus, colStatusIconWidth)
+        StatusIconCell(item.currentScannedStatus, colStatusIconWidth)
     }
 }
 
@@ -1979,7 +1979,7 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
 }*/
 
 @Composable
-fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String) {
+fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu: String) {
     // ✅ Optimized: Use derivedStateOf and sequence for better performance
     val totals by remember(items) {
         derivedStateOf {
@@ -1988,7 +1988,7 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
                 .fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
             val matched = items.asSequence()
-                .filter { it.scannedStatus == "Matched" }
+                .filter { it.currentScannedStatus == "Matched" } // Use currentScannedStatus
                 .toList()
             val matchedQty = matched.size
             val matchedWt = matched.asSequence()
@@ -2105,7 +2105,7 @@ fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
     val computedValues = remember(row.items) {
         val qty = row.items.size
         val matchedItems = row.items.asSequence()
-            .filter { it.scannedStatus == "Matched" }
+            .filter { it.currentScannedStatus == "Matched" } // Use currentScannedStatus
             .toList()
         val matchedQty = matchedItems.size
         val grossWeight = row.items.asSequence()
@@ -2139,8 +2139,8 @@ fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
         TableCell("$matchedQty", colMatchedQtyWidth)
         TableCell(formatTo3Decimals(matchedWeight), colMatchedWtWidth)
         val status = when {
-            row.items.all { it.scannedStatus == "Matched" } -> "Matched"
-            row.items.all { it.scannedStatus == "Unmatched" } -> "Unmatched"
+            row.items.all { it.currentScannedStatus == "Matched" } -> "Matched" // Use currentScannedStatus
+            row.items.all { it.currentScannedStatus == "Unmatched" } -> "Unmatched" // Use currentScannedStatus
             else -> "Unmatched"
         }
         StatusIconCell(status, colStatusWidth)
@@ -2252,5 +2252,36 @@ fun formatTo3Decimals(b: BigDecimal): String {
     return b.setScale(3, RoundingMode.HALF_UP).toPlainString()
 }
 
+data class ScannedBulkItem(
+    val originalBulkItem: BulkItem,
+    val currentScannedStatus: String // "Matched" or "Unmatched"
+) {
+    // Delegate properties for convenient access, or access originalBulkItem directly
+    val category: String? get() = originalBulkItem.category
+    val productName: String? get() = originalBulkItem.productName
+    val design: String? get() = originalBulkItem.design
+    val epc: String? get() = originalBulkItem.epc
+    val rfid: String? get() = originalBulkItem.rfid
+    val itemCode: String? get() = originalBulkItem.itemCode
+    val grossWeight: String? get() = originalBulkItem.grossWeight
+    val netWeight: String? get() = originalBulkItem.netWeight
+    val boxName: String? get() = originalBulkItem.boxName
+    val counterName: String? get() = originalBulkItem.counterName
+    val branchName: String? get() = originalBulkItem.branchName
+    val branchType: String? get() = originalBulkItem.branchType
+    val purity: String? get() = originalBulkItem.purity
+    val counterId: Int? get() = originalBulkItem.counterId
+    val categoryId: Int? get() = originalBulkItem.categoryId
+    val productId: Int? get() = originalBulkItem.productId
+    val designId: Int? get() = originalBulkItem.designId
+    // Add other properties you use from BulkItem here
+}
+
 data class MenuItem(val title: String, val iconRes: Int,val count: Int? = null)
-data class TableRow(val label: String, val items: List<BulkItem>)
+data class TableRow(val label: String, val items: List<ScannedBulkItem>)
+
+fun ScannedBulkItem.toBulkItem(): BulkItem {
+    return originalBulkItem.copy(
+        isScanned = this.currentScannedStatus == "Matched"
+    )
+}
