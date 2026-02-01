@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.viewmodel
-
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import ScannedDataToService
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -25,6 +26,7 @@ import com.loyalstring.rfid.data.local.entity.EpcDto
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.ScannedItem
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.model.login.SyncSkippedItem
 import com.loyalstring.rfid.data.model.order.Diamond
 import com.loyalstring.rfid.data.model.order.Stone
 
@@ -205,8 +207,7 @@ class BulkViewModel @Inject constructor(
     private val _syncTotalCount = MutableStateFlow(0)
     val syncTotalCount = _syncTotalCount.asStateFlow()
 
-    private val _syncSkippedItemCodes = MutableStateFlow<List<String>>(emptyList())
-    val syncSkippedItemCodes: StateFlow<List<String>> = _syncSkippedItemCodes
+
 
     private val _syncSyncedCount = MutableStateFlow(0)
     val syncSyncedCount = _syncSyncedCount.asStateFlow()
@@ -235,6 +236,19 @@ class BulkViewModel @Inject constructor(
     private fun String.normalizeTagKey(): String =
         trim().uppercase()
 
+    private val _syncSkippedItems =
+        MutableStateFlow<List<SyncSkippedItem>>(emptyList())
+
+    val syncSkippedItems = _syncSkippedItems.asStateFlow()
+
+    val syncSkippedItemCodes: StateFlow<List<String>> =
+        syncSkippedItems
+            .map { list -> list.map { it.itemCode } }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                emptyList()
+            )
 
 
     // 🔸 add this
@@ -297,6 +311,12 @@ class BulkViewModel @Inject constructor(
                 .filter { it.branchType?.equals("Exhibition", ignoreCase = true) == true }
                 .mapNotNull { it.branchName }
                 .distinct()
+
+
+            Log.d("FILTER_DEBUG", "Counters=$counters")
+            Log.d("FILTER_DEBUG", "Branches=$branches")
+            Log.d("FILTER_DEBUG", "Boxes=$boxes")
+
 
             // Update StateFlows on main thread
             withContext(Dispatchers.Main) {
@@ -413,6 +433,7 @@ class BulkViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _allItems.value = items
                     _currentPage.value = page
+                    preloadFilters(items)
                 }
             } finally {
                 _isLoadingPage.value = false
@@ -467,431 +488,447 @@ class BulkViewModel @Inject constructor(
         }*/
     }
 
+    init {
+        viewModelScope.launch {
+            bulkRepository.getAllBulkItems().collect { items ->
+
+                // ✅ THIS WAS MISSING (CRITICAL)
+                _allItems.value = items
+
+                preloadFilters(items)
+
+                _scannedFilteredItems.value = items
+                isDataLoaded = true
+            }
+        }
+    }
+
+
     // Call this method when user actually needs the data (e.g., when navigating to list screen)
-    fun ensureFiltersLoaded() {
-        if (!isDataLoaded && _allItems.value.isNotEmpty()) {
-            preloadFilters(_allItems.value)
-            isDataLoaded = true
-        }
-    }
-    fun toggleScanningInventory(selectedPower: Int) {
-        if (_isScanning.value) {
-            stopScanningAndCompute()
-            _isScanning.value = false
-            Log.d("RFID", "Scanning stopped by toggle")
+fun ensureFiltersLoaded() {
+if (!isDataLoaded && _allItems.value.isNotEmpty()) {
+    preloadFilters(_allItems.value)
+    isDataLoaded = true
+}
+}
+fun toggleScanningInventory(selectedPower: Int) {
+if (_isScanning.value) {
+    stopScanningAndCompute()
+    _isScanning.value = false
+    Log.d("RFID", "Scanning stopped by toggle")
+} else {
+    _isScanning.value = true
+    resetScanResults()  // 🔑 Always reset before scanning
+    setFilteredItems(_allItems.value)
+    startScanningInventory(selectedPower)
+    Log.d("RFID", "Scanning started by toggle")
+}
+}
+
+
+fun toggleScanning(selectedPower: Int) {
+if (_isScanning.value) {
+    stopScanning()
+    _isScanning.value = false
+    Log.d("RFID", "Scanning stopped by toggle")
+} else {
+   // resetScanResults()
+   // setFilteredItems(_allItems) // or _filteredSource depending on scope
+    startScanning(selectedPower)
+    _isScanning.value = true
+    Log.d("RFID", "Scanning started by toggle")
+}
+}
+
+
+
+
+
+
+fun onScanKeyPressed(type: String) {
+_scanTrigger.value = type
+}
+
+fun clearScanTrigger() {
+_scanTrigger.value = null
+}
+
+fun startSearch(items: List<BulkItem>) {
+_searchItems.clear()
+_searchItems.addAll(items.filter { it.scannedStatus == "Unmatched" })
+}
+fun showUnmatchedTab() {
+_visibleUnmatchedItems.clear()
+_visibleUnmatchedItems.addAll(_unmatchedItems) // only real unmatched
+}
+
+fun startSingleScan(selectedPower: Int) {
+//if (!success) return
+scanJob?.cancel()
+
+scanJob = viewModelScope.launch(Dispatchers.IO) {
+    if (!ensureReader()) return@launch
+    readerManager.startInventoryTag(selectedPower, false)
+
+    val timeoutMillis = 2000L
+    val startTime = System.currentTimeMillis()
+    var foundTag: UHFTAGInfo? = null
+
+    while (isActive && (System.currentTimeMillis() - startTime < timeoutMillis)) {
+        val tag = readerManager.readTagFromBuffer()
+        if (tag != null && !tag.epc.isNullOrBlank()) {
+            foundTag = tag
+            break
         } else {
-            _isScanning.value = true
-            resetScanResults()  // 🔑 Always reset before scanning
-            setFilteredItems(_allItems.value)
-            startScanningInventory(selectedPower)
-            Log.d("RFID", "Scanning started by toggle")
+            delay(100)
         }
     }
 
+    readerManager.stopInventory()
 
-    fun toggleScanning(selectedPower: Int) {
-        if (_isScanning.value) {
-            stopScanning()
-            _isScanning.value = false
-            Log.d("RFID", "Scanning stopped by toggle")
-        } else {
-           // resetScanResults()
-           // setFilteredItems(_allItems) // or _filteredSource depending on scope
-            startScanning(selectedPower)
-            _isScanning.value = true
-            Log.d("RFID", "Scanning started by toggle")
-        }
+    foundTag?.let {
+        handleScannedTag(it)   // ✅ adds to the same lists as bulk
+        readerManager.playSound(1)
+    }
+}
+}
+
+
+suspend fun scanSingleTagRaw(
+selectedPower: Int,
+onResult: (String?) -> Unit
+) {
+//if (!success) {
+if (!ensureReader()) {
+    onResult(null)
+    return
+}
+
+viewModelScope.launch(Dispatchers.IO) {
+    readerManager.startInventoryTag(selectedPower, false)
+    val timeoutMillis = 2000L
+    val startTime = System.currentTimeMillis()
+    var epc: String? = null
+
+    while (isActive && (System.currentTimeMillis() - startTime < timeoutMillis)) {
+        val tag = readerManager.readTagFromBuffer()
+        if (tag != null && !tag.epc.isNullOrBlank()) {
+            epc = tag.epc
+            break
+        } else delay(100)
     }
 
+    readerManager.stopInventory()
 
-
-
-
-
-    fun onScanKeyPressed(type: String) {
-        _scanTrigger.value = type
+    withContext(Dispatchers.Main) {
+        onResult(epc)
     }
-
-    fun clearScanTrigger() {
-        _scanTrigger.value = null
-    }
-
-    fun startSearch(items: List<BulkItem>) {
-        _searchItems.clear()
-        _searchItems.addAll(items.filter { it.scannedStatus == "Unmatched" })
-    }
-    fun showUnmatchedTab() {
-        _visibleUnmatchedItems.clear()
-        _visibleUnmatchedItems.addAll(_unmatchedItems) // only real unmatched
-    }
-
-    fun startSingleScan(selectedPower: Int) {
-        //if (!success) return
-        scanJob?.cancel()
-
-        scanJob = viewModelScope.launch(Dispatchers.IO) {
-            if (!ensureReader()) return@launch
-            readerManager.startInventoryTag(selectedPower, false)
-
-            val timeoutMillis = 2000L
-            val startTime = System.currentTimeMillis()
-            var foundTag: UHFTAGInfo? = null
-
-            while (isActive && (System.currentTimeMillis() - startTime < timeoutMillis)) {
-                val tag = readerManager.readTagFromBuffer()
-                if (tag != null && !tag.epc.isNullOrBlank()) {
-                    foundTag = tag
-                    break
-                } else {
-                    delay(100)
-                }
-            }
-
-            readerManager.stopInventory()
-
-            foundTag?.let {
-                handleScannedTag(it)   // ✅ adds to the same lists as bulk
-                readerManager.playSound(1)
-            }
-        }
-    }
+}
+}
 
 
-    suspend fun scanSingleTagRaw(
-        selectedPower: Int,
-        onResult: (String?) -> Unit
-    ) {
-        //if (!success) {
-        if (!ensureReader()) {
-            onResult(null)
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            readerManager.startInventoryTag(selectedPower, false)
-            val timeoutMillis = 2000L
-            val startTime = System.currentTimeMillis()
-            var epc: String? = null
-
-            while (isActive && (System.currentTimeMillis() - startTime < timeoutMillis)) {
-                val tag = readerManager.readTagFromBuffer()
-                if (tag != null && !tag.epc.isNullOrBlank()) {
-                    epc = tag.epc
-                    break
-                } else delay(100)
-            }
-
-            readerManager.stopInventory()
-
-            withContext(Dispatchers.Main) {
-                onResult(epc)
-            }
-        }
-    }
-
-
-    fun startScanningInventory(selectedPower: Int) {
-        //if (!success || _isScanning.value) return
-        _scannedKeySet.value = emptySet()
-        scanJob?.cancel()
-        _isScanning.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            if (!ensureReader()) {
-                _isScanning.value = false
-                return@launch
-            }
-
-
-            readerManager.startInventoryTag(selectedPower, false)
-            readerManager.playSound(1)
-
-            // Build EPC set if not already prepared
-            // Build EPC set if not already prepared
-            if (filteredDbEpcSet.isEmpty()) {
-                filteredDbEpcSet = _filteredSource.mapNotNull { it.epc?.trim()?.uppercase() }.toHashSet()
-                // filteredDbTidSet = _filteredSource.mapNotNull { it.tid?.trim()?.uppercase() }.toHashSet() // TID matching disabled
-            }
-
-            // Loop: only update matched set; avoid remapping list on main thread per tag
-            scanJob = viewModelScope.launch(Dispatchers.IO) {
-                while (isActive) {
-                    val tag = readerManager.readTagFromBuffer()
-                    if (tag != null) {
-                        val scannedEpc = tag.epc?.trim()?.uppercase()
-                        // val scannedTid = tag.tid?.trim()?.uppercase() // TID matching disabled
-                        // Track seen EPCs to avoid repeated processing
-                        if (!scannedEpc.isNullOrBlank()) {
-                            scannedEpcList.add(scannedEpc)
-                        }
-
-                        // EPC match
-                        if (!scannedEpc.isNullOrBlank() && filteredDbEpcSet.contains(scannedEpc)) {
-                            val currentE = _matchedEpcSet.value
-                            if (!currentE.contains(scannedEpc)) {
-                                _matchedEpcSet.value = currentE + scannedEpc
-                            }
-                        }
-
-                        // TID match (disabled)
-                        // if (!scannedTid.isNullOrBlank() && filteredDbTidSet.contains(scannedTid)) {
-                        //     val currentT = _matchedTidSet.value
-                        //     if (!currentT.contains(scannedTid)) {
-                        //         _matchedTidSet.value = currentT + scannedTid
-                        //     }
-                        // }
-                    }
-                }
-            }
-        }
-    }
-
-    suspend fun computeScanResults(
-        filteredItems: List<BulkItem>,
-        stayVisibleInUnmatched: Boolean = false
-    ) = withContext(Dispatchers.Default) {
-        if (filteredItems.isEmpty()) {
-            // If the list is empty, there's nothing to compute.
-            // This can happen after a reset.
-            _matchedItems.clear()
-            _unmatchedItems.clear()
-            _scannedFilteredItems.value = emptyList()
-            return@withContext
-        }
-
-        val currentScannedEpcList = scannedEpcList.toList() // Create an immutable copy
-
-        val matched = mutableListOf<BulkItem>()
-        val unmatched = mutableListOf<BulkItem>()
-        val scannedEpcSet = if (currentScannedEpcList.isNotEmpty()) {
-            currentScannedEpcList.map { it.trim().uppercase() }.toSet()
-        } else {
-            emptySet()
-        }
-        _matchedEpcSet.value = scannedEpcSet
-
-
-        val safeList = filteredItems.toList()
-
-        safeList.forEach { item ->
-            val dbEpc = item.epc?.trim()?.uppercase()
-            if (dbEpc != null && scannedEpcSet.contains(dbEpc)) {
-                val updatedItem = item.copy(scannedStatus = "Matched")
-                matched.add(updatedItem)
-                if (stayVisibleInUnmatched) unmatched.add(updatedItem)
-            } else {
-                val updatedItem = item.copy(scannedStatus = "Unmatched")
-                unmatched.add(updatedItem)
-            }
-        }
-
-
-        withContext(Dispatchers.Main) {
-            if (matched.isEmpty() && unmatched.isEmpty()) {
-                _matchedItems.clear()
-                _unmatchedItems.clear()
-                _scannedFilteredItems.value = emptyList()
-                return@withContext
-            }
-
-            if (matched.isNotEmpty()) {
-                _matchedItems.clear()
-                _matchedItems.addAll(matched)     // ← atomic update, no delays or chunks
-            } else {
-                _matchedItems.clear()
-            }
-
-            if (unmatched.isNotEmpty()) {
-                _unmatchedItems.clear()
-                _unmatchedItems.addAll(unmatched)
-            } else {
-                _unmatchedItems.clear()
-            }
-            _scannedFilteredItems.value = safeList
-        }
-    }
-
-
-    fun pauseScanning() {
-        readerManager.stopInventory()
-        readerManager.stopSound(1)
+fun startScanningInventory(selectedPower: Int) {
+//if (!success || _isScanning.value) return
+_scannedKeySet.value = emptySet()
+scanJob?.cancel()
+_isScanning.value = true
+viewModelScope.launch(Dispatchers.IO) {
+    if (!ensureReader()) {
         _isScanning.value = false
-        scanJob?.cancel()
-        scanJob = null
-
-        // ❌ DO NOT clear scannedEpcList or recompute here
+        return@launch
     }
 
 
-    fun startScanning(selectedPower: Int) {
-        //if (success) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (!ensureReader()) {
-                Log.e("RFID", "Reader not connected.")
-                return@launch
-            }
-            readerManager.startInventoryTag(selectedPower, false)
-            readerManager.playSound(1, 0)
-            scanJob?.cancel()
-            if (scanJob?.isActive == true) return@launch
+    readerManager.startInventoryTag(selectedPower, false)
+    readerManager.playSound(1)
 
-            scanJob = viewModelScope.launch(Dispatchers.IO) {
+    // Build EPC set if not already prepared
+    // Build EPC set if not already prepared
+    if (filteredDbEpcSet.isEmpty()) {
+        filteredDbEpcSet = _filteredSource.mapNotNull { it.epc?.trim()?.uppercase() }.toHashSet()
+        // filteredDbTidSet = _filteredSource.mapNotNull { it.tid?.trim()?.uppercase() }.toHashSet() // TID matching disabled
+    }
 
-                while (isActive) {
-                    val tag = readerManager.readTagFromBuffer()
-                    if (tag != null) {
-                        val epc = tag.epc ?: continue
-                        // Avoid DB calls in the hot path; update UI immediately
-                        handleScannedTag(tag)
+    // Loop: only update matched set; avoid remapping list on main thread per tag
+    scanJob = viewModelScope.launch(Dispatchers.IO) {
+        while (isActive) {
+            val tag = readerManager.readTagFromBuffer()
+            if (tag != null) {
+                val scannedEpc = tag.epc?.trim()?.uppercase()
+                // val scannedTid = tag.tid?.trim()?.uppercase() // TID matching disabled
+                // Track seen EPCs to avoid repeated processing
+                if (!scannedEpc.isNullOrBlank()) {
+                    scannedEpcList.add(scannedEpc)
+                }
+
+                // EPC match
+                if (!scannedEpc.isNullOrBlank() && filteredDbEpcSet.contains(scannedEpc)) {
+                    val currentE = _matchedEpcSet.value
+                    if (!currentE.contains(scannedEpc)) {
+                        _matchedEpcSet.value = currentE + scannedEpc
                     }
                 }
+
+                // TID match (disabled)
+                // if (!scannedTid.isNullOrBlank() && filteredDbTidSet.contains(scannedTid)) {
+                //     val currentT = _matchedTidSet.value
+                //     if (!currentT.contains(scannedTid)) {
+                //         _matchedTidSet.value = currentT + scannedTid
+                //     }
+                // }
             }
         }
+    }
+}
+}
+
+suspend fun computeScanResults(
+filteredItems: List<BulkItem>,
+stayVisibleInUnmatched: Boolean = false
+) = withContext(Dispatchers.Default) {
+if (filteredItems.isEmpty()) {
+    // If the list is empty, there's nothing to compute.
+    // This can happen after a reset.
+    _matchedItems.clear()
+    _unmatchedItems.clear()
+    _scannedFilteredItems.value = emptyList()
+    return@withContext
+}
+
+val currentScannedEpcList = scannedEpcList.toList() // Create an immutable copy
+
+val matched = mutableListOf<BulkItem>()
+val unmatched = mutableListOf<BulkItem>()
+val scannedEpcSet = if (currentScannedEpcList.isNotEmpty()) {
+    currentScannedEpcList.map { it.trim().uppercase() }.toSet()
+} else {
+    emptySet()
+}
+_matchedEpcSet.value = scannedEpcSet
+
+
+val safeList = filteredItems.toList()
+
+safeList.forEach { item ->
+    val dbEpc = item.epc?.trim()?.uppercase()
+    if (dbEpc != null && scannedEpcSet.contains(dbEpc)) {
+        val updatedItem = item.copy(scannedStatus = "Matched")
+        matched.add(updatedItem)
+        if (stayVisibleInUnmatched) unmatched.add(updatedItem)
+    } else {
+        val updatedItem = item.copy(scannedStatus = "Unmatched")
+        unmatched.add(updatedItem)
+    }
+}
+
+
+withContext(Dispatchers.Main) {
+    if (matched.isEmpty() && unmatched.isEmpty()) {
+        _matchedItems.clear()
+        _unmatchedItems.clear()
+        _scannedFilteredItems.value = emptyList()
+        return@withContext
+    }
+
+    if (matched.isNotEmpty()) {
+        _matchedItems.clear()
+        _matchedItems.addAll(matched)     // ← atomic update, no delays or chunks
+    } else {
+        _matchedItems.clear()
+    }
+
+    if (unmatched.isNotEmpty()) {
+        _unmatchedItems.clear()
+        _unmatchedItems.addAll(unmatched)
+    } else {
+        _unmatchedItems.clear()
+    }
+    _scannedFilteredItems.value = safeList
+}
+}
+
+
+fun pauseScanning() {
+readerManager.stopInventory()
+readerManager.stopSound(1)
+_isScanning.value = false
+scanJob?.cancel()
+scanJob = null
+
+// ❌ DO NOT clear scannedEpcList or recompute here
+}
+
+
+fun startScanning(selectedPower: Int) {
+//if (success) {
+viewModelScope.launch(Dispatchers.IO) {
+    if (!ensureReader()) {
+        Log.e("RFID", "Reader not connected.")
+        return@launch
+    }
+    readerManager.startInventoryTag(selectedPower, false)
+    readerManager.playSound(1, 0)
+    scanJob?.cancel()
+    if (scanJob?.isActive == true) return@launch
+
+    scanJob = viewModelScope.launch(Dispatchers.IO) {
+
+        while (isActive) {
+            val tag = readerManager.readTagFromBuffer()
+            if (tag != null) {
+                val epc = tag.epc ?: continue
+                // Avoid DB calls in the hot path; update UI immediately
+                handleScannedTag(tag)
+            }
+        }
+    }
+}
 //        else {
 //            Log.e("RFID", "Reader not connected.")
 //            return
 //        }
-    }
+}
 
-    /*fun stopScanningAndCompute() {
-        stopScanning()
-        viewModelScope.launch {
-            computeScanResults(_filteredSource)
-        }
-    }*/
+/*fun stopScanningAndCompute() {
+stopScanning()
+viewModelScope.launch {
+    computeScanResults(_filteredSource)
+}
+}*/
 
-    // ViewModel-level properties
-    @Volatile
-    private var isComputing = false
+// ViewModel-level properties
+@Volatile
+private var isComputing = false
 
-    private val computeMutex = Mutex() // optional extra safety
+private val computeMutex = Mutex() // optional extra safety
 
-    fun stopScanningAndCompute() {
-        stopScanning()
-        return
-        // Quick guard: avoid re-entry early
-        if (isComputing) return
+fun stopScanningAndCompute() {
+stopScanning()
+return
+// Quick guard: avoid re-entry early
+if (isComputing) return
 
-        viewModelScope.launch(Dispatchers.Default) {
-            // make sure only one compute runs at a time
-            computeMutex.withLock {
-                if (isComputing) return@withLock
-                isComputing = true
+viewModelScope.launch(Dispatchers.Default) {
+    // make sure only one compute runs at a time
+    computeMutex.withLock {
+        if (isComputing) return@withLock
+        isComputing = true
 
-                try {
-                    // snapshot the source to avoid concurrent mutation issues
-                    val snapshot = _filteredSource.toList()
-                    computeScanResultsFast(snapshot)
-                } finally {
-                    // Make sure to reset the flag on Main so any UI consumers see it there
-                    withContext(Dispatchers.Main) {
-                        isComputing = false
-                    }
-                }
+        try {
+            // snapshot the source to avoid concurrent mutation issues
+            val snapshot = _filteredSource.toList()
+            computeScanResultsFast(snapshot)
+        } finally {
+            // Make sure to reset the flag on Main so any UI consumers see it there
+            withContext(Dispatchers.Main) {
+                isComputing = false
             }
         }
     }
+}
+}
 
 
-    suspend fun computeScanResultsFast(
-        filteredItems: List<BulkItem>,
-        stayVisibleInUnmatched: Boolean = false
-    ) = withContext(Dispatchers.Default) {
+suspend fun computeScanResultsFast(
+filteredItems: List<BulkItem>,
+stayVisibleInUnmatched: Boolean = false
+) = withContext(Dispatchers.Default) {
 
-        if (filteredItems.isEmpty()) {
-            _matchedItems.clear()
-            _unmatchedItems.clear()
-            _scannedFilteredItems.value = emptyList()
-            return@withContext
+if (filteredItems.isEmpty()) {
+    _matchedItems.clear()
+    _unmatchedItems.clear()
+    _scannedFilteredItems.value = emptyList()
+    return@withContext
+}
+
+// Immutable copy to avoid ConcurrentModificationException
+val currentScannedList = scannedEpcList.toList()
+
+// Build EPC set only once (O(n))
+val scannedEpcSet = currentScannedList.asSequence()
+    .map { it.trim().uppercase() }
+    .toHashSet()
+
+_matchedEpcSet.value = scannedEpcSet
+
+val matched = ArrayList<BulkItem>(filteredItems.size / 4) // pre-allocate some memory
+val unmatched = ArrayList<BulkItem>(filteredItems.size / 2)
+
+// Avoid calling .copy() unless required → huge performance gain for 3.5 lakh items
+for (item in filteredItems) {
+    val dbEpc = item.epc?.trim()?.uppercase()
+
+    if (dbEpc != null && scannedEpcSet.contains(dbEpc)) {
+        if (item.scannedStatus != "Matched") {
+            matched.add(item.copy(scannedStatus = "Matched", rfid = item.rfid ?: item.epc))
+        } else {
+            matched.add(item.copy(rfid = item.rfid ?: item.epc))
         }
-
-        // Immutable copy to avoid ConcurrentModificationException
-        val currentScannedList = scannedEpcList.toList()
-
-        // Build EPC set only once (O(n))
-        val scannedEpcSet = currentScannedList.asSequence()
-            .map { it.trim().uppercase() }
-            .toHashSet()
-
-        _matchedEpcSet.value = scannedEpcSet
-
-        val matched = ArrayList<BulkItem>(filteredItems.size / 4) // pre-allocate some memory
-        val unmatched = ArrayList<BulkItem>(filteredItems.size / 2)
-
-        // Avoid calling .copy() unless required → huge performance gain for 3.5 lakh items
-        for (item in filteredItems) {
-            val dbEpc = item.epc?.trim()?.uppercase()
-
-            if (dbEpc != null && scannedEpcSet.contains(dbEpc)) {
-                if (item.scannedStatus != "Matched") {
-                    matched.add(item.copy(scannedStatus = "Matched", rfid = item.rfid ?: item.epc))
-                } else {
-                    matched.add(item.copy(rfid = item.rfid ?: item.epc))
-                }
-                if (stayVisibleInUnmatched) unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
-            } else {
-                if (item.scannedStatus != "Unmatched") {
-                    unmatched.add(item.copy(scannedStatus = "Unmatched", rfid = item.rfid ?: item.epc))
-                } else {
-                    unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
-                }
-            }
-        }
-
-        // Switch to Main thread only to push final results
-        withContext(Dispatchers.Main) {
-
-            _matchedItems.apply {
-                clear()
-                if (matched.isNotEmpty()) addAll(matched)
-            }
-
-            _unmatchedItems.apply {
-                clear()
-                if (unmatched.isNotEmpty()) addAll(unmatched)
-            }
-
-            // No need to recalculate safeList
-            _scannedFilteredItems.value = filteredItems
+        if (stayVisibleInUnmatched) unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
+    } else {
+        if (item.scannedStatus != "Unmatched") {
+            unmatched.add(item.copy(scannedStatus = "Unmatched", rfid = item.rfid ?: item.epc))
+        } else {
+            unmatched.add(item.copy(rfid = item.rfid ?: item.epc))
         }
     }
+}
 
+// Switch to Main thread only to push final results
+withContext(Dispatchers.Main) {
 
-
-
-    fun resetProductScanResults() {
-        viewModelScope.launch(Dispatchers.Default) {
-            _scannedTags.value = emptyList()
-            _scannedItems.value = emptyList()
-            _rfidMap.value = emptyMap()
-            _allScannedTags.value = emptyList()
-            _existingItems.value = emptyList()
-            _duplicateItems.value = emptyList()
-            _matchedItems.clear()
-            _unmatchedItems.clear()
-            scannedEpcList.clear()
-            delay(50) // Allow recomposition to process empty lists
-            _matchedEpcSet.value = emptySet()
-            // _matchedTidSet.value = emptySet() // TID matching disabled
-            _scannedFilteredItems.value = _filteredSource
-
-        }
+    _matchedItems.apply {
+        clear()
+        if (matched.isNotEmpty()) addAll(matched)
     }
 
-
-    fun resetScanResults() {
-        viewModelScope.launch(Dispatchers.Default)  {
-            _matchedItems.clear()
-            _unmatchedItems.clear()
-            scannedEpcList.clear()
-            _scannedKeySet.value = emptySet()
-            delay(50) // Allow recomposition to process empty lists
-            _matchedEpcSet.value = emptySet()
-            // _matchedTidSet.value = emptySet() // TID matching disabled
-            _scannedFilteredItems.value = _filteredSource
-        }
+    _unmatchedItems.apply {
+        clear()
+        if (unmatched.isNotEmpty()) addAll(unmatched)
     }
 
-    //    fun scanSingleTagBlocking(onResult: (String?) -> Unit) {
+    // No need to recalculate safeList
+    _scannedFilteredItems.value = filteredItems
+}
+}
+
+
+
+
+fun resetProductScanResults() {
+viewModelScope.launch(Dispatchers.Default) {
+    _scannedTags.value = emptyList()
+    _scannedItems.value = emptyList()
+    _rfidMap.value = emptyMap()
+    _allScannedTags.value = emptyList()
+    _existingItems.value = emptyList()
+    _duplicateItems.value = emptyList()
+    _matchedItems.clear()
+    _unmatchedItems.clear()
+    scannedEpcList.clear()
+    delay(50) // Allow recomposition to process empty lists
+    _matchedEpcSet.value = emptySet()
+    // _matchedTidSet.value = emptySet() // TID matching disabled
+    _scannedFilteredItems.value = _filteredSource
+
+}
+}
+
+
+fun resetScanResults() {
+viewModelScope.launch(Dispatchers.Default)  {
+    _matchedItems.clear()
+    _unmatchedItems.clear()
+    scannedEpcList.clear()
+    _scannedKeySet.value = emptySet()
+    delay(50) // Allow recomposition to process empty lists
+    _matchedEpcSet.value = emptySet()
+    // _matchedTidSet.value = emptySet() // TID matching disabled
+    _scannedFilteredItems.value = _filteredSource
+}
+}
+
+//    fun scanSingleTagBlocking(onResult: (String?) -> Unit) {
 //        viewModelScope.launch(Dispatchers.IO) {
 //            val tag = readerManager.inventorySingleTag(se)
 //            val epc = tag?.epc ?: ""
@@ -903,1373 +940,1533 @@ class BulkViewModel @Inject constructor(
 //            }
 //        }
 //    }
-    fun startBarcodeScanning(context: Context) {
-        if (!barcodeDecoder.isOpen) {
-            barcodeDecoder.open(context)
-        }
-        barcodeDecoder.startScan()
+fun startBarcodeScanning(context: Context) {
+if (!barcodeDecoder.isOpen) {
+    barcodeDecoder.open(context)
+}
+barcodeDecoder.startScan()
 
-    }
-    private suspend fun isTagExistsInDatabase(epc: String): Boolean {
-        return bulkItemDao.getItemByEpc(epc) != null
-    }
+}
+private suspend fun isTagExistsInDatabase(epc: String): Boolean {
+return bulkItemDao.getItemByEpc(epc) != null
+}
 
-    private fun addTagUnique(tag: UHFTAGInfo) {
-        val current = _scannedTags.value
-        if (current.none { it.epc == tag.epc }) {
-            // Defer emitting to reduce recompositions under rapid scans
-            pendingTagsBuffer.add(tag)
-            schedulePendingFlush()
-        }
-    }
+private fun addTagUnique(tag: UHFTAGInfo) {
+val current = _scannedTags.value
+if (current.none { it.epc == tag.epc }) {
+    // Defer emitting to reduce recompositions under rapid scans
+    pendingTagsBuffer.add(tag)
+    schedulePendingFlush()
+}
+}
 
-    // Buffer to accumulate rapid incoming tags and emit in batches
-    private val pendingTagsBuffer: MutableList<UHFTAGInfo> = mutableListOf()
-    private var flushJob: Job? = null
+// Buffer to accumulate rapid incoming tags and emit in batches
+private val pendingTagsBuffer: MutableList<UHFTAGInfo> = mutableListOf()
+private var flushJob: Job? = null
 
-    private fun schedulePendingFlush() {
-        // Emit immediately to avoid visible buffering
-        if (pendingTagsBuffer.isEmpty()) return
-        val snapshot = pendingTagsBuffer.toList()
-        pendingTagsBuffer.clear()
-        val existing = _scannedTags.value
-        val merged = buildList(existing.size + snapshot.size) {
-            addAll(existing)
-            snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
-        }
-        _scannedTags.value = merged
-    }
+private fun schedulePendingFlush() {
+// Emit immediately to avoid visible buffering
+if (pendingTagsBuffer.isEmpty()) return
+val snapshot = pendingTagsBuffer.toList()
+pendingTagsBuffer.clear()
+val existing = _scannedTags.value
+val merged = buildList(existing.size + snapshot.size) {
+    addAll(existing)
+    snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
+}
+_scannedTags.value = merged
+}
 
-    private fun flushPendingTags() {
-        if (pendingTagsBuffer.isEmpty()) return
-        val snapshot = pendingTagsBuffer.toList()
-        pendingTagsBuffer.clear()
-        val existing = _scannedTags.value
-        val merged = buildList(existing.size + snapshot.size) {
-            addAll(existing)
-            snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
-        }
-        _scannedTags.value = merged
-    }
+private fun flushPendingTags() {
+if (pendingTagsBuffer.isEmpty()) return
+val snapshot = pendingTagsBuffer.toList()
+pendingTagsBuffer.clear()
+val existing = _scannedTags.value
+val merged = buildList(existing.size + snapshot.size) {
+    addAll(existing)
+    snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
+}
+_scannedTags.value = merged
+}
 
-    fun getLocalCounters(): List<String> =
-        allItems.value.mapNotNull { it.counterName?.takeIf { it.isNotBlank() } }.distinct()
+fun getLocalCounters(): List<String> =
+allItems.value.mapNotNull { it.counterName?.takeIf { it.isNotBlank() } }.distinct()
 
-    fun getLocalBranches(): List<String> =
-        allItems.value.mapNotNull { it.branchName?.takeIf { it.isNotBlank() } }.distinct()
+fun getLocalBranches(): List<String> =
+allItems.value.mapNotNull { it.branchName?.takeIf { it.isNotBlank() } }.distinct()
 
-    fun getLocalBoxes(): List<String> =
-        allItems.value.mapNotNull { it.boxName?.takeIf { it.isNotBlank() } }.distinct()
+fun getLocalBoxes(): List<String> =
+allItems.value.mapNotNull { it.boxName?.takeIf { it.isNotBlank() } }.distinct()
 
-    fun getLocalExhibitions(): List<String> =
-        allItems.value
-            .filter { it.branchType?.equals("Exhibition", ignoreCase = true) == true }
-            .mapNotNull { it.branchName } // return the branch names
-            .distinct()
+fun getLocalExhibitions(): List<String> =
+allItems.value
+    .filter { it.branchType?.equals("Exhibition", ignoreCase = true) == true }
+    .mapNotNull { it.branchName } // return the branch names
+    .distinct()
 
-    fun setFilteredItemsByType(type: String, value: String) {
-        val filtered = when (type) {
-            "scan display" -> allItems.value
-            "counter" -> allItems.value.filter { it.counterName == value }
-            "branch" -> allItems.value.filter { it.branchName == value }
-            "box" -> allItems.value.filter { it.boxName == value }
-            "exhibition" -> allItems.value.filter {
-                it.branchName == value && it.branchType.equals(
-                    "Exhibition",
-                    true
-                )
-            }
-
-            else -> allItems.value
-        }
-        _filteredItems.clear()
-        _filteredItems.addAll(filtered)
+fun setFilteredItemsByType(type: String, value: String) {
+val filtered = when (type) {
+    "scan display" -> allItems.value
+    "counter" -> allItems.value.filter { it.counterName == value }
+    "branch" -> allItems.value.filter { it.branchName == value }
+    "box" -> allItems.value.filter { it.boxName == value }
+    "exhibition" -> allItems.value.filter {
+        it.branchName == value && it.branchType.equals(
+            "Exhibition",
+            true
+        )
     }
 
+    else -> allItems.value
+}
+_filteredItems.clear()
+_filteredItems.addAll(filtered)
+}
 
 
-    fun assignRfidCode(index: Int, rfid: String) {
-        val currentMap = _rfidMap.value
 
-        // Skip if already assigned elsewhere
-        if (currentMap.containsValue(rfid)) return
+fun assignRfidCode(index: Int, rfid: String) {
+val currentMap = _rfidMap.value
 
-        _rfidMap.value = currentMap.toMutableMap().apply {
-            put(index, rfid)
-        }
-    }
+// Skip if already assigned elsewhere
+if (currentMap.containsValue(rfid)) return
+
+_rfidMap.value = currentMap.toMutableMap().apply {
+    put(index, rfid)
+}
+}
 
 
-    fun onBarcodeScanned(barcode: String) {
-        rfidInput.value = barcode
-        if (_scannedItems.value.any { it.barcode == barcode }) return
+fun onBarcodeScanned(barcode: String) {
+rfidInput.value = barcode
+if (_scannedItems.value.any { it.barcode == barcode }) return
 
-        val nextIndex = _scannedItems.value.size + 1
-        val itemCode = generateItemCode(nextIndex)
-        val srNo = generateSerialNumber(nextIndex)
+val nextIndex = _scannedItems.value.size + 1
+val itemCode = generateItemCode(nextIndex)
+val srNo = generateSerialNumber(nextIndex)
 
-        val newItem = ScannedItem(id = srNo, itemCode = itemCode, barcode = barcode)
-        _scannedItems.update { it + newItem }
-        println("Scanned barcode: $barcode")
-    }
+val newItem = ScannedItem(id = srNo, itemCode = itemCode, barcode = barcode)
+_scannedItems.update { it + newItem }
+println("Scanned barcode: $barcode")
+}
 
-    private fun generateItemCode(index: Int): String {
-        return "ITEM" + index.toString().padStart(4, '0')
-    }
+private fun generateItemCode(index: Int): String {
+return "ITEM" + index.toString().padStart(4, '0')
+}
 
-    private fun generateSerialNumber(index: Int): String {
-        return index.toString()
-    }
+private fun generateSerialNumber(index: Int): String {
+return index.toString()
+}
 
-    private suspend fun handleScannedTag(tag: UHFTAGInfo) {
-        val epc = tag.epc ?: return
-        // 1) Update UI list immediately
-        addTagUnique(tag)
+private suspend fun handleScannedTag(tag: UHFTAGInfo) {
+val epc = tag.epc ?: return
+// 1) Update UI list immediately
+addTagUnique(tag)
 
-        // 2) Resolve duplicate/existing info off the critical path
-        viewModelScope.launch(Dispatchers.IO) {
-            val exists = isTagExistsInDatabase(epc)
-            withContext(Dispatchers.Main) {
-                val alreadyInExisting = existingTags.any { it.epc == epc }
-                val alreadyInScanned = _allScannedTags.value.any { it.epc == epc }
-                val alreadyInDuplicates = duplicateTags.any { it.epc == epc }
+// 2) Resolve duplicate/existing info off the critical path
+viewModelScope.launch(Dispatchers.IO) {
+    val exists = isTagExistsInDatabase(epc)
+    withContext(Dispatchers.Main) {
+        val alreadyInExisting = existingTags.any { it.epc == epc }
+        val alreadyInScanned = _allScannedTags.value.any { it.epc == epc }
+        val alreadyInDuplicates = duplicateTags.any { it.epc == epc }
 
-                if (!alreadyInExisting) {
-                    if (alreadyInScanned) {
-                        if (!alreadyInDuplicates) {
-                            duplicateTags.add(tag)
-                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
-                            setLastEpc(epc)
-                            _duplicateItems.value = duplicateTags.toList()
-                        }
-                    } else {
-                        _allScannedTags.value += tag
-                        if (exists && !alreadyInDuplicates) {
-                            existingTags.add(tag)
-                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
-                            setLastEpc(epc)
-                            _existingItems.value = existingTags.toList()
-                        }
-                    }
+        if (!alreadyInExisting) {
+            if (alreadyInScanned) {
+                if (!alreadyInDuplicates) {
+                    duplicateTags.add(tag)
+                    val epc = tag.epc  // or tid/epc jo bhi mil raha ho
+                    setLastEpc(epc)
+                    _duplicateItems.value = duplicateTags.toList()
                 }
-                Log.d("RFID", "Processed EPC: $epc")
-
-            }
-        }
-    }
-
-
-    fun stopScanning() {
-        // Attempt to drain remaining tags from device buffer quickly before stopping
-        repeat(25) {
-            val tag = readerManager.readTagFromBuffer()
-            if (tag != null && !tag.epc.isNullOrBlank()) {
-                // Fire-and-forget; UI list updates immediately
-                viewModelScope.launch(Dispatchers.Default) {
-                    handleScannedTag(tag)
-                }
-            }
-        }
-
-        // Stop reader
-        readerManager.stopSound(1)
-        readerManager.stopInventory()
-        _isScanning.value = false
-
-        // Ensure any buffered tags are emitted immediately
-        flushPendingTags()
-        scanJob?.cancel()
-        scanJob = null
-    }
-
-
-    fun onScanStopped() {
-        scanJob?.cancel()
-        scanJob = null
-        readerManager.stopInventory()
-        readerManager.stopSound(1)
-        scannedEpcList.clear()
-        _allScannedTags.value.forEach { tag ->
-            tag.epc?.let { epc ->
-                if (!scannedEpcList.contains(epc)) {
-                    scannedEpcList.add(epc)
-                }
-            }
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-    fun stopBarcodeScanner() {
-        barcodeDecoder.close()
-        readerManager.stopSound(2)
-    }
-
-
-    override fun onCleared() {
-        super.onCleared()
-        stopScanning()
-    }
-
-    fun saveDropdownCategory(name: String, type: String) {
-        viewModelScope.launch {
-            repository.addCategory(name)
-        }
-    }
-
-    fun saveDropdownProduct(name: String, type: String) {
-        viewModelScope.launch {
-            repository.addProduct(name)
-        }
-    }
-
-    fun saveDropdownDesign(name: String, type: String) {
-        viewModelScope.launch {
-            repository.addDesign(name)
-        }
-    }
-
-
-    fun saveBulkItems(
-        category: String,
-        itemCode: String,
-        product: String,
-        design: String,
-        scannedTags: List<UHFTAGInfo>,
-        index: Int
-    ) {
-        viewModelScope.launch {
-            val itemList = scannedTags.mapNotNull { tag ->
-                val epc = tag.epc ?: return@mapNotNull null
-                val tid = tag.tid ?: ""
-                // val rfid = epc // or your display RFID if different
-
-                BulkItem(
-                    category = category,
-                    productName = product,
-                    design = design,
-                    itemCode = itemCode,
-                    rfid = rfidMap.value.get(index),
-                    grossWeight = "",
-                    stoneWeight = "",
-                    diamondWeight = "",
-                    netWeight = "",
-                    purity = "",
-                    makingPerGram = "",
-                    makingPercent = "",
-                    fixMaking = "",
-                    fixWastage = "",
-                    stoneAmount = "",
-                    diamondAmount = "",
-                    sku = "",
-                    epc = epc,
-                    vendor = "",
-                    tid = tid,
-                    box = "",
-                    designCode = "",
-                    productCode = "",
-                    imageUrl = "",
-                    totalQty = 0,
-                    pcs = 0,
-                    matchedPcs = 0,
-                    totalGwt = 0.0,
-                    matchGwt = 0.0,
-                    totalStoneWt = 0.0,
-                    matchStoneWt = 0.0,
-                    totalNetWt = 0.0,
-                    matchNetWt = 0.0,
-                    unmatchedQty = 0,
-                    unmatchedGrossWt = 0.0,
-                    mrp = 0.0,
-                    counterName = "",
-                    matchedQty = 0,
-                    counterId = 0,
-                    scannedStatus = "",
-                    boxId = 0,
-                    boxName = "",
-                    branchId = 0,
-                    branchName = "",
-                    categoryId = 0,
-                    productId = 0,
-                    designId = 0,
-                    packetId = 0,
-                    packetName = "",
-                    branchType = "",
-                    totalWt = 0.0,
-                    CategoryWt = "",
-                    SKUId = 0,
-                    bulkItemId = 0
-
-                ).apply {
-                    uhfTagInfo = tag
-                }
-            }
-            if (itemList.isNotEmpty()) {
-                bulkRepository.clearAllItems()
-                bulkRepository.insertBulkItems(itemList)
-                println("SAVED: Saved ${itemList.size} items to DB successfully.")
-                _toastMessage.emit("Saved ${itemList.size} items successfully!")
             } else {
-                _toastMessage.emit("No items to save.")
+                _allScannedTags.value += tag
+                if (exists && !alreadyInDuplicates) {
+                    existingTags.add(tag)
+                    val epc = tag.epc  // or tid/epc jo bhi mil raha ho
+                    setLastEpc(epc)
+                    _existingItems.value = existingTags.toList()
+                }
             }
         }
-    }
+        Log.d("RFID", "Processed EPC: $epc")
 
-    suspend fun parseGoogleSheetHeaders(url: String): List<String> = withContext(Dispatchers.IO) {
-        try {
-            val connection = URL(url).openConnection() as HttpURLConnection
-            connection.connect()
-            val reader = BufferedReader(InputStreamReader(connection.inputStream))
-            val headersLine = reader.readLine()
-            reader.close()
-            println()
-            headersLine.split(",").map {
-                it.trim()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+    }
+}
+}
+
+
+fun stopScanning() {
+// Attempt to drain remaining tags from device buffer quickly before stopping
+repeat(25) {
+    val tag = readerManager.readTagFromBuffer()
+    if (tag != null && !tag.epc.isNullOrBlank()) {
+        // Fire-and-forget; UI list updates immediately
+        viewModelScope.launch(Dispatchers.Default) {
+            handleScannedTag(tag)
         }
     }
+}
+
+// Stop reader
+readerManager.stopSound(1)
+readerManager.stopInventory()
+_isScanning.value = false
+
+// Ensure any buffered tags are emitted immediately
+flushPendingTags()
+scanJob?.cancel()
+scanJob = null
+}
 
 
-    private fun exportToExcel(context: Context, items: List<BulkItem>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _isExporting.value = true
-                _exportStatus.value = "Preparing export..."
-                val workbook = XSSFWorkbook()
-                val sheet = workbook.createSheet("all_sync_items")
+fun onScanStopped() {
+scanJob?.cancel()
+scanJob = null
+readerManager.stopInventory()
+readerManager.stopSound(1)
+scannedEpcList.clear()
+_allScannedTags.value.forEach { tag ->
+    tag.epc?.let { epc ->
+        if (!scannedEpcList.contains(epc)) {
+            scannedEpcList.add(epc)
+        }
+    }
+}
+}
 
-                // Create header row
-                val columns = listOf<(BulkItem) -> String>(
-                    { it.category!! },
-                    { it.productName!! },
-                    { it.design!! },
-                    { it.itemCode!! },
-                    { it.rfid!! },
-                    { it.grossWeight!! },
-                    { it.stoneWeight!! },
-                    { it.diamondWeight!! },
-                    { it.netWeight!! },
-                    { it.purity!! },
-                    { it.makingPerGram!! },
-                    { it.makingPercent!! },
-                    { it.fixMaking!! },
-                    { it.fixWastage!! },
-                    { it.stoneAmount!! },
-                    { it.diamondAmount!! },
-                    { it.sku!! },
-                    { it.epc!! },
-                    { it.vendor!! },
-                    { it.tid!! },
-                    { it.productCode!! },
-                    { it.box!! },
-                    { it.designCode!! },
-                )
-                val headers = listOf(
-                    "Category",
-                    "Product Name",
-                    "Design",
-                    "Item Code",
-                    "RFID",
-                    "Gross Weight",
-                    "Stone Weight",
-                    "Dust Weight",
-                    "Net Weight",
-                    "Purity",
-                    "Making/Gram",
-                    "Making %",
-                    "Fix Making",
-                    "Fix Wastage",
-                    "Stone Amount",
-                    "Dust Amount",
-                    "SKU",
-                    "EPC",
-                    "Vendor",
-                    "TID",
-                    "Box",
-                    "Product Code",
-                    "Design Code"
-                )
-                Log.e("HEADERS :", headers.toString())
-                val headerRow = sheet.createRow(0)
-                headers.forEachIndexed { colIndex, title ->
-                    headerRow.createCell(colIndex).setCellValue(title)
-                    sheet.setColumnWidth(colIndex, 4000)
-                }
 
-                // Add data rows
-                items.forEachIndexed { rowIndex, item ->
-                    val row = sheet.createRow(rowIndex + 1)
-                    columns.forEachIndexed { colIndex, extractor ->
-                        row.createCell(colIndex)
-                            .setCellValue(extractor(item))
-                    }
-                }
 
-                // Create file
 
-                val downloads =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloads.exists()) downloads.mkdirs()
-                val file = File(downloads, "all_items.xlsx")
+
+
+
+
+
+
+
+fun stopBarcodeScanner() {
+barcodeDecoder.close()
+readerManager.stopSound(2)
+}
+
+
+override fun onCleared() {
+super.onCleared()
+stopScanning()
+}
+
+fun saveDropdownCategory(name: String, type: String) {
+viewModelScope.launch {
+    repository.addCategory(name)
+}
+}
+
+fun saveDropdownProduct(name: String, type: String) {
+viewModelScope.launch {
+    repository.addProduct(name)
+}
+}
+
+fun saveDropdownDesign(name: String, type: String) {
+viewModelScope.launch {
+    repository.addDesign(name)
+}
+}
+
+
+fun saveBulkItems(
+category: String,
+itemCode: String,
+product: String,
+design: String,
+scannedTags: List<UHFTAGInfo>,
+index: Int
+) {
+viewModelScope.launch {
+    val itemList = scannedTags.mapNotNull { tag ->
+        val epc = tag.epc ?: return@mapNotNull null
+        val tid = tag.tid ?: ""
+        // val rfid = epc // or your display RFID if different
+
+        BulkItem(
+            category = category,
+            productName = product,
+            design = design,
+            itemCode = itemCode,
+            rfid = _rfidMap.value[index]?.takeIf { it.isNotBlank() },
+            grossWeight = "",
+            stoneWeight = "",
+            diamondWeight = "",
+            netWeight = "",
+            purity = "",
+            makingPerGram = "",
+            makingPercent = "",
+            fixMaking = "",
+            fixWastage = "",
+            stoneAmount = "",
+            diamondAmount = "",
+            sku = "",
+            epc = epc,
+            vendor = "",
+            tid = tid,
+            box = "",
+            designCode = "",
+            productCode = "",
+            imageUrl = "",
+            totalQty = 0,
+            pcs = 0,
+            matchedPcs = 0,
+            totalGwt = 0.0,
+            matchGwt = 0.0,
+            totalStoneWt = 0.0,
+            matchStoneWt = 0.0,
+            totalNetWt = 0.0,
+            matchNetWt = 0.0,
+            unmatchedQty = 0,
+            unmatchedGrossWt = 0.0,
+            mrp = 0.0,
+            counterName = "",
+            matchedQty = 0,
+            counterId = 0,
+            scannedStatus = "",
+            boxId = 0,
+            boxName = "",
+            branchId = 0,
+            branchName = "",
+            categoryId = 0,
+            productId = 0,
+            designId = 0,
+            packetId = 0,
+            packetName = "",
+            branchType = "",
+            totalWt = 0.0,
+            CategoryWt = "",
+            SKUId = 0,
+            bulkItemId = 0
+
+        ).apply {
+            uhfTagInfo = tag
+        }
+    }
+    if (itemList.isNotEmpty()) {
+        bulkRepository.clearAllItems()
+        bulkRepository.insertBulkItems(itemList)
+        println("SAVED: Saved ${itemList.size} items to DB successfully.")
+        _toastMessage.emit("Saved ${itemList.size} items successfully!")
+    } else {
+        _toastMessage.emit("No items to save.")
+    }
+}
+}
+
+suspend fun parseGoogleSheetHeaders(url: String): List<String> = withContext(Dispatchers.IO) {
+try {
+    val connection = URL(url).openConnection() as HttpURLConnection
+    connection.connect()
+    val reader = BufferedReader(InputStreamReader(connection.inputStream))
+    val headersLine = reader.readLine()
+    reader.close()
+    println()
+    headersLine.split(",").map {
+        it.trim()
+    }
+} catch (e: Exception) {
+    e.printStackTrace()
+    emptyList()
+}
+}
+
+
+private fun exportToExcel(context: Context, items: List<BulkItem>) {
+viewModelScope.launch(Dispatchers.IO) {
+    try {
+        _isExporting.value = true
+        _exportStatus.value = "Preparing export..."
+        val workbook = XSSFWorkbook()
+        val sheet = workbook.createSheet("all_sync_items")
+
+        // Create header row
+        val columns = listOf<(BulkItem) -> String>(
+            { it.category!! },
+            { it.productName!! },
+            { it.design!! },
+            { it.itemCode!! },
+            { it.rfid!! },
+            { it.grossWeight!! },
+            { it.stoneWeight!! },
+            { it.diamondWeight!! },
+            { it.netWeight!! },
+            { it.purity!! },
+            { it.makingPerGram!! },
+            { it.makingPercent!! },
+            { it.fixMaking!! },
+            { it.fixWastage!! },
+            { it.stoneAmount!! },
+            { it.diamondAmount!! },
+            { it.sku!! },
+            { it.epc!! },
+            { it.vendor!! },
+            { it.tid!! },
+            { it.productCode!! },
+            { it.box!! },
+            { it.designCode!! },
+        )
+        val headers = listOf(
+            "Category",
+            "Product Name",
+            "Design",
+            "Item Code",
+            "RFID",
+            "Gross Weight",
+            "Stone Weight",
+            "Dust Weight",
+            "Net Weight",
+            "Purity",
+            "Making/Gram",
+            "Making %",
+            "Fix Making",
+            "Fix Wastage",
+            "Stone Amount",
+            "Dust Amount",
+            "SKU",
+            "EPC",
+            "Vendor",
+            "TID",
+            "Box",
+            "Product Code",
+            "Design Code"
+        )
+        Log.e("HEADERS :", headers.toString())
+        val headerRow = sheet.createRow(0)
+        headers.forEachIndexed { colIndex, title ->
+            headerRow.createCell(colIndex).setCellValue(title)
+            sheet.setColumnWidth(colIndex, 4000)
+        }
+
+        // Add data rows
+        items.forEachIndexed { rowIndex, item ->
+            val row = sheet.createRow(rowIndex + 1)
+            columns.forEachIndexed { colIndex, extractor ->
+                row.createCell(colIndex)
+                    .setCellValue(extractor(item))
+            }
+        }
+
+        // Create file
+
+        val downloads =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (!downloads.exists()) downloads.mkdirs()
+        val file = File(downloads, "all_items.xlsx")
 
 // Optional: Delete existing file if you want to ensure it's removed before writing
-                if (file.exists()) {
-                    file.delete()
-                }
-
-
-
-                FileOutputStream(file).use { outputStream ->
-                    workbook.write(outputStream)
-                }
-
-                workbook.close()
-
-                // Media scan
-                MediaScannerConnection.scanFile(
-                    context,
-                    arrayOf(file.absolutePath),
-                    arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-                    null
-                )
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Exported to ${file.absolutePath}", Toast.LENGTH_SHORT)
-                        .show()
-                    openExcelFile(context, file)
-                }
-                _exportStatus.value = "Exported to ${file.absolutePath}"
-            } catch (e: Exception) {
-                _exportStatus.value = "Export failed: ${e.localizedMessage}"
-            } finally {
-                _isExporting.value = false
-            }
+        if (file.exists()) {
+            file.delete()
         }
-    }
 
-    private fun openExcelFile(context: Context, file: File) {
-        val uri = FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", file
-        )
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+
+
+        FileOutputStream(file).use { outputStream ->
+            workbook.write(outputStream)
         }
-        try {
-            context.startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, "No app to open Excel", Toast.LENGTH_SHORT).show()
-        }
-    }
 
-    fun getAllItems() {
-        viewModelScope.launch {
-            bulkRepository.getAllItemsFlow().collectLatest {
-                _scannedFilteredItems.value = it // ✅ initialize display list
-            }
-        }
-    }
-    suspend fun uploadImage(clientCode: String, itemCode: String, imageUri: File) {
+        workbook.close()
 
-        val clientCodePart = clientCode.toRequestBody("text/plain".toMediaTypeOrNull())
-        val itemCodePart = itemCode.toRequestBody("text/plain".toMediaTypeOrNull())
-
-        val requestFile = imageUri.asRequestBody("image/*".toMediaTypeOrNull())
-        val multipartBody = MultipartBody.Part.createFormData(
-            name = "File",
-            filename = imageUri.name,
-            body = requestFile
+        // Media scan
+        MediaScannerConnection.scanFile(
+            context,
+            arrayOf(file.absolutePath),
+            arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            null
         )
 
-        apiService.uploadLabelStockImage(clientCodePart, itemCodePart, listOf(multipartBody))
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Exported to ${file.absolutePath}", Toast.LENGTH_SHORT)
+                .show()
+            openExcelFile(context, file)
+        }
+        _exportStatus.value = "Exported to ${file.absolutePath}"
+    } catch (e: Exception) {
+        _exportStatus.value = "Export failed: ${e.localizedMessage}"
+    } finally {
+        _isExporting.value = false
     }
+}
+}
 
-    fun getAllItems(context: Context) {
-        viewModelScope.launch {
-            bulkRepository.getAllBulkItems().collect { items ->
-                _allItems.value = items
-                _scannedFilteredItems.value = items
-                exportToExcel(context, items)
-                preloadFilters(_allItems.value)
+private fun openExcelFile(context: Context, file: File) {
+val uri = FileProvider.getUriForFile(
+    context, "${context.packageName}.fileprovider", file
+)
+val intent = Intent(Intent.ACTION_VIEW).apply {
+    setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+}
+try {
+    context.startActivity(intent)
+} catch (e: ActivityNotFoundException) {
+    Toast.makeText(context, "No app to open Excel", Toast.LENGTH_SHORT).show()
+}
+}
+
+fun getAllItems() {
+viewModelScope.launch {
+    bulkRepository.getAllItemsFlow().collectLatest {
+        _scannedFilteredItems.value = it // ✅ initialize display list
+    }
+}
+}
+suspend fun uploadImage(clientCode: String, itemCode: String, imageUri: File) {
+
+val clientCodePart = clientCode.toRequestBody("text/plain".toMediaTypeOrNull())
+val itemCodePart = itemCode.toRequestBody("text/plain".toMediaTypeOrNull())
+
+val requestFile = imageUri.asRequestBody("image/*".toMediaTypeOrNull())
+val multipartBody = MultipartBody.Part.createFormData(
+    name = "File",
+    filename = imageUri.name,
+    body = requestFile
+)
+
+apiService.uploadLabelStockImage(clientCodePart, itemCodePart, listOf(multipartBody))
+}
+
+fun getAllItems(context: Context) {
+viewModelScope.launch {
+    bulkRepository.getAllBulkItems().collect { items ->
+        _allItems.value = items
+        _scannedFilteredItems.value = items
+        exportToExcel(context, items)
+        preloadFilters(_allItems.value)
+    }
+}
+}
+
+fun syncAndMapRow(itemCode: String): String {
+return syncedRFIDMap?.get(itemCode) ?: ""
+}
+
+val rfidList: StateFlow<List<EpcDto>> =
+bulkRepository.getAllRFIDTags()
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
+return@withContext //Unnecessary
+/*Log.d("SYNC_ITEM", "Server API Called")
+if (syncedRFIDMap != null) return@withContext
+
+val employee = userPreferences.getEmployee(Employee::class.java)
+val clientCode = employee?.clientCode ?: return@withContext
+
+val response = bulkRepository.syncRFIDItemsFromServer(ClientCodeRequest(clientCode))
+
+// Save in DB
+bulkRepository.insertRFIDTags(response)
+
+// Build RFID → EPC map
+syncedRFIDMap = response.associateBy(
+    { it.BarcodeNumber.orEmpty().trim().uppercase() },
+    { it.TidValue.orEmpty().trim().uppercase() }
+)
+Log.d("SYNC_ITEM", "Server API Called Finished")*/
+}
+
+
+
+
+// 📡 Utility function to check network availability
+fun isNetworkAvailable(context: Context): Boolean {
+val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+val network = cm.activeNetwork ?: return false
+val capabilities = cm.getNetworkCapabilities(network) ?: return false
+return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}
+
+/*fun syncItems() {
+val skippedItems = mutableListOf<String>()
+viewModelScope.launch(Dispatchers.IO) {
+    try {
+        withContext(Dispatchers.Main) {
+            _isLoading.value = true
+            _syncStatusText.value = "Downloading data from server..."
+            _syncProgress.value = 0f
+            _syncTotalCount.value = 0
+            _syncSyncedCount.value = 0
+        }
+        val clientCode = employee?.clientCode ?: run {
+            withContext(Dispatchers.Main) { _isLoading.value = false }
+            return@launch
+        }
+        val request = ClientCodeRequest(clientCode)
+        val tagType = userPreferences.getClient()?.rfidType?.trim()?.lowercase() ?: "webreusable"
+
+        val response = bulkRepository.syncBulkItemsFromServer(request)
+
+        val bulkItems = response.asSequence()
+            .filter { (it.status == "ApiActive" || it.status == "Active") &&
+                    (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank()) }
+            .map { it.toBulkItem() }
+            .toList()
+
+        val total = bulkItems.size
+
+        withContext(Dispatchers.Main) {
+            _syncTotalCount.value = total
+            _syncSyncedCount.value = 0
+        }
+
+        bulkRepository.clearAllItems()
+
+        if (total == 0) {
+            withContext(Dispatchers.Main) {
+                _syncProgress.value = 1f
+                _syncStatusText.value = "No items to sync"
+                _isLoading.value = false
+            }
+            return@launch
+        }
+
+        val processedItems = mutableListOf<BulkItem>()
+        var processed = 0
+        var synced = 0   // ✅ NEW
+        var lastUpdate = System.currentTimeMillis()
+
+        for (item in bulkItems) {
+            var updatedItem = if (tagType == "webreusable") {
+                if (!item.rfid.isNullOrBlank()) {
+                    if (item.epc.isNullOrBlank()) item.epc = syncAndMapRow(item.rfid!!)
+                    item
+                } else null
+            } else {
+                if (!item.itemCode.isNullOrBlank()) {
+                    val hexValue = item.itemCode.toByteArray()
+                        .joinToString("") { String.format("%02X", it) }
+                    item.copy(rfid = item.itemCode, epc = hexValue, tid = hexValue)
+                } else null
+            }
+
+            if (updatedItem != null) {
+                if (!item.rfid.isNullOrBlank() && item.tid.isNullOrBlank()) {
+
+                    val info = "ItemCode=${item.itemCode} here RFID Wrong "
+                    skippedItems.add(info)
+                    Log.e("SYNC_NOT_SYNCED", info)
+
+                    // skip (do not add)
+                }else {
+                    processedItems.add(updatedItem)
+                    synced++ // ✅ count only valid/synced rows
+                }
+            } else {
+                // ✅ NOT SYNCED ITEM LOG + STORE
+                val reason = if (tagType == "webreusable") "RFID blank" else "ItemCode blank"
+                val info = "ItemCode=${item.itemCode}  here TID is NULL"
+                skippedItems.add(info)
+                Log.e("SYNC_NOT_SYNCED", info)
+            }
+
+            processed++
+
+            val now = System.currentTimeMillis()
+            if (now - lastUpdate > 500) {
+                val progress = processed.toFloat() / total
+                withContext(Dispatchers.Main) {
+                    _syncProgress.value = progress
+                    _syncSyncedCount.value = synced
+                    _syncStatusText.value = "Processing $synced of $total"
+                }
+                lastUpdate = now
+            }
+
+            if (processedItems.size >= 100) {
+                bulkRepository.insertBulkItems(processedItems.toList())
+                processedItems.clear()
             }
         }
+
+        Log.e("SYNC_NOT_SYNCED_SUMMARY", "Total Not Synced = ${skippedItems.size}")
+        Log.e("SYNC_NOT_SYNCED_LIST", skippedItems.joinToString("\n"))
+
+        if (processedItems.isNotEmpty()) {
+            bulkRepository.insertBulkItems(processedItems.toList())
+        }
+
+        withContext(Dispatchers.Main) {
+            _syncSkippedItemCodes.value = skippedItems.distinct()
+            _syncSyncedCount.value = synced
+            _toastMessage.emit("✅ Synced $synced of $total items successfully!")
+            _syncStatusText.value = "Sync completed!"
+        }
+
+    } finally {
+        withContext(Dispatchers.Main) { _isLoading.value = false }
     }
+}
+}*/
+private fun blockTouch(context: Context) {
+val window = (context as Activity).window
+window.setFlags(
+    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+)
+}
 
-    fun syncAndMapRow(itemCode: String): String {
-        return syncedRFIDMap?.get(itemCode) ?: ""
-    }
+fun unblockTouch(context: Context) {
+val window = (context as Activity).window
+window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+}
 
-    val rfidList: StateFlow<List<EpcDto>> =
-        bulkRepository.getAllRFIDTags()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+fun clearSyncCompleted() {
+_syncCompleted.value = false
+}
 
-    suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
-        return@withContext //Unnecessary
-        /*Log.d("SYNC_ITEM", "Server API Called")
-        if (syncedRFIDMap != null) return@withContext
+/*fun syncItems() {
+val skippedItems = mutableListOf<String>()
 
-        val employee = userPreferences.getEmployee(Employee::class.java)
-        val clientCode = employee?.clientCode ?: return@withContext
+viewModelScope.launch(Dispatchers.IO) {
+    try {
+        withContext(Dispatchers.Main) {
+            _isLoading.value = true
+            _syncStatusText.value = "Downloading data from server..."
+            _syncProgress.value = 0f
+            _syncTotalCount.value = 0
+            _syncSyncedCount.value = 0
+        }
 
-        val response = bulkRepository.syncRFIDItemsFromServer(ClientCodeRequest(clientCode))
+        val clientCode = employee?.clientCode ?: run {
+            withContext(Dispatchers.Main) { _isLoading.value = false }
+            return@launch
+        }
 
-        // Save in DB
-        bulkRepository.insertRFIDTags(response)
+        Log.d("SYNC", "clientCode=$clientCode")
 
-        // Build RFID → EPC map
-        syncedRFIDMap = response.associateBy(
-            { it.BarcodeNumber.orEmpty().trim().uppercase() },
-            { it.TidValue.orEmpty().trim().uppercase() }
-        )
-        Log.d("SYNC_ITEM", "Server API Called Finished")*/
-    }
+        val request = ClientCodeRequest(clientCode)
+        val tagType = userPreferences.getClient()?.rfidType?.trim()?.lowercase() ?: "webreusable"
+        delay(100)
 
+        // ✅ API fetch
+        val response = bulkRepository.syncBulkItemsFromServer(request)
+        Log.d("response", "response=$response")
+        val bulkItems = response.asSequence()
+            .filter {
+                (it.status == "ApiActive" || it.status == "Active") &&
+                        (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
+            }
+            .map { it.toBulkItem() }
+            .toList()
 
+        val total = bulkItems.size
 
+        withContext(Dispatchers.Main) {
+            _syncTotalCount.value = total
+            _syncSyncedCount.value = 0
+        }
 
-    // 📡 Utility function to check network availability
-    fun isNetworkAvailable(context: Context): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val capabilities = cm.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
+        // ✅ Clear old data
+        bulkRepository.clearAllItems()
 
-    /*fun syncItems() {
-        val skippedItems = mutableListOf<String>()
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                withContext(Dispatchers.Main) {
-                    _isLoading.value = true
-                    _syncStatusText.value = "Downloading data from server..."
-                    _syncProgress.value = 0f
-                    _syncTotalCount.value = 0
-                    _syncSyncedCount.value = 0
-                }
-                val clientCode = employee?.clientCode ?: run {
-                    withContext(Dispatchers.Main) { _isLoading.value = false }
-                    return@launch
-                }
-                val request = ClientCodeRequest(clientCode)
-                val tagType = userPreferences.getClient()?.rfidType?.trim()?.lowercase() ?: "webreusable"
+        if (total == 0) {
+            withContext(Dispatchers.Main) {
+                _syncProgress.value = 1f
+                _syncStatusText.value = "No items to sync"
+            }
+            return@launch
+        }
 
-                val response = bulkRepository.syncBulkItemsFromServer(request)
+        val processedItems = mutableListOf<BulkItem>()
+        var processed = 0
+        var synced = 0
+        var lastUpdate = System.currentTimeMillis()
 
-                val bulkItems = response.asSequence()
-                    .filter { (it.status == "ApiActive" || it.status == "Active") &&
-                            (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank()) }
-                    .map { it.toBulkItem() }
-                    .toList()
+        for (item in bulkItems) {
 
-                val total = bulkItems.size
-
-                withContext(Dispatchers.Main) {
-                    _syncTotalCount.value = total
-                    _syncSyncedCount.value = 0
-                }
-
-                bulkRepository.clearAllItems()
-
-                if (total == 0) {
-                    withContext(Dispatchers.Main) {
-                        _syncProgress.value = 1f
-                        _syncStatusText.value = "No items to sync"
-                        _isLoading.value = false
+            // ✅ Build updatedItem
+            val updatedItem: BulkItem? =
+                if (tagType == "webreusable") {
+                    if (!item.rfid.isNullOrBlank()) {
+                        val mapped = syncAndMapRow(item.rfid!!).trim().uppercase()
+                        item.copy(
+                            epc = item.epc.takeIf { !it.isNullOrBlank() } ?: mapped,
+                            tid = item.tid.takeIf { !it.isNullOrBlank() } ?: mapped
+                        )
                     }
-                    return@launch
-                }
-
-                val processedItems = mutableListOf<BulkItem>()
-                var processed = 0
-                var synced = 0   // ✅ NEW
-                var lastUpdate = System.currentTimeMillis()
-
-                for (item in bulkItems) {
-                    var updatedItem = if (tagType == "webreusable") {
-                        if (!item.rfid.isNullOrBlank()) {
-                            if (item.epc.isNullOrBlank()) item.epc = syncAndMapRow(item.rfid!!)
-                            item
-                        } else null
+                    // ✅ if RFID blank but EPC/TID exists, allow insert
+                    else if (!item.epc.isNullOrBlank() || !item.tid.isNullOrBlank()) {
+                        item
                     } else {
-                        if (!item.itemCode.isNullOrBlank()) {
-                            val hexValue = item.itemCode.toByteArray()
-                                .joinToString("") { String.format("%02X", it) }
-                            item.copy(rfid = item.itemCode, epc = hexValue, tid = hexValue)
-                        } else null
+                        null
                     }
-
-                    if (updatedItem != null) {
-                        if (!item.rfid.isNullOrBlank() && item.tid.isNullOrBlank()) {
-
-                            val info = "ItemCode=${item.itemCode} here RFID Wrong "
-                            skippedItems.add(info)
-                            Log.e("SYNC_NOT_SYNCED", info)
-
-                            // skip (do not add)
-                        }else {
-                            processedItems.add(updatedItem)
-                            synced++ // ✅ count only valid/synced rows
-                        }
-                    } else {
-                        // ✅ NOT SYNCED ITEM LOG + STORE
-                        val reason = if (tagType == "webreusable") "RFID blank" else "ItemCode blank"
-                        val info = "ItemCode=${item.itemCode}  here TID is NULL"
-                        skippedItems.add(info)
-                        Log.e("SYNC_NOT_SYNCED", info)
-                    }
-
-                    processed++
-
-                    val now = System.currentTimeMillis()
-                    if (now - lastUpdate > 500) {
-                        val progress = processed.toFloat() / total
-                        withContext(Dispatchers.Main) {
-                            _syncProgress.value = progress
-                            _syncSyncedCount.value = synced
-                            _syncStatusText.value = "Processing $synced of $total"
-                        }
-                        lastUpdate = now
-                    }
-
-                    if (processedItems.size >= 100) {
-                        bulkRepository.insertBulkItems(processedItems.toList())
-                        processedItems.clear()
-                    }
+                } else {
+                    if (!item.itemCode.isNullOrBlank()) {
+                        val hexValue = item.itemCode.toByteArray()
+                            .joinToString("") { String.format("%02X", it) }
+                        item.copy(rfid = "", epc = hexValue, tid = hexValue)
+                    } else null
                 }
 
-                Log.e("SYNC_NOT_SYNCED_SUMMARY", "Total Not Synced = ${skippedItems.size}")
-                Log.e("SYNC_NOT_SYNCED_LIST", skippedItems.joinToString("\n"))
+            // ✅ VALIDATION + INSERT LIST
+            if (updatedItem != null) {
 
-                if (processedItems.isNotEmpty()) {
+                // ✅ IMPORTANT FIX:
+                // earlier you checked item.tid (old), now check updatedItem.tid (mapped)
+                if (!updatedItem.rfid.isNullOrBlank() && updatedItem.tid.isNullOrBlank()) {
+                    val info = "ItemCode=${updatedItem.itemCode} here RFID Wrong"
+                    skippedItems.add(info)
+                    Log.e("SYNC_NOT_SYNCED", info)
+                } else {
+                    processedItems.add(updatedItem)
+                    synced++
+                }
+
+            } else {
+                val info = "ItemCode=${item.itemCode} here TID/RFID is NULL"
+                skippedItems.add(info)
+                Log.e("SYNC_NOT_SYNCED", info)
+            }
+
+            processed++
+
+            // ✅ Progress update throttled
+            val now = System.currentTimeMillis()
+            if (now - lastUpdate > 500) {
+                val progress = processed.toFloat() / total.toFloat()
+                withContext(Dispatchers.Main) {
+                    _syncProgress.value = progress
+                    _syncSyncedCount.value = synced
+                    _syncStatusText.value = "Processing $synced of $total"
+                }
+                lastUpdate = now
+            }
+
+            // ✅ Batch insert (with protection)
+            if (processedItems.size >= 100) {
+                try {
                     bulkRepository.insertBulkItems(processedItems.toList())
+                } catch (e: Exception) {
+                    Log.e("SYNC_DB", "Insert chunk failed size=${processedItems.size}", e)
+                    skippedItems.add("DB insert failed for chunk: ${e.message}")
+                } finally {
+                    processedItems.clear()
                 }
-
-                withContext(Dispatchers.Main) {
-                    _syncSkippedItemCodes.value = skippedItems.distinct()
-                    _syncSyncedCount.value = synced
-                    _toastMessage.emit("✅ Synced $synced of $total items successfully!")
-                    _syncStatusText.value = "Sync completed!"
-                }
-
-            } finally {
-                withContext(Dispatchers.Main) { _isLoading.value = false }
             }
         }
-    }*/
-    private fun blockTouch(context: Context) {
-        val window = (context as Activity).window
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        )
-    }
 
-    fun unblockTouch(context: Context) {
-        val window = (context as Activity).window
-        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-    }
-
-    /*fun syncItems() {
-        val skippedItems = mutableListOf<String>()
-
-        viewModelScope.launch(Dispatchers.IO) {
+        Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}")
+        // ✅ Insert remaining
+        if (processedItems.isNotEmpty()) {
             try {
-                withContext(Dispatchers.Main) {
-                    _isLoading.value = true
-                    _syncStatusText.value = "Downloading data from server..."
-                    _syncProgress.value = 0f
-                    _syncTotalCount.value = 0
-                    _syncSyncedCount.value = 0
-                }
-
-                val clientCode = employee?.clientCode ?: run {
-                    withContext(Dispatchers.Main) { _isLoading.value = false }
-                    return@launch
-                }
-
-                Log.d("SYNC", "clientCode=$clientCode")
-
-                val request = ClientCodeRequest(clientCode)
-                val tagType = userPreferences.getClient()?.rfidType?.trim()?.lowercase() ?: "webreusable"
-                delay(100)
-
-                // ✅ API fetch
-                val response = bulkRepository.syncBulkItemsFromServer(request)
-                Log.d("response", "response=$response")
-                val bulkItems = response.asSequence()
-                    .filter {
-                        (it.status == "ApiActive" || it.status == "Active") &&
-                                (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
-                    }
-                    .map { it.toBulkItem() }
-                    .toList()
-
-                val total = bulkItems.size
-
-                withContext(Dispatchers.Main) {
-                    _syncTotalCount.value = total
-                    _syncSyncedCount.value = 0
-                }
-
-                // ✅ Clear old data
-                bulkRepository.clearAllItems()
-
-                if (total == 0) {
-                    withContext(Dispatchers.Main) {
-                        _syncProgress.value = 1f
-                        _syncStatusText.value = "No items to sync"
-                    }
-                    return@launch
-                }
-
-                val processedItems = mutableListOf<BulkItem>()
-                var processed = 0
-                var synced = 0
-                var lastUpdate = System.currentTimeMillis()
-
-                for (item in bulkItems) {
-
-                    // ✅ Build updatedItem
-                    val updatedItem: BulkItem? =
-                        if (tagType == "webreusable") {
-                            if (!item.rfid.isNullOrBlank()) {
-                                val mapped = syncAndMapRow(item.rfid!!).trim().uppercase()
-                                item.copy(
-                                    epc = item.epc.takeIf { !it.isNullOrBlank() } ?: mapped,
-                                    tid = item.tid.takeIf { !it.isNullOrBlank() } ?: mapped
-                                )
-                            }
-                            // ✅ if RFID blank but EPC/TID exists, allow insert
-                            else if (!item.epc.isNullOrBlank() || !item.tid.isNullOrBlank()) {
-                                item
-                            } else {
-                                null
-                            }
-                        } else {
-                            if (!item.itemCode.isNullOrBlank()) {
-                                val hexValue = item.itemCode.toByteArray()
-                                    .joinToString("") { String.format("%02X", it) }
-                                item.copy(rfid = "", epc = hexValue, tid = hexValue)
-                            } else null
-                        }
-
-                    // ✅ VALIDATION + INSERT LIST
-                    if (updatedItem != null) {
-
-                        // ✅ IMPORTANT FIX:
-                        // earlier you checked item.tid (old), now check updatedItem.tid (mapped)
-                        if (!updatedItem.rfid.isNullOrBlank() && updatedItem.tid.isNullOrBlank()) {
-                            val info = "ItemCode=${updatedItem.itemCode} here RFID Wrong"
-                            skippedItems.add(info)
-                            Log.e("SYNC_NOT_SYNCED", info)
-                        } else {
-                            processedItems.add(updatedItem)
-                            synced++
-                        }
-
-                    } else {
-                        val info = "ItemCode=${item.itemCode} here TID/RFID is NULL"
-                        skippedItems.add(info)
-                        Log.e("SYNC_NOT_SYNCED", info)
-                    }
-
-                    processed++
-
-                    // ✅ Progress update throttled
-                    val now = System.currentTimeMillis()
-                    if (now - lastUpdate > 500) {
-                        val progress = processed.toFloat() / total.toFloat()
-                        withContext(Dispatchers.Main) {
-                            _syncProgress.value = progress
-                            _syncSyncedCount.value = synced
-                            _syncStatusText.value = "Processing $synced of $total"
-                        }
-                        lastUpdate = now
-                    }
-
-                    // ✅ Batch insert (with protection)
-                    if (processedItems.size >= 100) {
-                        try {
-                            bulkRepository.insertBulkItems(processedItems.toList())
-                        } catch (e: Exception) {
-                            Log.e("SYNC_DB", "Insert chunk failed size=${processedItems.size}", e)
-                            skippedItems.add("DB insert failed for chunk: ${e.message}")
-                        } finally {
-                            processedItems.clear()
-                        }
-                    }
-                }
-
-                Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}")
-                // ✅ Insert remaining
-                if (processedItems.isNotEmpty()) {
-                    try {
-                        bulkRepository.insertBulkItems(processedItems.toList())
-                    } catch (e: Exception) {
-                        Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}", e)
-                        skippedItems.add("DB insert failed for remaining: ${e.message}")
-                    } finally {
-                        processedItems.clear()
-                    }
-                }
-
-                Log.e("SYNC_NOT_SYNCED_SUMMARY", "Total Not Synced = ${skippedItems.size}")
-                Log.e("SYNC_NOT_SYNCED_LIST", skippedItems.joinToString("\n"))
-
-                // ✅ Final UI update
-                withContext(Dispatchers.Main) {
-                    _syncSkippedItemCodes.value = skippedItems.distinct()
-                    _syncSyncedCount.value = synced
-                    _syncProgress.value = 1f
-                    _syncStatusText.value = "Sync completed!"
-                }
-
-                // ✅ toast emit (no need to launch again)
-                _toastMessage.emit("✅ Synced $synced of $total items successfully!")
-
+                bulkRepository.insertBulkItems(processedItems.toList())
             } catch (e: Exception) {
-                Log.e("SYNC_FAILED", "syncItems failed", e)
-                withContext(Dispatchers.Main) {
-                    _syncStatusText.value = "Sync failed: ${e.message}"
-                }
+                Log.e("SYNC_DB", "Insert remaining failed size=${processedItems.size}", e)
+                skippedItems.add("DB insert failed for remaining: ${e.message}")
             } finally {
-                withContext(Dispatchers.Main) { _isLoading.value = false }
+                processedItems.clear()
             }
         }
+
+        Log.e("SYNC_NOT_SYNCED_SUMMARY", "Total Not Synced = ${skippedItems.size}")
+        Log.e("SYNC_NOT_SYNCED_LIST", skippedItems.joinToString("\n"))
+
+        // ✅ Final UI update
+        withContext(Dispatchers.Main) {
+            _syncSkippedItemCodes.value = skippedItems.distinct()
+            _syncSyncedCount.value = synced
+            _syncProgress.value = 1f
+            _syncStatusText.value = "Sync completed!"
+        }
+
+        // ✅ toast emit (no need to launch again)
+        _toastMessage.emit("✅ Synced $synced of $total items successfully!")
+
+    } catch (e: Exception) {
+        Log.e("SYNC_FAILED", "syncItems failed", e)
+        withContext(Dispatchers.Main) {
+            _syncStatusText.value = "Sync failed: ${e.message}"
+        }
+    } finally {
+        withContext(Dispatchers.Main) { _isLoading.value = false }
     }
+}
+}
 */
-    fun syncItems(context: Context) {
-        syncScope.scope.launch(Dispatchers.IO) {
+fun syncItems(context: Context) {
+syncScope.scope.launch(Dispatchers.IO) {
 
-            val UI_UPDATE_INTERVAL = 700L
-            var lastUiUpdate = System.currentTimeMillis()
+    val UI_UPDATE_INTERVAL = 700L
+    var lastUiUpdate = System.currentTimeMillis()
+    _syncSkippedItems.value = emptyList()
+    val skippedItems = mutableListOf<SyncSkippedItem>()
+    try {
+        withContext(Dispatchers.Main) {
+            blockTouch(context)
+            _isLoading.value = true
+            _syncStatusText.value = "Downloading data..."
+            _syncProgress.value = 0f
+            _syncSyncedCount.value = 0
+        }
 
-            try {
-                withContext(Dispatchers.Main) {
-                    blockTouch(context)
-                    _isLoading.value = true
-                    _syncStatusText.value = "Downloading data..."
-                    _syncProgress.value = 0f
-                    _syncSyncedCount.value = 0
+        var totalItemsCount = 0
+        var totalSyncCount = 0
+        val clientCode = employee?.clientCode ?: return@launch
+        val tagType = userPreferences.getClient()?.rfidType
+            ?.trim()
+            ?.lowercase()
+            ?: "webreusable"
+
+        // Clear old data first
+        bulkRepository.clearAllItems()
+
+        bulkRepository.syncBulkItemsFromServer(
+            request = ClientCodeRequest(clientCode),
+            tagType = tagType,
+
+            // 🔹 Mapping stays in ViewModel (SAFE)
+            mapItem = { serverItem ->
+                try {
+                    mapServerItemToBulkItem(serverItem, tagType,skippedItems)
+                } catch (e: Exception) {
+
+                    skippedItems.add(
+                        SyncSkippedItem(
+                            itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${e.message ?: "UNKNOWN"}",
+                            rfid = serverItem.rfidCode,
+                            tid = serverItem.tidNumber,
+                            reason = e.message ?: "Mapping failed"
+                        )
+
+                    )
+
+                    null // IMPORTANT: skip this item
                 }
+            },
 
-                var totalItemsCount = 0
-                var totalSyncCount = 0
-                val clientCode = employee?.clientCode ?: return@launch
-                val tagType = userPreferences.getClient()?.rfidType
-                    ?.trim()
-                    ?.lowercase()
-                    ?: "webreusable"
-
-                // Clear old data first
-                bulkRepository.clearAllItems()
-
-                bulkRepository.syncBulkItemsFromServer(
-                    request = ClientCodeRequest(clientCode),
-                    tagType = tagType,
-
-                    // 🔹 Mapping stays in ViewModel (SAFE)
-                    mapItem = { serverItem ->
-                        mapServerItemToBulkItem(serverItem, tagType)
-                    },
 
                     // 🔹 Progress callback (throttled)
-                    onProgress = { processed, synced, totalCount ->
-                        totalSyncCount = synced
-                        val now = System.currentTimeMillis()
-                        if (totalItemsCount == 0)
-                            totalItemsCount = totalCount
-                        if (now - lastUiUpdate > UI_UPDATE_INTERVAL) {
-                            val progress = processed.toFloat() / totalCount
-                            withContext(Dispatchers.Main) {
-                                //_syncSyncedCount.value = synced
-                                //_syncStatusText.value = "Processing $synced items"
-                                _syncProgress.value = progress
-                                _syncSyncedCount.value = synced
-                                _syncStatusText.value = "Processing $synced of $totalCount"
-                            }
-                            lastUiUpdate = now
-                        }
+            onProgress = { processed, synced, totalCount ->
+                totalSyncCount = synced
+                val now = System.currentTimeMillis()
+                if (totalItemsCount == 0)
+                    totalItemsCount = totalCount
+                if (now - lastUiUpdate > UI_UPDATE_INTERVAL) {
+                    val progress = processed.toFloat() / totalCount
+                    withContext(Dispatchers.Main) {
+                        //_syncSyncedCount.value = synced
+                        //_syncStatusText.value = "Processing $synced items"
+                        _syncProgress.value = progress
+                        _syncSyncedCount.value = synced
+                        _syncStatusText.value = "Processing $synced of $totalCount"
                     }
-                )
-
-                withContext(Dispatchers.Main) {
-                    _syncTotalCount.value = totalItemsCount
-                    _syncSyncedCount.value = totalSyncCount
-                    _syncProgress.value = 1f
-                    _syncStatusText.value = "Sync completed"
-                    _toastMessage.emit("✅ Sync completed successfully")
-                }
-
-            } catch (e: SocketException) {
-                Log.e("SYNC", "Stream broke", e)
-                throw e // handled by retry layer
-            } catch (e: Exception) {
-                Log.e("SYNC_ERROR", "Sync failed", e)
-            } finally {
-                withContext(Dispatchers.Main) {
-                    unblockTouch(context)
-                    _isLoading.value = false
+                    lastUiUpdate = now
                 }
             }
-        }
-    }
+        )
 
-    private fun mapServerItemToBulkItem(
-        serverItem: AlllabelResponse.LabelItem,
-        tagType: String
-    ): BulkItem? {
-
-        val item = serverItem.takeIf {
-            (it.status == "ApiActive" || it.status == "Active") &&
-                    (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
-        }?.toBulkItem() ?: return null
-
-        return when {
-            tagType == "webreusable" && !item.rfid.isNullOrBlank() -> {
-                if (item.epc.isNullOrBlank()) {
-                    item.epc = syncAndMapRow(item.rfid!!)   // ✅ stays here
-                }
-                item
-            }
-
-            tagType != "webreusable" && !item.itemCode.isNullOrBlank() -> {
-                val hex = item.itemCode.toByteArray()
-                    .joinToString("") { "%02X".format(it) }
-                item.copy(rfid = item.itemCode, epc = hex, tid = hex)
-            }
-
-            else -> null
-        }
-    }
-    fun convertToHex(input: String): String {
-        val hexBuilder = StringBuilder()
-
-        // Step 1: Convert each character to 2-digit hex (ASCII)
-        for (ch in input) {
-            val hex = String.format("%02X", ch.code)
-            hexBuilder.append(hex)
-        }
-
-        // Step 2: Pad with "00" at the START until length % 4 == 0
-        while (hexBuilder.length % 4 != 0) {
-            hexBuilder.insert(0, "00")
-        }
-
-        return hexBuilder.toString()
-    }
-
-
-
-    fun setRfidForAllTags(scanned: String) {
-        val updatedMap = mutableMapOf<Int, String>()
-        scannedTags.value.forEachIndexed { index, _ ->
-            updatedMap[index] = scanned
-        }
-        _rfidMap.value = updatedMap
-    }
-
-
-   /* fun sendScannedData(tags: List<UHFTAGInfo>, androidId: String, context: Context) {
-        Log.d("send scanned items", "CALLED")
-        val currentDateTime = LocalDateTime.now()
-        val formatted = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-
-        val clientCode = employee?.clientCode
-
-        if (tags.isEmpty()) {
-            Log.e("SEND_DATA", "Tags list is empty, skipping sending data.")
-            return
-        }
-
-        val data = _rfidMap.value.mapNotNull { (index, rfid) ->
-            rfid.let {
-                ScannedDataToService(
-                    tIDValue = tags.get(index).tid,
-                    rFIDCode = it,
-                    createdOn = formatted,
-                    lastUpdated = formatted,
-                    id = 0,
-                    clientCode = clientCode,
-                    statusType = true,
-                    deviceId = androidId
-
-                )
-
-
-            }
-        }
-
-        Log.d("DATA", data.toString())
-        if (data.isNotEmpty()) {
-
+        withContext(Dispatchers.Main) {
+            _syncSkippedItems.value = skippedItems
+            _syncTotalCount.value = totalItemsCount
+            _syncSyncedCount.value = totalSyncCount
+            _syncProgress.value = 1f
+            _syncCompleted.value = true
+            _syncStatusText.value = "Sync completed"
+            _toastMessage.emit("✅ Sync completed successfully")
+            Log.d("SKIPPED_VM", "Skipped size = ${_syncSkippedItems.value.size}")
 
             viewModelScope.launch {
-                val response = apiService.addAllScannedData(data)
-                if (response.isSuccessful) {
-                    response.body() ?: emptyList()
-                    ToastUtils.showToast(context, "Items Saved successfully")
-                    _reloadTrigger.value = !_reloadTrigger.value // triggers recomposition
-                    Log.d("API_SUCCESS", "Received response: ${response.body()}")
-
-                } else {
-                    Log.e("API_ERROR", "Error: ${response.code()}")
-                    ToastUtils.showToast(context, "Failed to scan")
+                bulkRepository.getAllBulkItems().collect { items ->
+                    _allItems.value = items
+                    preloadFilters(items)
                 }
             }
-
-
         }
 
+    } catch (e: SocketException) {
+        Log.e("SYNC", "Stream broke", e)
+        throw e // handled by retry layer
 
-    }*/
-   fun sendScannedData(
-       tags: List<UHFTAGInfo>,
-       androidId: String,
-       context: Context
-   ) {
-       Log.d("send scanned items", "CALLED tags=${tags.size}")
-
-       if (tags.isEmpty()) {
-           Log.e("SEND_DATA", "Tags list is empty")
-           return
-       }
-
-       val formatted = LocalDateTime.now()
-           .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-
-       val clientCode = employee?.clientCode
-
-       val data = tags.mapIndexed { index, tag ->
-
-           val rfid = _rfidMap.value[index]   // optional
-           val epc = tag.epc.trim().uppercase()
-           val ascii = hexToAscii(epc)
-
-           val finalCode = when {
-               !rfid.isNullOrBlank() -> rfid
-               ascii.isNotBlank() -> ascii
-               else -> epc               // ✅ LAST FALLBACK
-           }
-
-           Log.d(
-               "DEBUG_SEND",
-               "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
-           )
-
-           ScannedDataToService(
-               tIDValue = tag.epc,
-               rFIDCode = finalCode,
-               createdOn = formatted,
-               lastUpdated = formatted,
-               id = 0,
-               clientCode = clientCode,
-               statusType = true,
-               deviceId = androidId
-           )
-       }
-
-       Log.e(
-           "FINAL_SEND",
-           "tags=${tags.size}, rfidMap=${_rfidMap.value.size}, data=${data.size}"
-       )
-
-       if (data.isEmpty()) {
-           ToastUtils.showToast(context, "Nothing to save")
-           return
-       }
-
-       viewModelScope.launch {
-           val response = apiService.addAllScannedData(data)
-           if (response.isSuccessful) {
-               ToastUtils.showToast(context, "Items Saved successfully")
-               _reloadTrigger.value = !_reloadTrigger.value
-               Log.d("API_SUCCESS", "Saved ${data.size} items")
-           } else {
-               Log.e("API_ERROR", "Error: ${response.code()}")
-               ToastUtils.showToast(context, "Failed to scan")
-           }
-       }
-   }
-
-
-    /*fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
-        viewModelScope.launch(Dispatchers.Default) {
-
-            if (sourceItems.isEmpty()) {
-                withContext(Dispatchers.Main) {
-                    _filteredUnmatchedIds.value = emptyList()
-                    _unmatchedItems.clear()
-                }
-                return@launch
-            }
-
-            // Heavy processing off main thread
-            val epcSet = sourceItems
-                .asSequence()
-                .mapNotNull { it.epc?.trim()?.uppercase() }
-                .toSet()
-
-            val scannedSet = scannedEpcList
-                .asSequence()
-                .mapNotNull { it.trim().uppercase() }
-                .toSet()
-
-            val unmatchedList = sourceItems
-                .asSequence()
-                .filterNot { item ->
-                    val epc = item.epc?.trim()?.uppercase()
-                    epc != null && scannedSet.contains(epc)
-                }
-                .map { it.copy(scannedStatus = "Unmatched") }
-                .toList()
-
-            // Only update UI thread with final result
-            withContext(Dispatchers.Main) {
-
-                // DO NOT push 350k IDs to StateFlow → limit to avoid ANR
-                _filteredUnmatchedIds.value = epcSet
-                    .take(3000)              // safe cap to avoid recomposition storm
-                    .toList()
-
-                _unmatchedItems.clear()
-                _unmatchedItems.addAll(unmatchedList)
-            }
-        }
-    }*/
-
-
-    private val unmatchedMutex = Mutex()      // prevents parallel calls
-    @Volatile private var unmatchedRunning = false
-
-    fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
-        if (unmatchedRunning) return   // avoid multiple fast calls
-
-        viewModelScope.launch(Dispatchers.Default) {
-            unmatchedMutex.withLock {
-                if (unmatchedRunning) return@launch
-                unmatchedRunning = true
-            }
-
-            try {
-                // Use pagination for unmatched items to avoid ANR
-                loadUnmatchedPaged()
-            } catch (t: Throwable) {
-                withContext(Dispatchers.Main) {
-                    setLoading(false)
-                    Log.e("BulkVM", "loadUnmatchedFast error", t)
-                }
-            } finally {
-                unmatchedRunning = false
-            }
+    } catch (e: Exception) {
+        Log.e("SYNC_ERROR", "Sync failed", e)
+    } finally {
+        withContext(Dispatchers.Main) {
+            unblockTouch(context)
+            _isLoading.value = false
         }
     }
+}
+}
 
-    private suspend fun loadUnmatchedPaged() {
-        withContext(Dispatchers.IO) {
-            try {
-                // Get scanned EPCs for filtering
-                val scannedEpcs = scannedEpcList.toList()
-                val scannedSet = scannedEpcs.map { it.trim().uppercase() }.toHashSet()
+/*   private fun mapServerItemToBulkItem(
+serverItem: AlllabelResponse.LabelItem,
+tagType: String
+): BulkItem? {
 
-                // Load first page of items and filter unmatched ones
-                val pageSize = 500 // Smaller page size for better performance
-                val allPaged = bulkRepository.getMinimalItemsPaged(pageSize * 3, 0) // Load more to have enough after filtering
+val item = serverItem.takeIf {
+    (it.status == "ApiActive" || it.status == "Active") &&
+            (!it.rfidCode.isNullOrBlank() || !it.itemCode.isNullOrBlank())
+}?.toBulkItem() ?: return null
 
-                // Filter unmatched items efficiently
-                val unmatchedItems = allPaged.filter { item ->
-                    val epc = item.epc?.trim()?.uppercase()
-                    epc == null || !scannedSet.contains(epc)
-                }.take(pageSize)
-
-                // Mark items as unmatched
-                val processedItems = unmatchedItems.map { item ->
-                    Log.d("UNMATCHED_ITEM_DEBUG", "ItemCode: ${item.itemCode}, RFID: ${item.rfid}, EPC: ${item.epc}")
-                    if (item.scannedStatus != "Unmatched") {
-                        item.copy(scannedStatus = "Unmatched", rfid = item.rfid ?: item.epc)
-                    } else {
-                        item.copy(rfid = item.rfid ?: item.epc)
-                    }
-                }
-
-                // Calculate total unmatched count efficiently
-                val totalItems = bulkRepository.getTotalItemCount()
-                val estimatedUnmatched = maxOf(0, totalItems - scannedEpcs.size)
-
-                withContext(Dispatchers.Main) {
-                    _unmatchedItems.clear()
-                    _unmatchedItems.addAll(processedItems)
-
-                    // Set filtered IDs for UI (limited for performance)
-                    val limitedIds = processedItems
-                        .mapNotNull { it.epc?.trim()?.uppercase() }
-                        .take(1000) // Limit for UI performance
-                        .toList()
-                    _filteredUnmatchedIds.value = limitedIds
-
-                    _totalItems.value = estimatedUnmatched
-                    setLoading(false)
-                }
-            } catch (e: Exception) {
-                Log.e("BulkVM", "Error loading unmatched items", e)
-                withContext(Dispatchers.Main) {
-                    setLoading(false)
-                }
-            }
+return when {
+    tagType == "webreusable" && !item.rfid.isNullOrBlank() -> {
+        if (item.epc.isNullOrBlank()) {
+            item.epc = syncAndMapRow(item.rfid!!)   // ✅ stays here
         }
+        item
     }
 
-
-    fun findNextEmptyRow(): Int? {
-        val map = rfidMap.value
-        return map.entries.firstOrNull { it.value.isNullOrEmpty() }?.key
+    tagType != "webreusable" && !item.itemCode.isNullOrBlank() -> {
+        val hex = item.itemCode.toByteArray()
+            .joinToString("") { "%02X".format(it) }
+        item.copy(rfid = item.itemCode, epc = hex, tid = hex)
     }
 
-    // ✅ NEW: auto-fill RFIDCode from local Room DB by EPC and update rfidMap(index->rfid)
-    private val autoFillMutex = Mutex()
+    else -> null
+}
+}*/
 
-    fun autoFillRfidFromDb(tags: List<UHFTAGInfo>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            autoFillMutex.withLock {
-                if (tags.isEmpty()) {
-                    _rfidMap.value = emptyMap()
-                    return@withLock
-                }
+private fun mapServerItemToBulkItem(
+serverItem: AlllabelResponse.LabelItem,
+tagType: String,
+skippedItems: MutableList<SyncSkippedItem>
+): BulkItem? {
 
-                val currentMap = _rfidMap.value.toMutableMap()
+// ❌ Status invalid
+if (
+    serverItem.status != "ApiActive" &&
+    serverItem.status != "Active"
+) {
+    skippedItems.add(
+        SyncSkippedItem(
+            itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${serverItem.status ?: "UNKNOWN"}",
+            rfid = serverItem.rfidCode,
+            tid = serverItem.tidNumber,
+            reason = "Inactive status: ${serverItem.status ?: "UNKNOWN"}"
+        )
+    )
+    return null
+}
 
-                // Collect EPCs
-                val epcs = tags.mapNotNull { it.epc?.trim()?.uppercase() }
-                    .filter { it.isNotBlank() }
-                    .distinct()
+val item = serverItem.toBulkItem()
 
-                if (epcs.isEmpty()) return@withLock
-
-                // ✅ single DB call (batch)
-                val dbItems = bulkItemDao.getItemsByEpcs(epcs)
-
-                // Map by EPC
-                val byEpc = dbItems.associateBy { it.epc?.trim()?.uppercase().orEmpty() }
-
-                // Fill rfidMap only if index empty (do not override manual barcode edits)
-                tags.forEachIndexed { index, tag ->
-                    val already = currentMap[index]
-                    if (!already.isNullOrBlank()) return@forEachIndexed
-
-                    val key = tag.epc?.trim()?.uppercase().orEmpty()
-                    if (key.isBlank()) return@forEachIndexed
-
-                    val db = byEpc[key]
-                    val rfid = db?.rfid?.trim().orEmpty()
-
-                    if (rfid.isNotBlank()) {
-                        // avoid duplicate assignment
-                        if (!currentMap.containsValue(rfid)) {
-                            currentMap[index] = rfid
-                        }
-                    }
-                }
-
-                _rfidMap.value = currentMap
-            }
-        }
-    }
-
-    fun clearStockData(clientCode: String, deviceId: String) {
-        viewModelScope.launch {
-            _clearLoading.value = true
-            _clearSuccess.value = false
-            _deletedRecords.value = 0
-            _clearError.value = null
-
-            try {
-                val res = bulkRepository.clearStockData(
-                    ClearStockDataModelReq(
-                        clientCode = clientCode,
-                        deviceId = deviceId
-                    )
+return when {
+    tagType == "webreusable" -> {
+        if (item.rfid.isNullOrBlank()) {
+            skippedItems.add(
+                SyncSkippedItem(
+                    itemCode = "${item.itemCode ?: "UNKNOWN"} - RFID blank",
+                    rfid = item.rfid,
+                    tid = item.tid,
+                    reason = "RFID blank"
                 )
+            )
+            null
+        } else {
+            if (item.epc.isNullOrBlank()) {
+                item.epc = syncAndMapRow(item.rfid!!)
+            }
+            item
+        }
+    }
 
-                // response: {"success":true,"deletedRecords":11}
-                _clearSuccess.value = res.success
-                _deletedRecords.value = res.deletedRecords
+    tagType != "webreusable" -> {
+        if (item.itemCode.isNullOrBlank()) {
+            skippedItems.add(
+                SyncSkippedItem(
+                    itemCode = "ItemCode blank - UNKNOWN",
+                    rfid = item.rfid,
+                    tid = item.tid,
+                    reason = "ItemCode blank"
+                )
+            )
+            null
+        } else {
+            val hex =convertToHex(item.itemCode)
+            item.copy(
+                rfid = null,     // ✅ KEEP BLANK
+                epc = hex,
+                tid = hex
+            )
+        }
+    }
 
-                if (!res.success) {
-                    _clearError.value = "Failed to clear stock data"
+    else -> {
+        val reasonText = "Unknown mapping rule"
+
+        skippedItems.add(
+
+        SyncSkippedItem(
+            itemCode = "${item.itemCode ?: "UNKNOWN"} ($reasonText)",
+            rfid = item.rfid,
+            tid = item.tid,
+            reason = reasonText
+        )
+        )
+        null
+    }
+}
+}
+
+fun convertToHex(input: String): String {
+val hexBuilder = StringBuilder()
+
+// Step 1: Convert each character to 2-digit hex (ASCII)
+for (ch in input) {
+    val hex = String.format("%02X", ch.code)
+    hexBuilder.append(hex)
+}
+
+// Step 2: Pad with "00" at the START until length % 4 == 0
+while (hexBuilder.length % 4 != 0) {
+    hexBuilder.insert(0, "00")
+}
+
+return hexBuilder.toString()
+}
+
+
+
+fun setRfidForAllTags(scanned: String) {
+val updatedMap = mutableMapOf<Int, String>()
+scannedTags.value.forEachIndexed { index, _ ->
+    updatedMap[index] = scanned
+}
+_rfidMap.value = updatedMap
+}
+
+
+/* fun sendScannedData(tags: List<UHFTAGInfo>, androidId: String, context: Context) {
+Log.d("send scanned items", "CALLED")
+val currentDateTime = LocalDateTime.now()
+val formatted = currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+
+val clientCode = employee?.clientCode
+
+if (tags.isEmpty()) {
+    Log.e("SEND_DATA", "Tags list is empty, skipping sending data.")
+    return
+}
+
+val data = _rfidMap.value.mapNotNull { (index, rfid) ->
+    rfid.let {
+        ScannedDataToService(
+            tIDValue = tags.get(index).tid,
+            rFIDCode = it,
+            createdOn = formatted,
+            lastUpdated = formatted,
+            id = 0,
+            clientCode = clientCode,
+            statusType = true,
+            deviceId = androidId
+
+        )
+
+
+    }
+}
+
+Log.d("DATA", data.toString())
+if (data.isNotEmpty()) {
+
+
+    viewModelScope.launch {
+        val response = apiService.addAllScannedData(data)
+        if (response.isSuccessful) {
+            response.body() ?: emptyList()
+            ToastUtils.showToast(context, "Items Saved successfully")
+            _reloadTrigger.value = !_reloadTrigger.value // triggers recomposition
+            Log.d("API_SUCCESS", "Received response: ${response.body()}")
+
+        } else {
+            Log.e("API_ERROR", "Error: ${response.code()}")
+            ToastUtils.showToast(context, "Failed to scan")
+        }
+    }
+
+
+}
+
+
+}*/
+fun sendScannedData(
+tags: List<UHFTAGInfo>,
+androidId: String,
+context: Context
+) {
+Log.d("send scanned items", "CALLED tags=${tags.size}")
+
+if (tags.isEmpty()) {
+   Log.e("SEND_DATA", "Tags list is empty")
+   return
+}
+
+val formatted = LocalDateTime.now()
+   .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+
+val clientCode = employee?.clientCode
+
+val data = tags.mapIndexed { index, tag ->
+
+   val rfid = _rfidMap.value[index]   // optional
+   val epc = tag.epc.trim().uppercase()
+   val ascii = hexToAscii(epc)
+
+ /*  val finalCode = when {
+       !rfid.isNullOrBlank() -> rfid
+       ascii.isNotBlank() -> ascii
+       else -> epc               // ✅ LAST FALLBACK
+   }*/
+
+    val finalCode = rfid?.takeIf { it.isNotBlank() }
+
+   Log.d(
+       "DEBUG_SEND",
+       "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
+   )
+
+   ScannedDataToService(
+       tIDValue = tag.epc,
+       rFIDCode = finalCode,
+       createdOn = formatted,
+       lastUpdated = formatted,
+       id = 0,
+       clientCode = clientCode,
+       statusType = true,
+       deviceId = androidId
+   )
+}
+
+Log.e(
+   "FINAL_SEND",
+   "tags=${tags.size}, rfidMap=${_rfidMap.value.size}, data=${data.size}"
+)
+
+if (data.isEmpty()) {
+   ToastUtils.showToast(context, "Nothing to save")
+   return
+}
+
+viewModelScope.launch {
+   val response = apiService.addAllScannedData(data)
+   if (response.isSuccessful) {
+       ToastUtils.showToast(context, "Items Saved successfully")
+       _reloadTrigger.value = !_reloadTrigger.value
+       Log.d("API_SUCCESS", "Saved ${data.size} items")
+   } else {
+       Log.e("API_ERROR", "Error: ${response.code()}")
+       ToastUtils.showToast(context, "Failed to scan")
+   }
+}
+}
+
+
+/*fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
+viewModelScope.launch(Dispatchers.Default) {
+
+    if (sourceItems.isEmpty()) {
+        withContext(Dispatchers.Main) {
+            _filteredUnmatchedIds.value = emptyList()
+            _unmatchedItems.clear()
+        }
+        return@launch
+    }
+
+    // Heavy processing off main thread
+    val epcSet = sourceItems
+        .asSequence()
+        .mapNotNull { it.epc?.trim()?.uppercase() }
+        .toSet()
+
+    val scannedSet = scannedEpcList
+        .asSequence()
+        .mapNotNull { it.trim().uppercase() }
+        .toSet()
+
+    val unmatchedList = sourceItems
+        .asSequence()
+        .filterNot { item ->
+            val epc = item.epc?.trim()?.uppercase()
+            epc != null && scannedSet.contains(epc)
+        }
+        .map { it.copy(scannedStatus = "Unmatched") }
+        .toList()
+
+    // Only update UI thread with final result
+    withContext(Dispatchers.Main) {
+
+        // DO NOT push 350k IDs to StateFlow → limit to avoid ANR
+        _filteredUnmatchedIds.value = epcSet
+            .take(3000)              // safe cap to avoid recomposition storm
+            .toList()
+
+        _unmatchedItems.clear()
+        _unmatchedItems.addAll(unmatchedList)
+    }
+}
+}*/
+
+
+private val unmatchedMutex = Mutex()      // prevents parallel calls
+@Volatile private var unmatchedRunning = false
+
+fun loadUnmatchedFast(sourceItems: List<BulkItem>) {
+if (unmatchedRunning) return   // avoid multiple fast calls
+
+viewModelScope.launch(Dispatchers.Default) {
+    unmatchedMutex.withLock {
+        if (unmatchedRunning) return@launch
+        unmatchedRunning = true
+    }
+
+    try {
+        // Use pagination for unmatched items to avoid ANR
+        loadUnmatchedPaged()
+    } catch (t: Throwable) {
+        withContext(Dispatchers.Main) {
+            setLoading(false)
+            Log.e("BulkVM", "loadUnmatchedFast error", t)
+        }
+    } finally {
+        unmatchedRunning = false
+    }
+}
+}
+
+private suspend fun loadUnmatchedPaged() {
+withContext(Dispatchers.IO) {
+    try {
+        // Get scanned EPCs for filtering
+        val scannedEpcs = scannedEpcList.toList()
+        val scannedSet = scannedEpcs.map { it.trim().uppercase() }.toHashSet()
+
+        // Load first page of items and filter unmatched ones
+        val pageSize = 500 // Smaller page size for better performance
+        val allPaged = bulkRepository.getMinimalItemsPaged(pageSize * 3, 0) // Load more to have enough after filtering
+
+        // Filter unmatched items efficiently
+        val unmatchedItems = allPaged.filter { item ->
+            val epc = item.epc?.trim()?.uppercase()
+            epc == null || !scannedSet.contains(epc)
+        }.take(pageSize)
+
+        // Mark items as unmatched
+        val processedItems = unmatchedItems.map { item ->
+            Log.d("UNMATCHED_ITEM_DEBUG", "ItemCode: ${item.itemCode}, RFID: ${item.rfid}, EPC: ${item.epc}")
+            if (item.scannedStatus != "Unmatched") {
+                item.copy(scannedStatus = "Unmatched", rfid = item.rfid )
+            } else {
+                item.copy(rfid = item.rfid)
+            }
+        }
+
+        // Calculate total unmatched count efficiently
+        val totalItems = bulkRepository.getTotalItemCount()
+        val estimatedUnmatched = maxOf(0, totalItems - scannedEpcs.size)
+
+        withContext(Dispatchers.Main) {
+            _unmatchedItems.clear()
+            _unmatchedItems.addAll(processedItems)
+
+            // Set filtered IDs for UI (limited for performance)
+            val limitedIds = processedItems
+                .mapNotNull { it.epc?.trim()?.uppercase() }
+                .take(1000) // Limit for UI performance
+                .toList()
+            _filteredUnmatchedIds.value = limitedIds
+
+            _totalItems.value = estimatedUnmatched
+            setLoading(false)
+        }
+    } catch (e: Exception) {
+        Log.e("BulkVM", "Error loading unmatched items", e)
+        withContext(Dispatchers.Main) {
+            setLoading(false)
+        }
+    }
+}
+}
+
+
+fun findNextEmptyRow(): Int? {
+val map = rfidMap.value
+return map.entries.firstOrNull { it.value.isNullOrEmpty() }?.key
+}
+
+// ✅ NEW: auto-fill RFIDCode from local Room DB by EPC and update rfidMap(index->rfid)
+private val autoFillMutex = Mutex()
+
+fun autoFillRfidFromDb(tags: List<UHFTAGInfo>) {
+viewModelScope.launch(Dispatchers.IO) {
+    autoFillMutex.withLock {
+        if (tags.isEmpty()) {
+            _rfidMap.value = emptyMap()
+            return@withLock
+        }
+
+        val currentMap = _rfidMap.value.toMutableMap()
+
+        // Collect EPCs
+        val epcs = tags.mapNotNull { it.epc?.trim()?.uppercase() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (epcs.isEmpty()) return@withLock
+
+        // ✅ single DB call (batch)
+        val dbItems = bulkItemDao.getItemsByEpcs(epcs)
+
+        // Map by EPC
+        val byEpc = dbItems.associateBy { it.epc?.trim()?.uppercase().orEmpty() }
+
+        // Fill rfidMap only if index empty (do not override manual barcode edits)
+        tags.forEachIndexed { index, tag ->
+            val already = currentMap[index]
+            if (!already.isNullOrBlank()) return@forEachIndexed
+
+            val key = tag.epc?.trim()?.uppercase().orEmpty()
+            if (key.isBlank()) return@forEachIndexed
+
+            val db = byEpc[key]
+            val rfid = db?.rfid?.trim().orEmpty()
+
+            if (rfid.isNotBlank()) {
+                // avoid duplicate assignment
+                if (!currentMap.containsValue(rfid)) {
+                    currentMap[index] = rfid
                 }
-            } catch (e: Exception) {
-                _clearError.value = e.message ?: "API error"
-            } finally {
-                _clearLoading.value = false
             }
         }
-    }
 
-    fun clearClearStockResult() {
+        _rfidMap.value = currentMap
+    }
+}
+}
+
+fun clearStockData(clientCode: String, deviceId: String) {
+viewModelScope.launch {
+    _clearLoading.value = true
+    _clearSuccess.value = false
+    _deletedRecords.value = 0
+    _clearError.value = null
+
+    try {
+        val res = bulkRepository.clearStockData(
+            ClearStockDataModelReq(
+                clientCode = clientCode,
+                deviceId = deviceId
+            )
+        )
+
+        // response: {"success":true,"deletedRecords":11}
+        _clearSuccess.value = res.success
+        _deletedRecords.value = res.deletedRecords
+
+        if (!res.success) {
+            _clearError.value = "Failed to clear stock data"
+        }
+    } catch (e: Exception) {
+        _clearError.value = e.message ?: "API error"
+    } finally {
         _clearLoading.value = false
-        _clearSuccess.value = false
-        _deletedRecords.value = 0
-        _clearError.value = null
     }
+}
+}
 
-    private val _lastEpc = MutableStateFlow("")
-    val lastEpc: StateFlow<String> = _lastEpc
+fun clearClearStockResult() {
+_clearLoading.value = false
+_clearSuccess.value = false
+_deletedRecords.value = 0
+_clearError.value = null
+}
 
-    fun setLastEpc(epc: String) {
-        _lastEpc.value = epc
+private val _lastEpc = MutableStateFlow("")
+val lastEpc: StateFlow<String> = _lastEpc
+
+fun setLastEpc(epc: String) {
+_lastEpc.value = epc
+}
+
+
+/*added itemcode map for the single use tag*/
+private val _itemCodeMap = MutableStateFlow<Map<String, String>>(emptyMap())
+val itemCodeMap: StateFlow<Map<String, String>> = _itemCodeMap
+
+fun loadItemCodeForEpc(epc: String) {
+viewModelScope.launch {
+    val code = bulkRepository.getItemCodeByEpc(epc)
+    if (code.isNotBlank()) {
+        _itemCodeMap.value =
+            _itemCodeMap.value + (epc to code)
     }
-
-
-    /*added itemcode map for the single use tag*/
-    private val _itemCodeMap = MutableStateFlow<Map<String, String>>(emptyMap())
-    val itemCodeMap: StateFlow<Map<String, String>> = _itemCodeMap
-
-    fun loadItemCodeForEpc(epc: String) {
-        viewModelScope.launch {
-            val code = bulkRepository.getItemCodeByEpc(epc)
-            if (code.isNotBlank()) {
-                _itemCodeMap.value =
-                    _itemCodeMap.value + (epc to code)
-            }
-        }
-    }
+}
+}
 
 
 
-    fun restoreScanFromSavedBulkItems(items: List<BulkItem>) {
-        val restoredMatched = items
-            .filter { it.scannedStatus.equals("Matched", true) }
-            .mapNotNull { it.epc ?: it.itemCode }
-            .map { it.trim().uppercase() }
-            .toSet()
+/*   fun restoreScanFromSavedBulkItems(items: List<BulkItem>) {
+val restoredMatched = items
+    .filter { it.scannedStatus.equals("Matched", true) }
+    .mapNotNull { it.epc ?: it.itemCode }
+    .map { it.trim().uppercase() }
+    .toSet()
 
-        _matchedEpcSet.value = restoredMatched
-    }
+_matchedEpcSet.value = restoredMatched
+}*/
+
+/* fun restoreScanFromSavedBulkItems(allItems: List<BulkItem>) {
+viewModelScope.launch {
+
+    // 1️⃣ UI ke liye items restore
+    _allItems.value = allItems
+
+    // 2️⃣ matched EPC/RFID set rebuild
+    val restoredMatchedKeys = allItems
+        .filter { it.scannedStatus.equals("Matched", true) }
+        .mapNotNull { it.epc ?: it.itemCode }
+        .map { it.trim().uppercase() }
+        .toSet()
+
+    _matchedEpcSet.value = restoredMatchedKeys
+
+    // 3️⃣ live scan temp states clear
+    _scannedKeySet.value = emptySet()
+   // _filteredUnmatchedIds.value = emptySet()
+
+    Log.d("RESUME_SCAN", "Restored matched=${restoredMatchedKeys.size}")
+}
+}*/
+
+fun restoreScanFromSavedBulkItems(allItems: List<BulkItem>) {
+
+// 1️⃣ Extract matched EPCs from saved data
+val restoredMatchedEpcs = allItems
+    .filter { it.isScanned }
+    .mapNotNull { it.epc?.trim()?.uppercase() }
+    .toSet()
+
+// 2️⃣ Restore EPC set (THIS DRIVES UI)
+_matchedEpcSet.value = restoredMatchedEpcs
+
+// 3️⃣ Clear any sticky unmatched state
+//  _filteredUnmatchedIds.value = emptySet()
+
+// 4️⃣ Stop scanning mode
+_isScanning.value = false
+}
 
 
 
-    fun saveScanResultLocally(items: List<BulkItem>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            bulkRepository.updateScanStatus(items)
-        }
-    }
 
-    /*remove the item from unmatch once scan and matched*/
-    fun removeFromStickyUnmatched(matchedKeys: Set<String>) {
-        _filteredUnmatchedIds.value =
-            _filteredUnmatchedIds.value.filterNot { it in matchedKeys }
-    }
+
+fun saveScanResultLocally(items: List<BulkItem>) {
+viewModelScope.launch(Dispatchers.IO) {
+    bulkRepository.updateScanStatus(items)
+}
+}
+
+/*remove the item from unmatch once scan and matched*/
+fun removeFromStickyUnmatched(matchedKeys: Set<String>) {
+_filteredUnmatchedIds.value =
+    _filteredUnmatchedIds.value.filterNot { it in matchedKeys }
+}
 
 }
 

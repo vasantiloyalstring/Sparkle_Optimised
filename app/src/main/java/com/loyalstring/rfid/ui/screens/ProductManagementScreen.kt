@@ -131,8 +131,9 @@ fun ProductManagementScreen(
 
     val syncTotal by viewModel.syncTotalCount.collectAsState()
     val syncSynced by viewModel.syncSyncedCount.collectAsState()
-    val skipped by viewModel.syncSkippedItemCodes.collectAsState()
-
+   // val skipped by viewModel.syncSkippedItemCodes.collectAsState()
+    val skipped by viewModel.syncSkippedItemCodes.collectAsStateWithLifecycle()
+    Log.d("SKIPPED_UI", "Dialog skipped = $skipped")
 
     var dialogMessage by remember { mutableStateOf<String?>(null) }
     val syncStatus by viewModel.syncStatusText.collectAsStateWithLifecycle(initialValue = "")
@@ -279,10 +280,18 @@ fun ProductManagementScreen(
 
    // val syncStatus by viewModel.syncStatusText.collectAsStateWithLifecycle(initialValue = null)
 
-    LaunchedEffect(syncStatus) {
+ /*   LaunchedEffect(syncStatus) {
         if (syncStatus.contains("completed", ignoreCase = true) == true) {
             showSuccessDialog = true
-            viewModel.clearSyncStatus() // no more error now
+          //  viewModel.clearSyncStatus() // no more error now
+        }
+    }*/
+
+    val syncCompleted by viewModel.syncCompleted.collectAsState()
+
+    LaunchedEffect(syncCompleted) {
+        if (syncCompleted) {
+            showSuccessDialog = true
         }
     }
 
@@ -295,7 +304,8 @@ fun ProductManagementScreen(
             totalCount = syncTotal,
             syncedCount = syncSynced,
             skippedItemCodes = skipped,
-            onDismiss = { showSuccessDialog = false }
+            onDismiss = { showSuccessDialog = false
+                viewModel.clearSyncCompleted() }
         )
     }
 

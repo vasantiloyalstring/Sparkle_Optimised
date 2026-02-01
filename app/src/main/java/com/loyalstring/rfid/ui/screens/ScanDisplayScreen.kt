@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.google.gson.Gson
 import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
@@ -92,6 +95,9 @@ import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
+import kotlin.text.clear
 
 
 // column widths
@@ -112,15 +118,9 @@ private const val MENU_MATCHED = "MATCHED"
 private const val MENU_UNMATCHED = "UNMATCHED"
 private const val MENU_SEARCH = "SEARCH"
 
-enum class NavDirection {
-    FORWARD,
-    BACKWARD
-}
-
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
-    var navDirection by rememberSaveable { mutableStateOf(NavDirection.FORWARD) }
     val scope = rememberCoroutineScope()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     val productListViewModel: ProductListViewModel = hiltViewModel()
@@ -129,130 +129,12 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val context: Context = LocalContext.current
     var shouldNavigateBack by remember { mutableStateOf(false) }
     val emailStatus by scanDisplayViewModel.emailStatus.collectAsState()
-    var scannedDesignScope by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastScanMatchedKeys by rememberSaveable {
-        mutableStateOf<Map<String, Set<String>>>(emptyMap())
-    }
-
-    var designMatchedMap by remember {
-        mutableStateOf<Map<String, Set<String>>>(emptyMap())
-    }
-
-    var productMatchedMap by remember {
-        mutableStateOf<Map<String, Set<String>>>(emptyMap())
-    }
-
-    var categoryMatchedMap by remember {
-        mutableStateOf<Map<String, Set<String>>>(emptyMap())
-    }
 
     val loading by scanDisplayViewModel.loading.collectAsState()
     val error by scanDisplayViewModel.error.collectAsState()
     val successMsg by scanDisplayViewModel.successMsg.collectAsState()
     var isSending by remember { mutableStateOf(false) }
 
-
-    var previousLevel by rememberSaveable { mutableStateOf<String?>(null) }
-    var previousCategories by remember { mutableStateOf<List<String>>(emptyList()) }
-    var previousProducts by remember { mutableStateOf<List<String>>(emptyList()) }
-    var previousDesigns by remember { mutableStateOf<List<String>>(emptyList()) }
-
-    var currentLevel by rememberSaveable { mutableStateOf("Category") }
-    var currentCategory by rememberSaveable { mutableStateOf<String?>(null) }
-    var currentProduct by rememberSaveable { mutableStateOf<String?>(null) }
-    var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
-
-    // Multi-select filters
-    val selectedCategories = remember { mutableStateListOf<String>() }
-    val selectedProducts = remember { mutableStateListOf<String>() }
-    val selectedDesigns = remember { mutableStateListOf<String>() }
-
-
-// stable snapshot keys
-    val selectedCategoriesKey = selectedCategories.toList()
-    val selectedProductsKey = selectedProducts.toList()
-    val selectedDesignsKey = selectedDesigns.toList()
-
-    var selectedMenu by rememberSaveable { mutableStateOf(MENU_ALL) }
-
-    fun normalizeFiltersForLevel(level: String) {
-        when (level) {
-            "Category" -> {
-                selectedCategories.clear()
-                selectedProducts.clear()
-                selectedDesigns.clear()
-
-                currentCategory = null
-                currentProduct = null
-                currentDesign = null
-            }
-
-            "Product" -> {
-                selectedProducts.clear()
-                selectedDesigns.clear()
-
-                currentProduct = null
-                currentDesign = null
-            }
-
-            "Design" -> {
-                selectedDesigns.clear()
-                currentDesign = null
-            }
-
-            "DesignItems" -> {
-                // keep everything
-            }
-        }
-    }
-    fun handleToolbarBack(): Boolean {
-        return when {
-
-            // Exit matched / unmatched
-            selectedMenu == MENU_MATCHED || selectedMenu == MENU_UNMATCHED -> {
-                selectedMenu = MENU_ALL
-                bulkViewModel.clearStickyUnmatched()
-
-                currentLevel = previousLevel ?: "Category"
-                selectedCategories.clear()
-                selectedCategories.addAll(previousCategories)
-                selectedProducts.clear()
-                selectedProducts.addAll(previousProducts)
-                selectedDesigns.clear()
-                selectedDesigns.addAll(previousDesigns)
-                true
-            }
-
-            currentLevel == "DesignItems" -> {
-                selectedMenu = MENU_ALL
-                bulkViewModel.clearStickyUnmatched()
-                navDirection = NavDirection.BACKWARD
-                currentLevel = "Design"
-                normalizeFiltersForLevel("Design")
-                true
-            }
-
-            currentLevel == "Design" -> {
-                selectedMenu = MENU_ALL
-                bulkViewModel.clearStickyUnmatched()
-                navDirection = NavDirection.BACKWARD
-                currentLevel = "Product"
-                normalizeFiltersForLevel("Product")
-                true
-            }
-
-            currentLevel == "Product" -> {
-                selectedMenu = MENU_ALL
-                bulkViewModel.clearStickyUnmatched()
-                navDirection = NavDirection.BACKWARD
-                currentLevel = "Category"
-                normalizeFiltersForLevel("Category")
-                true
-            }
-
-            else -> false
-        }
-    }
 
 
     // Handle back navigation with delay to allow ripple animation to complete
@@ -294,8 +176,27 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         )
     }
+    val _isLoadingCommon = MutableStateFlow(false)
+    val isLoadingCommon by _isLoadingCommon.collectAsState()
+    val _isLoadingUI = MutableStateFlow(false)
+    val isLoadingUI by _isLoadingUI.collectAsState()
     val isLoading by productListViewModel.isLoading.collectAsState()
+    val isLoadingAllItems by productListViewModel.isLoadingAllItems.collectAsState()
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
+
+    // ✅ Performance logging for initial load
+    LaunchedEffect(allItems.size) {
+        if (allItems.isNotEmpty()) {
+            Log.d("ScanDisplayScreen", "🚀 [PERF] allItems loaded: ${allItems.size} items")
+        }
+    }
+
+    LaunchedEffect(allItems) {
+        if (allItems.isNotEmpty()) {
+            bulkViewModel.preloadFilters(allItems)
+        }
+    }
+
     // incoming filter from previous screen (branch/box/counter/exhibition)
     val filterTypeName = navController.previousBackStackEntry
         ?.savedStateHandle
@@ -311,17 +212,29 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
-    val navFilteredItems = remember(allItems, filterTypeName, filterValue) {
-        if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
-            allItems
-        } else {
-            when (filterTypeName.lowercase()) {
-                "box" -> allItems.filter { it.boxName == filterValue }
-                "counter" -> allItems.filter { it.counterName == filterValue }
-                "branch" -> allItems.filter { it.branchName == filterValue }
-                "exhibition" -> allItems.filter { it.branchType == filterTypeName && it.branchName == filterValue }
-                else -> allItems
+
+
+    // ✅ Optimized: Use derivedStateOf and sequence for lazy evaluation, returning a Sequence
+    val navFilteredItems by remember(allItems, filterTypeName, filterValue) {
+        derivedStateOf {
+            val filterStartTime = System.currentTimeMillis()
+            val sequence = if (filterTypeName.isNullOrEmpty() || filterValue.isNullOrEmpty()) {
+                allItems.asSequence()
+            } else {
+                when (filterTypeName.lowercase()) {
+                    "box" -> allItems.asSequence().filter { it.boxName == filterValue }
+                    "counter" -> allItems.asSequence().filter { it.counterName == filterValue }
+                    "branch" -> allItems.asSequence().filter { it.branchName == filterValue }
+                    "exhibition" -> allItems.asSequence()
+                        .filter { it.branchType == filterTypeName && it.branchName == filterValue }
+                    else -> allItems.asSequence()
+                }
             }
+            val filterTime = System.currentTimeMillis() - filterStartTime
+            if (filterTime > 10) { // Only log if filtering takes significant time
+                Log.d("ScanDisplayScreen", "🚀 [PERF] navFilteredItems (sequence) computed in: ${filterTime}ms")
+            }
+            sequence // Return a Sequence directly
         }
     }
     /*  remember(allItems, filterTypeName, filterValue) {
@@ -348,84 +261,105 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
 
+    // Multi-select filters
+    val selectedCategories = remember { mutableStateListOf<String>() }
+    val selectedProducts = remember { mutableStateListOf<String>() }
+    val selectedDesigns = remember { mutableStateListOf<String>() }
 
 
+// stable snapshot keys
+    val selectedCategoriesKey = selectedCategories.toList()
+    val selectedProductsKey = selectedProducts.toList()
+    val selectedDesignsKey = selectedDesigns.toList()
 
-    val allCategories = remember(navFilteredItems) {
-        navFilteredItems.mapNotNull { it.category }.distinct().sorted()
+
+    // ✅ Optimized: Use derivedStateOf and cache results
+    val allCategories by remember(navFilteredItems) {
+        derivedStateOf {
+            navFilteredItems
+                .mapNotNull { it.category }
+                .distinct()
+                .sorted()
+                .toList()
+        }
+    }
+
+    val allProducts by remember(navFilteredItems, selectedCategoriesKey) {
+        derivedStateOf {
+            if (selectedCategoriesKey.isEmpty()) {
+                navFilteredItems
+                    .mapNotNull { it.productName }
+                    .distinct()
+                    .sorted()
+                    .toList()
+            } else {
+                val categorySet = selectedCategoriesKey.toSet()
+                navFilteredItems
+                    .filter { it.category in categorySet }
+                    .mapNotNull { it.productName }
+                    .distinct()
+                    .sorted()
+                    .toList()
+            }
+        }
+    }
+
+    val allDesigns by remember(navFilteredItems, selectedCategoriesKey, selectedProductsKey) {
+        derivedStateOf {
+            val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
+            val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
+
+            navFilteredItems
+                .filter { categorySet == null || it.category in categorySet }
+                .filter { productSet == null || it.productName in productSet }
+                .mapNotNull { it.design }
+                .distinct()
+                .sorted()
+                .toList()
+        }
     }
 
 
-    val allProducts = remember(navFilteredItems, selectedCategoriesKey) {
-        navFilteredItems
-            .filter { selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey }
-            .mapNotNull { it.productName }
-            .distinct()
-            .sorted()
-    }
-
-
-    val allDesigns = remember(navFilteredItems, selectedCategoriesKey, selectedProductsKey) {
-        navFilteredItems
-            .filter { selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey }
-            .filter { selectedProductsKey.isEmpty() || it.productName in selectedProductsKey }
-            .mapNotNull { it.design }
-            .distinct()
-            .sorted()
-    }
-
-
-
+    var currentLevel by rememberSaveable { mutableStateOf("Category") }
+    var currentCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var currentProduct by rememberSaveable { mutableStateOf<String?>(null) }
+    var currentDesign by rememberSaveable { mutableStateOf<String?>(null) }
 
     val scannedFiltered by bulkViewModel.scannedFilteredItems
 
-  //  val scannedFiltered by bulkViewModel.scannedFilteredItems.collectAsState(initial = emptySet())
-
-
-
-
-
+    //val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
     val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
-/*
-    val summaryItems by remember(navFilteredItems, matchedEpcs) {
+
+    // ✅ Optimized: Use sequence for lazy evaluation // Commented
+    /*val summaryItems by remember(navFilteredItems, matchedEpcs) {
         derivedStateOf {
-            navFilteredItems.map { original ->
-                val keyEpc = original.epc?.trim()?.uppercase()
-                val status =
-                    if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
-                original.copy(scannedStatus = status)
-            }
+            navFilteredItems.asSequence()
+                .map { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status =
+                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                    original.copy(scannedStatus = status)
+                }
+                .toList()
         }
     }*/
-
-    val summaryItems by remember(navFilteredItems, matchedEpcs) {
-        derivedStateOf {
-            navFilteredItems.map { original ->
-                val key = original.tagKey() // ✅ EPC or RFID both
-                val status = if (key != null && matchedEpcs.contains(key)) "Matched" else "Unmatched"
-                original.copy(scannedStatus = status)
-            }
-        }
-    }
-
 
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var filterType by remember { mutableStateOf("Category") }
 
-
+    var selectedMenu by rememberSaveable { mutableStateOf(MENU_ALL) }
 
 
     var selectedItem by remember { mutableStateOf<BulkItem?>(null) }
     var showItemDialog by remember { mutableStateOf(false) }
 
-
-    var selectedPower by remember { mutableIntStateOf(30) }
+    var selectedPower by remember { mutableIntStateOf(10) }
 
     LaunchedEffect(Unit) {
         selectedPower = UserPreferences.getInstance(context).getInt(
             UserPreferences.KEY_INVENTORY_COUNT,
-            30
+            10
         )
     }
     var _isResetting by remember { mutableStateOf(false) }
@@ -435,9 +369,6 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     var selectedEmail by remember { mutableStateOf<String?>(null) }
     var newEmail by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
-
- //   val scannedFiltered by bulkViewModel.scannedFilteredItems.collectAsState(initial = emptySet())
-
     val effectiveMatchedSet by remember(isScanning, scannedFiltered, matchedEpcs) {
         derivedStateOf {
             if (isScanning) {
@@ -450,6 +381,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
+
     LaunchedEffect(Unit) {
         savedEmails = scanDisplayViewModel.getAllEmails()
     }
@@ -461,7 +393,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }
 
-  //  val scannedFiltered by bulkViewModel.scannedFilteredItems
+    //  val scannedFiltered by bulkViewModel.scannedFilteredItems
     //val matchedEpcs by bulkViewModel.matchedEpcSet.collectAsState(initial = emptySet())
     val currentPage by bulkViewModel.currentPage.collectAsState()
     val pageSize by bulkViewModel.pageSize.collectAsState()
@@ -472,123 +404,219 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     LaunchedEffect(successMsg) {
         successMsg?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-           // scanDisplayViewModel.clearSuccessMsg()
+            // scanDisplayViewModel.clearSuccessMsg()
         }
     }
 
     LaunchedEffect(error) {
         error?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-           // scanDisplayViewModel.clearError()
+            // scanDisplayViewModel.clearError()
         }
     }
 
     // scopeItems overlay scanned status on filtered base set
-
-    val scopeItems by remember(
-        navFilteredItems,
+    /*   val scopeItems by remember(
+           navFilteredItems,
+           selectedCategoriesKey,
+           selectedProductsKey,
+           selectedDesignsKey,
+           scannedFiltered
+       ) {
+           derivedStateOf {
+               if (navFilteredItems.isEmpty()) {
+                   emptyList()
+               } else {
+                   navFilteredItems.mapNotNull { original ->
+                       val keyEpc = original.epc?.trim()?.uppercase()
+                       val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                       val withScan = original.copy(scannedStatus = status)
+                       if ((selectedCategoriesKey.isEmpty() || withScan.category in selectedCategoriesKey) &&
+                           (selectedProductsKey.isEmpty() || withScan.productName in selectedProductsKey) &&
+                           (selectedDesignsKey.isEmpty() || withScan.design in selectedDesignsKey)
+                       ) withScan else null
+                   }
+               }
+           }
+       }*/
+    // New: scannedItemsSequence is a lazy sequence of ScannedBulkItem
+    val scannedItemsSequence by remember(
+        navFilteredItems, // Now a Sequence<BulkItem>
         selectedCategoriesKey,
         selectedProductsKey,
         selectedDesignsKey,
-        matchedEpcs,           // ✅ ADD THIS
-        scannedFiltered
+        matchedEpcs
     ) {
         derivedStateOf {
-            if (navFilteredItems.isEmpty()) emptyList()
-            else {
-                navFilteredItems.mapNotNull { original ->
-                  /*  val keyEpc = original.epc?.trim()?.uppercase()
-                    val status =
-                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"*/
+            val scopeStartTime = System.currentTimeMillis()
+            val categorySet = if (selectedCategoriesKey.isEmpty()) null else selectedCategoriesKey.toSet()
+            val productSet = if (selectedProductsKey.isEmpty()) null else selectedProductsKey.toSet()
+            val designSet = if (selectedDesignsKey.isEmpty()) null else selectedDesignsKey.toSet()
 
-                    val key = original.tagKey()
-                    val status = if (key != null && matchedEpcs.contains(key)) "Matched" else "Unmatched"
-
-                    val withScan = original.copy(scannedStatus = status)
-
-                    if ((selectedCategoriesKey.isEmpty() || withScan.category in selectedCategoriesKey) &&
-                        (selectedProductsKey.isEmpty() || withScan.productName in selectedProductsKey) &&
-                        (selectedDesignsKey.isEmpty() || withScan.design in selectedDesignsKey)
-                    ) withScan else null
+            val sequence = navFilteredItems.asSequence() // Use the sequence from navFilteredItems
+                .filter { categorySet == null || it.category in categorySet }
+                .filter { productSet == null || it.productName in productSet }
+                .filter { designSet == null || it.design in designSet }
+                .map { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status = if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                    ScannedBulkItem(original, status) // Create ScannedBulkItem with derived status
                 }
+
+            val scopeTime = System.currentTimeMillis() - scopeStartTime
+            if (scopeTime > 100) {
+                Log.d("ScanDisplayScreen", "🚀 [PERF] scannedItemsSequence computed in: ${scopeTime}ms")
+            }
+            sequence // Return a Sequence directly
+        }
+    }
+    /*on back*/
+    BackHandler {
+
+        // 🔹 CASE 1: If user is in Matched / Unmatched / Resume mode
+        if (selectedMenu != MENU_ALL) {
+
+            selectedMenu = MENU_ALL
+            bulkViewModel.clearStickyUnmatched()
+
+            // Reset drill-down completely
+            currentLevel = "Category"
+            currentCategory = null
+            currentProduct = null
+            currentDesign = null
+
+            selectedCategories.clear()
+            selectedProducts.clear()
+            selectedDesigns.clear()
+
+            return@BackHandler
+        }
+
+        // 🔹 CASE 2: Drill-down back navigation
+        when (currentLevel) {
+
+            "DesignItems" -> {
+                currentLevel = "Design"
+                selectedDesigns.clear()
+                return@BackHandler
+            }
+
+            "Design" -> {
+                currentLevel = "Product"
+                selectedProducts.clear()
+                return@BackHandler
+            }
+
+            "Product" -> {
+                currentLevel = "Category"
+                selectedCategories.clear()
+                return@BackHandler
             }
         }
+
+        // 🔹 CASE 3: Exit screen
+        onBack()
+    }
+    fun handleBackPress() {
+        // 🔹 CASE 2: Drill-down back
+        when (currentLevel) {
+            "DesignItems" -> {
+                currentLevel = "Design"
+                selectedDesigns.clear()
+                return
+            }
+            "Design" -> {
+                currentLevel = "Product"
+                selectedProducts.clear()
+                return
+            }
+            "Product" -> {
+                currentLevel = "Category"
+                selectedCategories.clear()
+                return
+            }
+        }
+        if (selectedMenu != MENU_ALL) {
+
+            selectedMenu = MENU_ALL
+            bulkViewModel.clearStickyUnmatched()
+
+            currentLevel = "Category"
+            currentCategory = null
+            currentProduct = null
+            currentDesign = null
+
+            selectedCategories.clear()
+            selectedProducts.clear()
+            selectedDesigns.clear()
+            return
+        }
+        // 🔹 CASE 3: Exit screen
+        onBack()
     }
 
 
     // displayItems respects selectedMenu and sticky unmatched ids (existing logic preserved)
+    /*  val displayItems = remember(scopeItems, selectedMenu, bulkViewModel.filteredUnmatchedIds.collectAsState().value) {
+          if (scopeItems.isEmpty()) {
+              emptyList()
+          } else {
+              when (selectedMenu) {
+                  MENU_MATCHED -> scopeItems.filter { it.scannedStatus == "Matched" }
+                  MENU_UNMATCHED -> {
+                      val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
+                      val sticky = scopeItems.filter {
+                          val id = it.epc?.trim()?.uppercase()
+                          id != null && bulkViewModel.filteredUnmatchedIds.value.contains(id)
+                      }
+                      (unmatchedNow + sticky).distinctBy { it.epc }
+                  }
+                  else -> scopeItems
+              }
+          }
+      }
+  */
 
     val stickyUnmatchedIds by bulkViewModel.filteredUnmatchedIds.collectAsState()
 
-    val displayItems by remember(scopeItems, selectedMenu, stickyUnmatchedIds) {
-        derivedStateOf {
-            if (scopeItems.isEmpty()) emptyList()
-            else when (selectedMenu) {
-                MENU_MATCHED -> scopeItems.filter { it.scannedStatus == "Matched" }
+    val _asyncDisplayItems = remember { MutableStateFlow<List<ScannedBulkItem>>(emptyList()) }
+    val displayItems by _asyncDisplayItems.collectAsState() // Use collectAsState for flow
 
-                MENU_UNMATCHED -> {
-                    val unmatchedNow = scopeItems.filter { it.scannedStatus == "Unmatched" }
-                    val sticky = scopeItems.filter {
-                       /* val id = it.epc?.trim()?.uppercase()
-                        id != null && stickyUnmatchedIds.contains(id)*/
+    LaunchedEffect(scannedItemsSequence, selectedMenu, stickyUnmatchedIds) {
+        scope.launch(Dispatchers.Default) {
+            val currentScannedSequence = scannedItemsSequence
 
-                        val id = it.tagKey()
-                        id != null && stickyUnmatchedIds.contains(id)
+            val computedItems = if (currentScannedSequence.iterator().hasNext().not()) { // Efficient check for empty sequence
+                emptyList()
+            } else {
+                val filteredSequence = when (selectedMenu) {
+                    MENU_MATCHED -> {
+                        currentScannedSequence
+                            .filter { it.currentScannedStatus == "Matched" }
                     }
-                    (unmatchedNow + sticky).distinctBy { it.tagKey() }
+                    MENU_UNMATCHED -> {
+                        val stickySet = stickyUnmatchedIds.toSet()
+                        val unmatchedNow = currentScannedSequence
+                            .filter { it.currentScannedStatus == "Unmatched" }
+                        val sticky = currentScannedSequence
+                            .filter {
+                                val id = it.epc?.trim()?.uppercase()
+                                id != null && stickySet.contains(id)
+                            }
+                        (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                    }
+                    else -> currentScannedSequence
                 }
-
-                else -> scopeItems
+                filteredSequence.toList() // Materialize only once at the end
             }
+            _asyncDisplayItems.value = computedItems
         }
     }
 
 
-   /* val allMatched by remember(scopeItems) {
-        derivedStateOf { scopeItems.isNotEmpty() && scopeItems.all { it.scannedStatus == "Matched" } }
-    }*/
-
- /*   val currentSelectionItems by remember(displayItems, selectedCategoriesKey, selectedProductsKey, selectedDesignsKey) {
-        derivedStateOf {
-            displayItems.filter {
-                (selectedCategoriesKey.isEmpty() || it.category in selectedCategoriesKey) &&
-                        (selectedProductsKey.isEmpty() || it.productName in selectedProductsKey) &&
-                        (selectedDesignsKey.isEmpty() || it.design in selectedDesignsKey)
-            }
-        }
-    }*/
-
-    val scanScopeItems by remember(scopeItems) {
-        derivedStateOf { scopeItems }
+    val allMatched by remember(scannedItemsSequence) {
+        derivedStateOf { scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" } }
     }
-
-/*    val allMatchedForFilter by remember(scanScopeItems) {
-        derivedStateOf {
-            val matchable = scanScopeItems.filter { it.tagKey() != null }
-            matchable.isNotEmpty() && matchable.all { it.scannedStatus == "Matched" }
-        }
-    }*/
-    val scannedKeys by bulkViewModel.scannedKeySet
-
-    val allMatchedForFilter by remember(isScanning, scanScopeItems, scannedKeys, matchedEpcs) {
-        derivedStateOf {
-            if (!isScanning) return@derivedStateOf false
-
-            val filterKeys = scanScopeItems.mapNotNull { it.tagKey() }.toSet()
-            if (filterKeys.isEmpty()) return@derivedStateOf false
-
-            // ✅ stop when ALL filtered keys are scanned
-            filterKeys.all { it in scannedKeys || it in matchedEpcs }
-        }
-    }
-
-
-    /*    val allMatchedForSelection by remember(currentSelectionItems) {
-            derivedStateOf {
-                currentSelectionItems.isNotEmpty() &&
-                        currentSelectionItems.all { it.scannedStatus == "Matched" }
-            }
-        }*/
 
     val activity = LocalContext.current as? MainActivity
 
@@ -601,7 +629,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             override fun onRfidKeyPressed() {
                 if (!isScanning) {
                     isScanning = true
-                    bulkViewModel.setFilteredItems(scanScopeItems)
+                    scope.launch(Dispatchers.Default) {
+                        bulkViewModel.setFilteredItems(scannedItemsSequence.map { it.originalBulkItem }.toList())
+                    }
                     bulkViewModel.startScanningInventory(selectedPower)
                 } else {
                     isScanning = false
@@ -621,7 +651,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
     }*/
 
-   /* LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         snapshotFlow { isScanning to allMatched }
             .collect { (isScanningValue, allMatchedValue) ->
 
@@ -640,39 +670,10 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     Toast.makeText(context, "All items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
                 }
             }
-    }*/
-    /*LaunchedEffect(Unit) {
-        snapshotFlow { isScanning to allMatchedForFilter }
-            .collect { (isScanningValue, allMatchedValue) ->
-                Log.d("AUTO_STOP", "isScanning=$isScanningValue allMatched=$allMatchedValue matched=${scanScopeItems.count{it.scannedStatus=="Matched"}} total=${scanScopeItems.size}")
-                if (isScanningValue && allMatchedValue) {
-                    bulkViewModel.stopScanningAndCompute()
-                    isScanning = false
-                    selectedMenu = MENU_MATCHED
-                    Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
-                }
-            }
-    }*/
-
-    LaunchedEffect(isScanning, allMatchedForFilter) {
-        if (isScanning && allMatchedForFilter) {
-            bulkViewModel.stopScanningAndCompute()
-            isScanning = false
-            selectedMenu = MENU_MATCHED
-            Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
-        }
     }
 
-
-  /*  LaunchedEffect(isScanning, scopeItems.size) {
-        if (isScanning && scopeItems.isEmpty()) {
-            bulkViewModel.stopScanningAndCompute()
-            isScanning = false
-        }
-    }*/
-
-    LaunchedEffect(isScanning, scanScopeItems.size) {
-        if (isScanning && scanScopeItems.isEmpty()) {
+    LaunchedEffect(isScanning, scannedItemsSequence.toList().size) {
+        if (isScanning && scannedItemsSequence.toList().isEmpty()) {
             bulkViewModel.stopScanningAndCompute()
             isScanning = false
         }
@@ -682,31 +683,56 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     } }
 
+    LaunchedEffect(scannedItemsSequence) {
+        if (isScanning && scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" }) { // Use currentScannedStatus
 
+            currentCategory = null
+            currentProduct = null
+            currentDesign = null
+            selectedCategories.clear()
+            selectedProducts.clear()
+            selectedDesigns.clear()
+
+
+            bulkViewModel.stopScanningAndCompute()
+            Toast.makeText(context, "All items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
+
+            isScanning = false
+        }
+    }
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
-        employee?.clientCode?.let { singleProductViewModel.fetchAllDropdownData(ClientCodeRequest(it)) }
-        //bulkViewModel.getAllItems()
-        // Initialize with pagination
-        scope.launch {
+        val initStartTime = System.currentTimeMillis()
+        Log.d("ScanDisplayScreen", "🚀 [PERF] Starting screen initialization...")
+
+        employee?.clientCode?.let {
+            val dropdownStartTime = System.currentTimeMillis()
+            singleProductViewModel.fetchAllDropdownData(ClientCodeRequest(it))
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Dropdown data fetch initiated in: ${System.currentTimeMillis() - dropdownStartTime}ms")
+        }
+
+        // ✅ Initialize with pagination - load first page only
+        scope.launch(Dispatchers.IO) {
+            val paginationStartTime = System.currentTimeMillis()
             bulkViewModel.loadTotalCount()
+            val countTime = System.currentTimeMillis() - paginationStartTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Total count loaded in: ${countTime}ms")
+
             bulkViewModel.loadPage(0) // Load first page
+            val pageLoadTime = System.currentTimeMillis() - paginationStartTime - countTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] First page loaded in: ${pageLoadTime}ms")
+
+            val totalInitTime = System.currentTimeMillis() - initStartTime
+            Log.d("ScanDisplayScreen", "🚀 [PERF] Screen initialization completed in: ${totalInitTime}ms")
         }
     }
 
-    LaunchedEffect(isScanning, allMatchedForFilter) {
-        if (isScanning && allMatchedForFilter) {
-            bulkViewModel.stopScanningAndCompute()
-            isScanning = false
-            selectedMenu = MENU_MATCHED
-            Toast.makeText(context, "Filtered items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
-        }
+    fun writeToFile(context: Context, json: String): File {
+        val file = File(context.getExternalFilesDir(null), "stock_items.json")
+        file.writeText(json)
+        return file
     }
-
-
-
-
 
     // Avoid feeding UI projection back into VM during scanning to reduce churn
 
@@ -716,16 +742,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 GradientTopBar(
                     title = it,
                     navigationIcon = {
-                        IconButton(onClick = {
-                            //shouldNavigateBack = true
-
-                            val handled = handleToolbarBack()
-                            if (!handled) {
-                                navController.popBackStack()
-                             //   shouldNavigateBack = true
-                            }
-
-                        }) {
+                        IconButton(onClick = { /*shouldNavigateBack = true*/
+                            handleBackPress()}) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
@@ -743,86 +761,62 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         bottomBar = {
             Column {
 
-              //  SummaryRow(currentLevel, displayItems, selectedMenu)
-                /*vasanti*/
-                SummaryRow(
-                    currentLevel = currentLevel,
-                    items = displayItems,
-                    selectedMenu = selectedMenu,
-                    designMatchedMap = designMatchedMap,
-                    productMatchedMap= productMatchedMap,   // ✅ ADD
-                categoryMatchedMap= categoryMatchedMap,
-                    isScanning = isScanning,
-                    scannedKeys = scannedKeys,
-                    matchedEpcs = matchedEpcs
-                )
+                //  SummaryRow(currentLevel, displayItems, selectedMenu)
+                SummaryRow(currentLevel, displayItems, selectedMenu)
                 ScanBottomBarInventory(
                     onSave = { /* save */
+                        _isLoadingCommon.value = true
+                        scope.launch(Dispatchers.IO) {
+                            val clientCode = employee?.clientCode       // 🔁 replace
+
+                            val finalItems: List<BulkItem> =
+                                scannedItemsSequence
+                                    .map { scanned ->
+
+                                        val key = scanned.originalBulkItem.tagKey()
+                                        val isMatched =
+                                            key != null && effectiveMatchedSet.contains(key)
+
+                                        scanned.originalBulkItem.copy(
+                                            isScanned = isMatched,
+                                            scannedStatus = if (isMatched) "Matched" else "Unmatched"
+                                        )
+                                    }
+                                    .toList()
 
 
-                            val clientCode = employee?.clientCode ?: return@ScanBottomBarInventory
-
-                            // ✅ FINAL scan state
-                            val finalItems = scopeItems.map { item ->
-                                val key = item.tagKey()
-                                val finalStatus =
-                                    if (key != null && effectiveMatchedSet.contains(key)) "Matched"
-                                    else "Unmatched"
-
-                                item.copy(scannedStatus = finalStatus)
-                            }
-
-                            // ✅ 1. LOCAL SAVE (THIS WAS MISSING)
                             bulkViewModel.saveScanResultLocally(finalItems)
+                            val scannedItems = withContext(Dispatchers.Default) { buildItemsForUpload(scannedItemsSequence.toList()) } // Pass the materialized list here
 
-                            // ✅ 2. REMOTE SAVE (existing)
-                            val payload = buildItemsForUpload(finalItems)
-                            scanDisplayViewModel.uploadStockVerification(
-                                clientCode,
-                                payload,
-                                batchSize = 500
-                            )
+                            Log.d("SAVE_DEBUG", "scopeItems=${scannedItemsSequence.count()} " +
+                                    "matched=${scannedItemsSequence.count { it.currentScannedStatus == "Matched" }} " +
+                                    "unmatched=${scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" }}")
 
-                            Toast.makeText(context, "Scan saved locally & uploaded", Toast.LENGTH_SHORT).show()
-
-
+                            Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
+                                    "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
+                                    "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
+                            //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
+                            //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
+                            val json = Gson().toJson(scannedItems)
+                            val file = writeToFile(context, json)
+                            Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")
+                            //scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 2000)
+                            scanDisplayViewModel.uploadStockVerificationFile(clientCode.toString(),file)
+                            withContext(Dispatchers.Main) {
+                                _isLoadingCommon.value = false
+                            }
+                        }
                     },
                     onList = { showMenu = true },
                     onScan = {
                         if (!isScanning) {
                             isScanning = true
                             // bulkViewModel.resetScanResults()
-                            bulkViewModel.setFilteredItems(scanScopeItems)   // ✅ only current scope
+                            bulkViewModel.setFilteredItems(scannedItemsSequence.map { it.originalBulkItem }.toList())   // ✅ only current scope
                             bulkViewModel.startScanningInventory(selectedPower)
                         } else {
                             isScanning = false
                             bulkViewModel.stopScanningAndCompute()
-                            val matchedKeys =
-                                scanScopeItems
-                                    .filter { it.scannedStatus == "Matched" }
-                                    .mapNotNull { it.tagKey() }
-                                    .toSet()
-                            bulkViewModel.removeFromStickyUnmatched(matchedKeys)
-                            when (currentLevel) {
-                                "DesignItems" -> {
-                                    currentDesign?.let { d ->
-                                        designMatchedMap = designMatchedMap + (d to matchedKeys)
-                                    }
-                                }
-
-                                "Product" -> {
-                                    currentProduct?.let { p ->
-                                        productMatchedMap = productMatchedMap + (p to matchedKeys)
-                                    }
-                                }
-
-                                "Category" -> {
-                                    currentCategory?.let { c ->
-                                        categoryMatchedMap = categoryMatchedMap + (c to matchedKeys)
-                                    }
-                                }
-                            }
-
                         }
                     },
                     onEmail = {
@@ -840,7 +834,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 selectedProducts.clear()
                                 selectedDesigns.clear()
 
-                                bulkViewModel.setFilteredItems(allItems) // ✅ reset to full DB
+                                bulkViewModel.setFilteredItems(allItems.asSequence().map { it }.toList()) // ✅ reset to full DB, pass original BulkItem
                                 bulkViewModel.resetScanResults()
 
                                 selectedMenu = MENU_ALL
@@ -906,123 +900,156 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                 TableHeader(currentLevel)
 
+                // ✅ Optimized: Pre-compute all grouped data and filter sets outside LazyColumn
+                val categorySetForGrouping = remember(selectedCategories) {
+                    if (selectedCategories.isEmpty()) null else selectedCategories.toSet()
+                }
+                val productSetForGrouping = remember(selectedProducts) {
+                    if (selectedProducts.isEmpty()) null else selectedProducts.toSet()
+                }
+                val designSetForGrouping = remember(selectedDesigns) {
+                    if (selectedDesigns.isEmpty()) null else selectedDesigns.toSet()
+                }
+
+                // Pre-compute grouped data for each level
+                val categoryGrouped = remember(displayItems) {
+                    displayItems.groupBy { it.category ?: "Unknown" }
+                }
+                val productGrouped = remember(displayItems, categorySetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .groupBy { it.productName ?: "Unknown" }
+                }
+                val designGrouped = remember(displayItems, categorySetForGrouping, productSetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .filter { productSetForGrouping == null || it.productName in productSetForGrouping }
+                        .groupBy { it.design ?: "Unknown" }
+                }
+                val designItemsList = remember(displayItems, categorySetForGrouping, productSetForGrouping, designSetForGrouping) {
+                    displayItems.asSequence()
+                        .filter { categorySetForGrouping == null || it.category in categorySetForGrouping }
+                        .filter { productSetForGrouping == null || it.productName in productSetForGrouping }
+                        .filter { designSetForGrouping == null || it.design in designSetForGrouping }
+                        .toList()
+                }
+
                 // ---------- L A Z Y   C O L U M N   (drill-down + multi-select friendly) ----------
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     when (currentLevel) {
                         "Category" -> {
-                            val grouped = displayItems.groupBy { it.category ?: "Unknown" }
-                            grouped.forEach { (label, items) ->
+                            if (displayItems.isNotEmpty()) {
+                                categoryGrouped.forEach { (label, items) ->
+                                    item(key = "category_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            // drill down to product for the chosen category (single-select drill)
+                                            currentCategory = label
+                                            selectedCategories.clear()
+                                            selectedCategories.add(label)
+                                            selectedProducts.clear()
+                                            selectedDesigns.clear()
+                                            currentLevel = "Product"
+                                        }
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
                                 item {
-                                    TableDataRow(
-                                        row = TableRow(label, items),
-                                        currentLevel = currentLevel,
-                                        designMatchedMap = designMatchedMap,
-                                        isScanning = isScanning,
-                                        scannedKeys = scannedKeys,
-                                        matchedEpcs = matchedEpcs,
-                                        productMatchedMap=productMatchedMap,
-                                        categoryMatchedMap=categoryMatchedMap,
-                                        navDirection=navDirection
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        currentCategory = label
-                                        selectedCategories.clear()
-                                        selectedCategories.add(label)
-                                        selectedProducts.clear()
-                                        selectedDesigns.clear()
-                                        currentLevel = "Product"
-                                        normalizeFiltersForLevel("Product")
+                                        CircularProgressIndicator()
                                     }
                                 }
                             }
                         }
 
                         "Product" -> {
-                            val grouped = displayItems
-                                .filter { selectedCategories.isEmpty() || it.category in selectedCategories }
-                                .groupBy { it.productName ?: "Unknown" }
-
-                            grouped.forEach { (label, items) ->
-                                item {
-                                    TableDataRow(
-                                        row = TableRow(label, items),
-                                        currentLevel = currentLevel,
-                                        designMatchedMap = designMatchedMap,
-                                        isScanning = isScanning,
-                                        scannedKeys = scannedKeys,
-                                        matchedEpcs = matchedEpcs,
-                                        productMatchedMap=productMatchedMap,
-                                        categoryMatchedMap=categoryMatchedMap,
-                                        navDirection=navDirection
-                                    ) {
-                                        currentProduct = label
-                                        selectedProducts.clear()
-                                        selectedProducts.add(label)
-                                        selectedDesigns.clear()
-                                        currentLevel = "Design"
-                                        normalizeFiltersForLevel("Design")
+                            if (displayItems.isNotEmpty()) {
+                                productGrouped.forEach { (label, items) ->
+                                    item(key = "product_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            // when clicking product row, drill to design level
+                                            currentProduct = label
+                                            if (!selectedProducts.contains(label)) selectedProducts.add(
+                                                label
+                                            )
+                                            selectedDesigns.clear()
+                                            currentLevel = "Design"
+                                        }
                                     }
-
-
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
                             }
                         }
 
                         "Design" -> {
-                            val grouped = displayItems
-                                .filter {
-                                    (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                            (selectedProducts.isEmpty() || it.productName in selectedProducts) &&
-                                            (selectedDesigns.isEmpty() || it.design in selectedDesigns)
-
-                                }
-                                .groupBy { it.design ?: "Unknown" }
-
-                            grouped.forEach { (label, items) ->
-                                item {
-                                    TableDataRow(
-                                        row = TableRow(label, items),
-                                        currentLevel = currentLevel,
-                                        designMatchedMap = designMatchedMap,
-                                        isScanning = isScanning,
-                                        scannedKeys = scannedKeys,
-                                        matchedEpcs = matchedEpcs,
-                                        productMatchedMap=productMatchedMap,
-                                        categoryMatchedMap=categoryMatchedMap,
-                                        navDirection=navDirection
-                                    ) {
-                                        currentDesign = label
-                                        scannedDesignScope = label
-                                        selectedDesigns.clear()
-                                        selectedDesigns.add(label)
-                                        currentLevel = "DesignItems"
-                                        normalizeFiltersForLevel("DesignItems")
+                            if (displayItems.isNotEmpty()) {
+                                designGrouped.forEach { (label, items) ->
+                                    item(key = "design_$label") {
+                                        TableDataRow(TableRow(label, items), currentLevel) {
+                                            currentDesign = label
+                                            if (!selectedDesigns.contains(label)) selectedDesigns.add(
+                                                label
+                                            )
+                                            currentLevel = "DesignItems"
+                                        }
                                     }
-
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
                             }
                         }
 
                         "DesignItems" -> {
-                            val itemsList = displayItems.filter {
-                                (selectedCategories.isEmpty() || it.category in selectedCategories) &&
-                                        (selectedProducts.isEmpty() || it.productName in selectedProducts)
-
-                            }
-
                             // Use pagination for large lists
-                            items(
-                                itemsList,
-                                key = {
-                                    it.epc ?: it.itemCode ?: it.design ?: it.hashCode().toString()
-                                }) { item ->
-                                DesignItemRow(item) { clickedItem ->
-                                    selectedItem = clickedItem
-                                    showItemDialog = true
+                            if (displayItems.isNotEmpty()) {
+                                items(
+                                    designItemsList,
+                                    key = {
+                                        it.epc ?: it.itemCode ?: it.design ?: it.originalBulkItem.hashCode().toString()
+                                    }) { item ->
+                                    DesignItemRow(item) { clickedItem ->
+                                        selectedItem = clickedItem.originalBulkItem
+                                        showItemDialog = true
+                                    }
+                                }
+                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
                             }
 
                             // Load more items when reaching the end (for pagination)
-                            if (itemsList.size >= pageSize && !isLoadingPage) {
+                            if (designItemsList.size >= pageSize && !isLoadingPage) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -1063,8 +1090,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
         // 🔹 Loader overlay (TOP LEVEL) - reuse existing shared loader (productListViewModel / bulkViewModel)
+
         val bulkIsLoading by bulkViewModel.isLoading.collectAsState()
-        if (isLoading || bulkIsLoading) {
+        val showLoader = isLoading || bulkIsLoading || isLoadingAllItems || isLoadingUI || isLoadingCommon
+
+        if (showLoader) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1075,7 +1105,12 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        if (bulkIsLoading) "Please wait..." else "Loading products...",
+                        when {
+                            isLoadingAllItems -> "Loading all items... (${allItems.size} loaded)"
+                            bulkIsLoading -> "Please wait..."
+                            isLoadingCommon -> "Please wait..."
+                            else -> "Loading products..."
+                        },
                         color = Color.White,
                         fontFamily = poppins
                     )
@@ -1083,131 +1118,287 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
         }
     }
-
-            if (showEmailDialog) {
-                AlertDialog(
-                    onDismissRequest = { if (!isSending) showEmailDialog = false },
-
-                    title = { Text("Send Report", fontFamily = poppins) },
-
-                    text = {
-                        Column {
-                            if (savedEmails.isNotEmpty()) {
-                                Text("Saved Emails:", fontFamily = poppins)
-                                savedEmails.forEach { email ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(enabled = !isSending) {
-                                                selectedEmail = email
-                                                newEmail = email // optional: auto fill
-                                            }
-                                            .background(
-                                                if (selectedEmail == email) Color.LightGray else Color.Transparent
-                                            )
-                                            .padding(8.dp)
-                                    ) {
-                                        Text(email, fontFamily = poppins)
-                                    }
+    /*if (showEmailDialog) {
+            AlertDialog(
+                onDismissRequest = { showEmailDialog = false },
+                title = { Text("Send Report", fontFamily = poppins) },
+                text = {
+                    Column {
+                        if (savedEmails.isNotEmpty()) {
+                            Text("Saved Emails:", fontFamily = poppins)
+                            savedEmails.forEach { email ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { selectedEmail = email }
+                                        .background(
+                                            if (selectedEmail == email) Color.LightGray else Color.Transparent
+                                        )
+                                        .padding(8.dp)
+                                ) {
+                                    Text(email, fontFamily = poppins)
                                 }
-                                Spacer(Modifier.height(12.dp))
                             }
-
-                            OutlinedTextField(
-                                value = newEmail,
-                                onValueChange = { newEmail = it },
-                                enabled = !isSending,
-                                label = { Text("Add New Email", fontFamily = poppins) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Spacer(Modifier.height(12.dp))
                         }
-                    },
-
-                    confirmButton = {
-                        GradientButtonNew(
-                            text = "Send",
-                            enabled = true,
-                            isLoading = isSending,
-                            onClick = {
-                                val finalEmail = when {
-                                    newEmail.isNotBlank() -> newEmail.trim()
-                                    !selectedEmail.isNullOrBlank() -> selectedEmail!!.trim()
-                                    else -> null
-                                }
-
-                                if (finalEmail.isNullOrBlank()) {
-                                    Toast.makeText(context, "Please enter or select an email", Toast.LENGTH_SHORT).show()
-                                    return@GradientButtonNew
-                                }
-
-                                // ✅ keep dialog open + show loader
-                                isSending = true
-
-                                // ✅ copy state now (important)
-                                val itemsForReport = displayItems.toList()
-                                val emailToSend = finalEmail
-                                val newEmailToSave = newEmail.trim()
-
-                                scope.launch {
-                                    try {
-                                        // ✅ allow UI to draw loader first
-                                        yield()
-
-                                        // save new email (IO)
-                                        if (newEmailToSave.isNotBlank() && !savedEmails.contains(newEmailToSave)) {
-                                            withContext(Dispatchers.IO) { scanDisplayViewModel.saveEmail(newEmailToSave) }
-                                            savedEmails = withContext(Dispatchers.IO) { scanDisplayViewModel.getAllEmails() }
-                                            selectedEmail = newEmailToSave
-                                            newEmail = ""
-                                        }
-
-                                        // build + generate file (IO)
-                                        val reportFile = withContext(Dispatchers.IO) {
-                                            val summaryList = scanDisplayViewModel.buildSummary(itemsForReport)
-                                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport)
-
-                                            scanDisplayViewModel.generateScanReportExcel(
-                                                context, summaryList, matched, unmatched
-                                            )
-                                        }
-
-                                        // send email (IO)
-                                        withContext(Dispatchers.IO) {
-                                            scanDisplayViewModel.sendEmailHostinger(
-                                                sendEmail = "android@loyalstring.com",
-                                                sendPass = "Loyal@123",
-                                                recipients = listOf(emailToSend),
-                                                subject = "Inventory Scan Report",
-                                                body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
-                                                type = "text/html",
-                                                attachments = mapOf(reportFile.name to reportFile.absolutePath)
-                                            )
-                                        }
-
-                                       // Toast.makeText(context, "Report sent to $emailToSend", Toast.LENGTH_LONG).show()
-                                        showEmailDialog = false
-
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
-                                    } finally {
-                                        isSending = false
-                                    }
-                                }
-                            }
-                        )
-                    },
-
-                    dismissButton = {
-                        GradientButtonNew(
-                            text = "Cancel",
-                            enabled = !isSending,
-                            isLoading = false,
-                            onClick = { showEmailDialog = false }
+                        OutlinedTextField(
+                            value = newEmail,
+                            onValueChange = { newEmail = it },
+                            label = { Text("Add New Email", fontFamily = poppins) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val finalEmail = when {
+                            newEmail.isNotBlank() -> newEmail
+                            !selectedEmail.isNullOrBlank() -> selectedEmail
+                            else -> null
+                        }
+                        if (finalEmail.isNullOrBlank()) {
+                            Toast.makeText(
+                                context,
+                                "Please enter or select an email",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+                        _isLoadingCommon.value = true
+                        scope.launch(Dispatchers.IO) {
+                            // save new email
+
+                            if (newEmail.isNotBlank()) {
+                                scanDisplayViewModel.saveEmail(newEmail)
+                                savedEmails = scanDisplayViewModel.getAllEmails()
+                                selectedEmail = newEmail
+                                newEmail = ""
+                            }
+                            try {
+                                *//*val summaryList = scanDisplayViewModel.buildSummary(displayItems)
+                            val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(
+                                displayItems
+                            )
+
+                            val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                                context,
+                                summaryList,
+                                matched,
+                                unmatched
+                            )*//*
+
+                            try {
+                                val summary = scanDisplayViewModel.buildSummary(displayItems)
+                                val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(
+                                    displayItems
+                                )
+
+                                *//*val pdfFile = scanDisplayViewModel.generateScanReportPdf(
+                                    context = context,
+                                    allItemsSummary = summary,
+                                    matched
+                                )*//*
+
+                                val pdfFile = scanDisplayViewModel.generateScanReportExcel(
+                                    context = context,
+                                    allItemsSummary = summary,
+                                    matched,
+                                    unmatched
+                                )
+
+                                Toast.makeText(context, "PDF Created: ${pdfFile.name}", Toast.LENGTH_LONG).show()
+
+
+                                println("=== Trying to send email to $finalEmail ===")
+
+                                scanDisplayViewModel.sendEmailHostinger(
+                                    sendEmail = "android@loyalstring.com",
+                                    sendPass = "Loyal@123",
+                                    recipients = listOf(finalEmail),
+                                    subject = "Inventory Scan Report",
+                                    body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
+                                    type = "text/html",
+                                    attachments = mapOf(pdfFile.name to pdfFile.absolutePath)
+                                )
+
+                                withContext(Dispatchers.Main) {
+                                    _isLoadingCommon.value = false
+                                }
+
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "PDF Error: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+
+
+
+                            println("=== Email sent successfully ===")
+
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "Report sent to $finalEmail",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+
+                        } catch (e: Exception) {
+                            println("=== Email send failed: ${e.message} ===")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG)
+                                    .show()
+                            }
+                        }
+                    }
+
+                    // build lists
+
+                    // showSuccessDialog = true
+
+
+                    showEmailDialog = false
+                }) {
+                    Text("Send", fontFamily = poppins)
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showEmailDialog = false }) {
+                    Text("Cancel", fontFamily = poppins)
+                }
+            }
+        )
+    }*/
+
+
+
+    if (showEmailDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSending) showEmailDialog = false },
+
+            title = { Text("Send Report", fontFamily = poppins) },
+
+            text = {
+                Column {
+                    if (savedEmails.isNotEmpty()) {
+                        Text("Saved Emails:", fontFamily = poppins)
+                        savedEmails.forEach { email ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !isSending) {
+                                        selectedEmail = email
+                                        newEmail = email // optional: auto fill
+                                    }
+                                    .background(
+                                        if (selectedEmail == email) Color.LightGray else Color.Transparent
+                                    )
+                                    .padding(8.dp)
+                            ) {
+                                Text(email, fontFamily = poppins)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    OutlinedTextField(
+                        value = newEmail,
+                        onValueChange = { newEmail = it },
+                        enabled = !isSending,
+                        label = { Text("Add New Email", fontFamily = poppins) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+
+            confirmButton = {
+                GradientButtonNew(
+                    text = "Send",
+                    enabled = true,
+                    isLoading = isSending,
+                    onClick = {
+                        val finalEmail = when {
+                            newEmail.isNotBlank() -> newEmail.trim()
+                            !selectedEmail.isNullOrBlank() -> selectedEmail!!.trim()
+                            else -> null
+                        }
+
+                        if (finalEmail.isNullOrBlank()) {
+                            Toast.makeText(context, "Please enter or select an email", Toast.LENGTH_SHORT).show()
+                            return@GradientButtonNew
+                        }
+
+                        // ✅ keep dialog open + show loader
+                        isSending = true
+
+                        // ✅ copy state now (important)
+                        val itemsForReport = displayItems.toList()
+                        val emailToSend = finalEmail
+                        val newEmailToSave = newEmail.trim()
+
+                        scope.launch {
+                            try {
+                                // ✅ allow UI to draw loader first
+                                yield()
+
+                                // save new email (IO)
+                                if (newEmailToSave.isNotBlank() && !savedEmails.contains(newEmailToSave)) {
+                                    withContext(Dispatchers.IO) { scanDisplayViewModel.saveEmail(newEmailToSave) }
+                                    savedEmails = withContext(Dispatchers.IO) { scanDisplayViewModel.getAllEmails() }
+                                    selectedEmail = newEmailToSave
+                                    newEmail = ""
+                                }
+
+                                // build + generate file (IO)
+                                val reportFile = withContext(Dispatchers.IO) {
+                                    val summaryList = scanDisplayViewModel.buildSummary(itemsForReport.map { it.originalBulkItem })
+                                    val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport.map { it.originalBulkItem })
+
+                                    /*scanDisplayViewModel.generateScanReportExcel(
+                                        context, summaryList, matched, unmatched
+                                    )*/
+                                    scanDisplayViewModel.generateScanReportCsv(
+                                        context, summaryList, matched, unmatched
+                                    )
+
+                                }
+
+                                // send email (IO)
+                                withContext(Dispatchers.IO) {
+                                    scanDisplayViewModel.sendEmailHostinger(
+                                        sendEmail = "android@loyalstring.com",
+                                        sendPass = "Loyal@123",
+                                        recipients = listOf(emailToSend),
+                                        subject = "Inventory Scan Report",
+                                        body = "<h2>Here is your scan report</h2><p>Details attached.</p>",
+                                        type = "text/html",
+                                        attachments = mapOf(reportFile.name to reportFile.absolutePath)
+                                    )
+                                }
+
+                                // Toast.makeText(context, "Report sent to $emailToSend", Toast.LENGTH_LONG).show()
+                                showEmailDialog = false
+
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            } finally {
+                                isSending = false
+                            }
+                        }
+                    }
+                )
+            },
+
+            dismissButton = {
+                GradientButtonNew(
+                    text = "Cancel",
+                    enabled = !isSending,
+                    isLoading = false,
+                    onClick = { showEmailDialog = false }
                 )
             }
+        )
+    }
 
 
 
@@ -1272,23 +1463,23 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     }
 
     // Menu (Matched/Unmatched/etc.)
-/*
-    val summaryItems by remember(navFilteredItems, matchedEpcs) {
-        derivedStateOf {
-            navFilteredItems.map { original ->
-                val keyEpc = original.epc?.trim()?.uppercase()
-                val status =
-                    if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
-                original.copy(scannedStatus = status)
+    /*
+        val summaryItems by remember(navFilteredItems, matchedEpcs) {
+            derivedStateOf {
+                navFilteredItems.map { original ->
+                    val keyEpc = original.epc?.trim()?.uppercase()
+                    val status =
+                        if (keyEpc != null && matchedEpcs.contains(keyEpc)) "Matched" else "Unmatched"
+                    original.copy(scannedStatus = status)
+                }
             }
-        }
-    }*/
-   /* var matchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Matched" } }
-    var unmatchedCount = remember(scopeItems) { scopeItems.count { it.scannedStatus == "Unmatched" } }
-    val totalCount = remember(scopeItems) { scopeItems.size }*/
-    val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
+        }*/
+    val matchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Matched" } }
+    val unmatchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" } }
+    val totalCount = remember(scannedItemsSequence) { scannedItemsSequence.count() }
+    /*val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
     val unmatchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Unmatched" } }
-    val totalCount = remember(summaryItems) { summaryItems.size }   // ✅ THIS LINE FIXED
+    val totalCount = remember(summaryItems) { summaryItems.size }*/   // ✅ THIS LINE FIXED
 
     if (showMenu) {
         Box(
@@ -1312,76 +1503,49 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     unmatchedCount = unmatchedCount,
                     totalCount = totalCount
                 ) { menuItem ->
-                        when (menuItem.title) {
-                            "UnMatched Items" -> {
-                                scope.launch {
-                                   /* bulkViewModel.setLoading(true)
-                                    delay(1000)
-                                    bulkViewModel.loadUnmatchedFast(scopeItems)
-                                    selectedMenu = MENU_UNMATCHED
-                                    currentLevel = "DesignItems"*/
+                    when (menuItem.title) {
+                        "UnMatched Items" -> {
+                            scope.launch {
+                                /* bulkViewModel.setLoading(true)
+                                 delay(1000)
+                                 bulkViewModel.loadUnmatchedFast(scopeItems)
+                                 selectedMenu = MENU_UNMATCHED
+                                 currentLevel = "DesignItems"*/
+                                selectedMenu = MENU_UNMATCHED
+                                currentLevel = "DesignItems"
+                                /* currentLevel = "DesignItems"
 
-                                    /*vasanti new imple*/
-                                    // 🔐 Save current state
-                                    previousLevel = currentLevel
-                                    previousCategories = selectedCategories.toList()
-                                    previousProducts = selectedProducts.toList()
-                                    previousDesigns = selectedDesigns.toList()
+                                 currentCategory = null
+                                 currentProduct = null
+                                 currentDesign = null
+                                 selectedCategories.clear()
+                                 selectedProducts.clear()
+                                 selectedDesigns.clear()*/
 
-                                    currentLevel = "DesignItems"
-                                    selectedMenu = MENU_UNMATCHED
-                                   /* currentLevel = "DesignItems"
-
-                                    currentCategory = null
-                                    currentProduct = null
-                                    currentDesign = null
-                                    selectedCategories.clear()
-                                    selectedProducts.clear()
-                                    selectedDesigns.clear()*/
-
-                                    // optional: sticky ids set (agar tumhe sticky behaviour chahiye)
-                                    val ids = scopeItems.asSequence()
-                                        .filter { it.scannedStatus.equals("Unmatched", true) }
-                                        .mapNotNull { it.tagKey() }
-                                        .distinct()
-                                        .toList()
-                                    bulkViewModel.rememberUnmatchedIds(ids)
-                                }
-
-                                // Compute unmatched ids off the main thread to avoid freezing UI on large lists
-                                /*bulkViewModel.setLoading(true)
-                            scope.launch(Dispatchers.IO) {
-                                val ids = withContext(Dispatchers.Default) {
-                                    scopeItems.asSequence()
-                                        .filter { it.scannedStatus.equals("Unmatched", true) }
-                                        .mapNotNull { it.epc?.trim()?.uppercase() }
-                                        .distinct()
-                                        .toList()
-                                }
-                                // Update ViewModel and UI on the main thread to avoid snapshot mutations from background
-                                //bulkViewModel.rememberUnmatchedIds(ids) // Now updates _filteredUnmatchedIds directly on a background thread
-                                withContext(Dispatchers.Main) { // Move UI updates back to Main thread
-                                    selectedMenu = MENU_UNMATCHED
-                                    // ✅ Always show items when unmatched mode
-                                    currentLevel = "DesignItems"
-                                    currentCategory = null
-                                    currentProduct = null
-                                    currentDesign = null
-
-                                    selectedCategories.clear()
-                                    selectedProducts.clear()
-                                    selectedDesigns.clear()
-                                    bulkViewModel.setLoading(false)
-                                }
-                            }*/
-
+                                // optional: sticky ids set (agar tumhe sticky behaviour chahiye)
+                                val ids = scannedItemsSequence.asSequence()
+                                    .filter { it.currentScannedStatus.equals("Unmatched", true) }
+                                    .mapNotNull { it.epc?.trim()?.uppercase() }
+                                    .distinct()
+                                    .toList()
+                                bulkViewModel.rememberUnmatchedIds(ids)
                             }
 
-                            "Matched Items" -> {
-                               /* selectedMenu = MENU_MATCHED
-                                bulkViewModel.clearStickyUnmatched()
-
-                                // ✅ Always show items when matched mode
+                            // Compute unmatched ids off the main thread to avoid freezing UI on large lists
+                            /*bulkViewModel.setLoading(true)
+                        scope.launch(Dispatchers.IO) {
+                            val ids = withContext(Dispatchers.Default) {
+                                scopeItems.asSequence()
+                                    .filter { it.scannedStatus.equals("Unmatched", true) }
+                                    .mapNotNull { it.epc?.trim()?.uppercase() }
+                                    .distinct()
+                                    .toList()
+                            }
+                            // Update ViewModel and UI on the main thread to avoid snapshot mutations from background
+                            //bulkViewModel.rememberUnmatchedIds(ids) // Now updates _filteredUnmatchedIds directly on a background thread
+                            withContext(Dispatchers.Main) { // Move UI updates back to Main thread
+                                selectedMenu = MENU_UNMATCHED
+                                // ✅ Always show items when unmatched mode
                                 currentLevel = "DesignItems"
                                 currentCategory = null
                                 currentProduct = null
@@ -1389,72 +1553,99 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                                 selectedCategories.clear()
                                 selectedProducts.clear()
-                                selectedDesigns.clear()*/
-                                /*vasanti new imple*/
-                                // 🔐 Save current state
-                                previousLevel = currentLevel
-                                previousCategories = selectedCategories.toList()
-                                previousProducts = selectedProducts.toList()
-                                previousDesigns = selectedDesigns.toList()
-
-
-                                currentLevel = "DesignItems"
-                                selectedMenu = MENU_MATCHED
-                                bulkViewModel.clearStickyUnmatched()
-
-                               /* currentLevel = "DesignItems"
-                                currentCategory = null
-                                currentProduct = null
-                                currentDesign = null
-                                selectedCategories.clear()
-                                selectedProducts.clear()
-                                selectedDesigns.clear()*/
+                                selectedDesigns.clear()
+                                bulkViewModel.setLoading(false)
                             }
+                        }*/
 
-                            "Unlabelled Items" -> {
-                                selectedMenu = MENU_ALL
-                                bulkViewModel.clearStickyUnmatched()
-                            }
-                            // In ScanDisplayScreen
-                            "Search" -> {
-                                scope.launch {
-                                    bulkViewModel.setLoading(true)
-                                    // Remove artificial delay
-                                    // delay(1000)
+                        }
 
-                                    val latestUnmatched = withContext(Dispatchers.Default) {
-                                        scopeItems
-                                            .filter { it.scannedStatus.equals("Unmatched", true) }
-                                            .distinctBy { it.epc?.trim()?.uppercase() }
-                                    }
+                        "Matched Items" -> {
+                            /* selectedMenu = MENU_MATCHED
+                             bulkViewModel.clearStickyUnmatched()
 
-                                    if (latestUnmatched.isNotEmpty()) {
-                                        navController.currentBackStackEntry?.savedStateHandle?.set(
-                                            "unmatchedItems",
-                                            ArrayList(latestUnmatched)
-                                        )
-                                        navController.navigate("search_screen/unmatched") {
-                                            // This is the callback from SearchScreen
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    } else {
-                                        navController.navigate("search_screen/normal") {
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                             // ✅ Always show items when matched mode
+                             currentLevel = "DesignItems"
+                             currentCategory = null
+                             currentProduct = null
+                             currentDesign = null
 
+                             selectedCategories.clear()
+                             selectedProducts.clear()
+                             selectedDesigns.clear()*/
+                            selectedMenu = MENU_MATCHED
+                            currentLevel = "DesignItems"
+                            bulkViewModel.clearStickyUnmatched()
 
-                                    }
-                                    //delay(1000)
-                                    bulkViewModel.setLoading(false)
-                                    //showToast(context, "End")
+                            /* currentLevel = "DesignItems"
+                             currentCategory = null
+                             currentProduct = null
+                             currentDesign = null
+                             selectedCategories.clear()
+                             selectedProducts.clear()
+                             selectedDesigns.clear()*/
+                        }
+
+                        "Unlabelled Items" -> {
+                            selectedMenu = MENU_ALL
+                            bulkViewModel.clearStickyUnmatched()
+                        }
+                        // In ScanDisplayScreen
+                        "Search" -> {
+                            scope.launch {
+                                bulkViewModel.setLoading(true)
+                                // Remove artificial delay
+                                // delay(1000)
+
+                                val latestUnmatched = withContext(Dispatchers.Default) {
+                                    scannedItemsSequence
+                                        .filter { it.currentScannedStatus.equals("Unmatched", true) }
+                                        .distinctBy { it.epc?.trim()?.uppercase() }
+                                        .toList() // Materialize here for passing to navController
                                 }
 
+                                if (latestUnmatched.isNotEmpty()) {
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(
+                                        "unmatchedItems",
+                                        ArrayList(latestUnmatched.map { it.toBulkItem() })
+                                    )
+                                    navController.navigate("search_screen/unmatched") {
+                                        // This is the callback from SearchScreen
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                } else {
+                                    navController.navigate("search_screen/normal") {
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+
+
+                                }
+                                //delay(1000)
+                                bulkViewModel.setLoading(false)
+                                //showToast(context, "End")
                             }
 
-                            "Resume Scan"->{
+                        }
+
+                       /* "Resume Scan"->{
+                            bulkViewModel.restoreScanFromSavedBulkItems(allItems)
+                            selectedMenu = MENU_ALL
+                            currentLevel = "DesignItems"
+
+                            Toast.makeText(
+                                context,
+                                "Previous scan restored",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }*/
+                        "Resume Scan" -> {
+                            scope.launch {
+
+
                                 bulkViewModel.restoreScanFromSavedBulkItems(allItems)
+
                                 selectedMenu = MENU_ALL
                                 currentLevel = "DesignItems"
 
@@ -1465,6 +1656,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 ).show()
                             }
                         }
+
+                    }
 
                     showMenu = false
                 }
@@ -1586,6 +1779,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
 
 
+
 @Composable
 fun GradientButtonNew(
     text: String,
@@ -1640,11 +1834,11 @@ private fun String.normalizeTagKey(): String? =
 private fun BulkItem.tagKey(): String? =
     (this.epc ?: this.rfid)?.normalizeTagKey()
 
-private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
-    return all
-        .distinctBy { it.tagKey() ?: it.itemCode ?: it.hashCode().toString() }
+private fun buildItemsForUpload(all: List<ScannedBulkItem>): List<Item> { // Accepts List<ScannedBulkItem>
+    return all.asSequence()  // Start with a sequence
+        .distinctBy { it.epc?.trim()?.uppercase() ?: it.itemCode ?: it.hashCode().toString() }
         .map { b ->
-            val status = when (b.scannedStatus?.trim()?.lowercase()) {
+            val status = when (b.currentScannedStatus.trim().lowercase()) { // Use currentScannedStatus
                 "matched" -> "match"
                 "unmatched" -> "unmatch"
                 "match" -> "match"
@@ -1653,9 +1847,10 @@ private fun buildItemsForUpload(all: List<BulkItem>): List<Item> {
             }
 
             Log.d("@@","status"+status)
-            b.toItem(status)
+            b.originalBulkItem.toItem(status) // Pass originalBulkItem to toItem
         }
         .filter { !it.itemCode.isNullOrBlank() }
+        .toList() // Materialize to a List at the very end
 }
 
 
@@ -1782,7 +1977,7 @@ fun FilterRow(
 }
 
 @Composable
-fun DesignItemRow(item: BulkItem, onClick: (BulkItem) -> Unit) {
+fun DesignItemRow(item: ScannedBulkItem, onClick: (ScannedBulkItem) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1799,7 +1994,7 @@ fun DesignItemRow(item: BulkItem, onClick: (BulkItem) -> Unit) {
         val formattedGwt = formatTo3Decimals(parseWeightToBigDecimal(item.grossWeight))
         TableCell(formattedGwt, colGWtWidth)
 
-        StatusIconCell(item.scannedStatus, colStatusIconWidth)
+        StatusIconCell(item.currentScannedStatus, colStatusIconWidth)
     }
 }
 
@@ -1947,55 +2142,31 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
     }
 }*/
 
-
 @Composable
-fun SummaryRow(
-    currentLevel: String,
-    items: List<BulkItem>,
-    selectedMenu: String,
-    designMatchedMap: Map<String, Set<String>>,
-    productMatchedMap: Map<String, Set<String>>,   // ✅ ADD
-    categoryMatchedMap: Map<String, Set<String>>,
-    isScanning: Boolean,
-    scannedKeys: Set<String>,
-    matchedEpcs: Set<String>
-){
+fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu: String) {
+    // ✅ Optimized: Use derivedStateOf and sequence for better performance
+    val totals by remember(items) {
+        derivedStateOf {
+            val totalQty = items.size
+            val totalWt = items.asSequence()
+                .fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-    val totals = remember(items) {
-        val totalQty = items.size
-        val totalWt = items.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
+            val matched = items.asSequence()
+                .filter { it.currentScannedStatus == "Matched" } // Use currentScannedStatus
+                .toList()
+            val matchedQty = matched.size
+            val matchedWt = matched.asSequence()
+                .fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
 
-/*vasanti*/
-       /* val matchedItems = items.filter {
-            isItemMatched(
-                it,
-                currentLevel,
-                designMatchedMap,
-                productMatchedMap,
-                categoryMatchedMap,
-                isScanning,
-                scannedKeys,
-                matchedEpcs
+            val unmatchedQty = totalQty - matchedQty
+            val unmatchedWt = totalWt.subtract(matchedWt)
+
+            Triple(
+                Triple(totalQty, totalWt, matchedQty),
+                Triple(matchedWt, unmatchedQty, unmatchedWt),
+                Unit
             )
-        }*/
-        val matchedItems = items.filter { it.scannedStatus == "Matched" }
-
-        val matchedQty = matchedItems.size
-        val matchedWt = matchedItems.fold(BigDecimal.ZERO) {
-                acc, it -> acc + parseWeightToBigDecimal(it.grossWeight)
         }
-     /*   val matched = items.filter { it.scannedStatus == "Matched" }
-        val matchedQty = matched.size
-        val matchedWt = matched.fold(BigDecimal.ZERO) { acc, it -> acc + parseWeightToBigDecimal(it.grossWeight) }
-
-       */ val unmatchedQty = totalQty - matchedQty
-        val unmatchedWt = totalWt.subtract(matchedWt)
-
-        Triple(
-            Triple(totalQty, totalWt, matchedQty),
-            Triple(matchedWt, unmatchedQty, unmatchedWt),
-            Unit
-        )
     }
 
     val totalQty = totals.first.first
@@ -2093,46 +2264,31 @@ fun TableHeader(currentLevel: String) {
 }
 
 @Composable
-fun TableDataRow(
-    row: TableRow,
-    currentLevel: String,
-    designMatchedMap: Map<String, Set<String>>,
-    isScanning: Boolean,
-    scannedKeys: Set<String>,
-    matchedEpcs: Set<String>,
-    productMatchedMap: Map<String, Set<String>>,
-    categoryMatchedMap: Map<String, Set<String>>,
-    navDirection: NavDirection,
-    onRowClick: () -> Unit,
-
-) {
-    val qty = row.items.size
- //  val matchedItems = row.items.filter { it.scannedStatus == "Matched" }
-    /*vasanti*/
-   /*val matchedItems = row.items.filter {
-        it.scannedStatus == "Matched" &&
-               (selectedDesigns.isEmpty() || it.design in selectedDesigns)
-    }*/
-
-
-
-    val matchedItems = when (currentLevel) {
-         "DesignItems" -> row.items.filter {
-             isItemMatched( it,
-                 currentLevel,
-                 designMatchedMap,
-                 productMatchedMap, categoryMatchedMap, isScanning, scannedKeys, matchedEpcs )
-         } // ✅ ALL forward levels use finalized state
-     else -> row.items.filter { it.scannedStatus == "Matched" } }
-
-    val matchedQty = matchedItems.size
-    val grossWeight = row.items
-        .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
-        .toBigDecimal()
-
-    val matchedWeight = matchedItems
-        .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
-        .toBigDecimal()
+fun TableDataRow(row: TableRow, currentLevel: String, onRowClick: () -> Unit) {
+    // ✅ Optimized: Use sequence and memoize computations
+    val computedValues = remember(row.items) {
+        val qty = row.items.size
+        val matchedItems = row.items.asSequence()
+            .filter { it.currentScannedStatus == "Matched" } // Use currentScannedStatus
+            .toList()
+        val matchedQty = matchedItems.size
+        val grossWeight = row.items.asSequence()
+            .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
+            .toBigDecimal()
+        val matchedWeight = matchedItems.asSequence()
+            .sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
+            .toBigDecimal()
+        object {
+            val qty = qty
+            val matchedQty = matchedQty
+            val grossWeight = grossWeight
+            val matchedWeight = matchedWeight
+        }
+    }
+    val qty = computedValues.qty
+    val matchedQty = computedValues.matchedQty
+    val grossWeight = computedValues.grossWeight
+    val matchedWeight = computedValues.matchedWeight
 
     Row(
         modifier = Modifier
@@ -2146,78 +2302,15 @@ fun TableDataRow(
         TableCell(formatTo3Decimals(grossWeight), colWeightWidth)
         TableCell("$matchedQty", colMatchedQtyWidth)
         TableCell(formatTo3Decimals(matchedWeight), colMatchedWtWidth)
-       /* val status = when {
-            row.items.all { it.scannedStatus == "Matched" } -> "Matched"
-            row.items.all { it.scannedStatus == "Unmatched" } -> "Unmatched"
-            else -> "Unmatched"
-        }*/
-
         val status = when {
-            matchedQty == 0 -> "Unmatched"
-            matchedQty == row.items.size -> "Matched"
-            else -> "Unmatched" // partial match → still Unmatched icon
+            row.items.all { it.currentScannedStatus == "Matched" } -> "Matched" // Use currentScannedStatus
+            row.items.all { it.currentScannedStatus == "Unmatched" } -> "Unmatched" // Use currentScannedStatus
+            else -> "Unmatched"
         }
         StatusIconCell(status, colStatusWidth)
     }
 
 }
-
-private fun isItemMatched(
-    item: BulkItem,
-    currentLevel: String,
-    designMatchedMap: Map<String, Set<String>>,
-    productMatchedMap: Map<String, Set<String>>,
-    categoryMatchedMap: Map<String, Set<String>>,
-    isScanning: Boolean,
-    scannedKeys: Set<String>,
-    matchedEpcs: Set<String>
-): Boolean {
-    val key = item.tagKey() ?: return false
-
-    return when {
-        // 🔥 Live scan — always show while scanning
-        isScanning -> {
-            key in scannedKeys || key in matchedEpcs
-        }
-
-        // ✅ Design scope
-        currentLevel == "Design" || currentLevel == "DesignItems" -> {
-            val design = item.design ?: return false
-            designMatchedMap[design]?.contains(key) == true
-        }
-
-        // ✅ Product scope → fallback to Design matches
-        currentLevel == "Product" -> {
-            val product = item.productName ?: return false
-
-            // 1️⃣ If product-level scan exists, use it
-            productMatchedMap[product]?.contains(key)
-            // 2️⃣ Otherwise, derive from design scan
-                ?: run {
-                    val design = item.design ?: return false
-                    designMatchedMap[design]?.contains(key) == true
-                }
-        }
-
-// ✅ Category scope → fallback to Design matches
-        currentLevel == "Category" -> {
-            val category = item.category ?: return false
-
-            // 1️⃣ If category-level scan exists, use it
-            categoryMatchedMap[category]?.contains(key)
-            // 2️⃣ Otherwise, derive from design scan
-                ?: run {
-                    val design = item.design ?: return false
-                    designMatchedMap[design]?.contains(key) == true
-                }
-        }
-
-        else -> false
-    }
-}
-
-
-
 
 @Composable
 fun TableCell(text: String, width: Dp) {
@@ -2323,5 +2416,36 @@ fun formatTo3Decimals(b: BigDecimal): String {
     return b.setScale(3, RoundingMode.HALF_UP).toPlainString()
 }
 
+data class ScannedBulkItem(
+    val originalBulkItem: BulkItem,
+    val currentScannedStatus: String // "Matched" or "Unmatched"
+) {
+    // Delegate properties for convenient access, or access originalBulkItem directly
+    val category: String? get() = originalBulkItem.category
+    val productName: String? get() = originalBulkItem.productName
+    val design: String? get() = originalBulkItem.design
+    val epc: String? get() = originalBulkItem.epc
+    val rfid: String? get() = originalBulkItem.rfid
+    val itemCode: String? get() = originalBulkItem.itemCode
+    val grossWeight: String? get() = originalBulkItem.grossWeight
+    val netWeight: String? get() = originalBulkItem.netWeight
+    val boxName: String? get() = originalBulkItem.boxName
+    val counterName: String? get() = originalBulkItem.counterName
+    val branchName: String? get() = originalBulkItem.branchName
+    val branchType: String? get() = originalBulkItem.branchType
+    val purity: String? get() = originalBulkItem.purity
+    val counterId: Int? get() = originalBulkItem.counterId
+    val categoryId: Int? get() = originalBulkItem.categoryId
+    val productId: Int? get() = originalBulkItem.productId
+    val designId: Int? get() = originalBulkItem.designId
+    // Add other properties you use from BulkItem here
+}
+
 data class MenuItem(val title: String, val iconRes: Int,val count: Int? = null)
-data class TableRow(val label: String, val items: List<BulkItem>)
+data class TableRow(val label: String, val items: List<ScannedBulkItem>)
+
+fun ScannedBulkItem.toBulkItem(): BulkItem {
+    return originalBulkItem.copy(
+        isScanned = this.currentScannedStatus == "Matched"
+    )
+}

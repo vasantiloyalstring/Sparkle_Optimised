@@ -130,11 +130,11 @@ fun InventoryMenuScreen(
 
 
     val menuItems = listOf(
-        localizedContext.getString(R.string.scan_display) to R.drawable.scan_barcode,
-        localizedContext.getString(R.string.scan_counter) to R.drawable.scan_counter,
-        localizedContext.getString(R.string.scan_box) to R.drawable.scan_box,
-        localizedContext.getString(R.string.scan_branch) to R.drawable.scan_branch,
-        localizedContext.getString(R.string.exhibition) to R.drawable.scan_exhibition
+        "Scan Display" to R.drawable.scan_barcode,
+        "Scan Counter" to R.drawable.scan_counter,
+        "Scan Box" to R.drawable.scan_box,
+        "Scan Branch" to R.drawable.scan_branch,
+        "Exhibition" to R.drawable.scan_exhibition
     )
 
     Scaffold(
