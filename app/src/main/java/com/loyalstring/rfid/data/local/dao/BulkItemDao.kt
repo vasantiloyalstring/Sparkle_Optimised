@@ -170,4 +170,10 @@ interface BulkItemDao {
 """)
     suspend fun getMatchedPaged(limit: Int, offset: Int): List<BulkItem>
 
+ @Query("SELECT * FROM bulk_items")
+ fun getAllBulkItemsFlow(): Flow<List<BulkItem>>
+
+ @Query("SELECT * FROM bulk_items")
+ suspend fun getAllBulkItemsOnce(): List<BulkItem>
+
 }

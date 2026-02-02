@@ -227,6 +227,9 @@ class BulkViewModel @Inject constructor(
     fun setBulkMode(value: Boolean) {
         _isBulkMode.value = value
     }
+
+    val savedBulkItemsFlow = bulkItemDao.getAllBulkItemsFlow()
+
     private val _pendingSingleIndex = MutableStateFlow<Int?>(null)
     val pendingSingleIndex = _pendingSingleIndex.asStateFlow()
 
@@ -2494,7 +2497,7 @@ viewModelScope.launch {
 }
 }*/
 
-fun restoreScanFromSavedBulkItems(allItems: List<BulkItem>) {
+/*fun restoreScanFromSavedBulkItems(allItems: List<BulkItem>) {
 
 // 1️⃣ Extract matched EPCs from saved data
 val restoredMatchedEpcs = allItems
@@ -2510,11 +2513,23 @@ _matchedEpcSet.value = restoredMatchedEpcs
 
 // 4️⃣ Stop scanning mode
 _isScanning.value = false
-}
+}*/
 
 
 
+    fun restoreScanFromDatabase() {
+        viewModelScope.launch {
+            val savedItems = bulkItemDao.getAllBulkItemsOnce()
 
+            _matchedEpcSet.value = savedItems
+                .filter { it.scannedStatus.equals("Matched", true) }
+                .mapNotNull { it.epc ?: it.itemCode }
+                .map { it.trim().uppercase() }
+                .toSet()
+
+            _scannedFilteredItems.value = savedItems
+        }
+    }
 
 fun saveScanResultLocally(items: List<BulkItem>) {
 viewModelScope.launch(Dispatchers.IO) {

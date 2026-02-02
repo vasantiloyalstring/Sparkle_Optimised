@@ -1643,8 +1643,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         "Resume Scan" -> {
                             scope.launch {
 
-
-                                bulkViewModel.restoreScanFromSavedBulkItems(allItems)
+                                bulkViewModel. restoreScanFromDatabase()
+                              //  bulkViewModel.restoreScanFromSavedBulkItems(allItems)
 
                                 selectedMenu = MENU_ALL
                                 currentLevel = "DesignItems"
