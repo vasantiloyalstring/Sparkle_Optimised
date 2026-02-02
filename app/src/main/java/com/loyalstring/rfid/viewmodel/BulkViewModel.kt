@@ -1945,10 +1945,36 @@ if (
     return null
 }
 
+    val missingReason = when {
+        serverItem.itemCode.isNullOrBlank() ->
+            "ItemCode is null or blank"
+
+        serverItem.categoryId == null || serverItem.categoryName.isNullOrBlank() ->
+            "Category is null"
+
+        serverItem.productId == null || serverItem.productName.isNullOrBlank() ->
+            "Product is null"
+
+        else -> null
+    }
+
+    if (missingReason != null) {
+        skippedItems.add(
+            SyncSkippedItem(
+                itemCode = "${serverItem.itemCode ?: "UNKNOWN"} - ${missingReason}",
+                rfid = serverItem.rfidCode,
+                tid = serverItem.tidNumber,
+                reason = missingReason
+            )
+        )
+
+        return null
+    }
+
 val item = serverItem.toBulkItem()
 
 return when {
-    tagType == "webreusable" -> {
+   /* tagType == "webreusable" -> {
         if (item.rfid.isNullOrBlank()) {
             skippedItems.add(
                 SyncSkippedItem(
@@ -1965,7 +1991,35 @@ return when {
             }
             item
         }
+    }*/
+    tagType == "webreusable" -> {
+
+        val hasItemCode = !item.itemCode.isNullOrBlank()
+        val hasRfid = !item.rfid.isNullOrBlank()
+        val hasEpcOrTid = !item.epc.isNullOrBlank() || !item.tid.isNullOrBlank()
+
+        // ❌ Skip only if NOTHING usable
+        if (!hasItemCode || (!hasRfid && !hasEpcOrTid)) {
+            skippedItems.add(
+                SyncSkippedItem(
+                    itemCode = "${item.itemCode ?: "UNKNOWN"} - No RFID/EPC/TID",
+                    rfid = item.rfid,
+                    tid = item.tid,
+                    reason = "RFID, EPC and TID all blank"
+                )
+            )
+            null
+        } else {
+            // ✅ If RFID present but EPC missing → generate EPC
+            if (!item.rfid.isNullOrBlank() && item.epc.isNullOrBlank()) {
+                item.epc = syncAndMapRow(item.rfid!!)
+            }
+
+            // ✅ VALID ITEM → ADD
+            item
+        }
     }
+
 
     tagType != "webreusable" -> {
         if (item.itemCode.isNullOrBlank()) {
@@ -2115,12 +2169,18 @@ val data = tags.mapIndexed { index, tag ->
        else -> epc               // ✅ LAST FALLBACK
    }*/
 
-    val finalCode = rfid?.takeIf { it.isNotBlank() }
+   // val finalCode = rfid?.takeIf { it.isNotBlank() }
+    val finalCode = when {
+        !rfid.isNullOrBlank() -> rfid
+        ascii.isNotBlank() -> ascii
+        else -> epc
+    }
 
-   Log.d(
-       "DEBUG_SEND",
-       "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
-   )
+    Log.d(
+        "DEBUG_SEND",
+        "INDEX=$index EPC=$epc RFID=$rfid ASCII='$ascii' FINAL='$finalCode'"
+    )
+
 
    ScannedDataToService(
        tIDValue = tag.epc,

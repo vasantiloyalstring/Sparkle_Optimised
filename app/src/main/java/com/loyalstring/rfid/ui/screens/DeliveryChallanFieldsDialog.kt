@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
+import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
 import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.poppins
@@ -38,6 +39,7 @@ import java.util.*
 
 @Composable
 fun InvoiceFieldsDialog(
+    selectedItem: ChallanDetails?,
     onDismiss: () -> Unit,
     onConfirm: (InvoiceFields) -> Unit,
     branchList: List<BranchModel>,
@@ -56,6 +58,21 @@ fun InvoiceFieldsDialog(
 
     var expandedBranch by remember { mutableStateOf(false) }
     var expandedSalesman by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedItem, branchList) {
+        if (selectedItem != null && branchList.isNotEmpty()) {
+
+            val branch = branchList.firstOrNull {
+                it.Id == selectedItem.BranchId
+            }
+
+            selectedBranch = branch?.BranchName ?: ""
+            date = "" ?: ""
+            fine = selectedItem.FinePer ?: ""
+            wastage = selectedItem.fixWastage ?: ""
+            salesman = selectedItem.CustomerName ?: ""
+        }
+    }
 
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language

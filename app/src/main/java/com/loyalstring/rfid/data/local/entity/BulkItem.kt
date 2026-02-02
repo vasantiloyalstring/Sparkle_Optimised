@@ -19,7 +19,7 @@ import kotlinx.parcelize.Parcelize
 data class BulkItem(
     @PrimaryKey(autoGenerate = true)
     val id:Int =0,
-    val bulkItemId: Int,
+    val bulkItemId: Int=0,
 
     val productName: String?,
     val itemCode: String?,

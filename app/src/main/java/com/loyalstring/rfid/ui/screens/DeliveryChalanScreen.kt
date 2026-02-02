@@ -2342,6 +2342,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
 
     if (showInvoiceDialog) {
         InvoiceFieldsDialog(
+            selectedItem= productList.get(0),
             onDismiss = { showInvoiceDialog = false },
             branchList = branchList,
             salesmanList = customerSuggestions, // ya jo bhi tu use kar raha hai
