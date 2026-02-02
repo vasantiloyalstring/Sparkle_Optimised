@@ -118,6 +118,7 @@ fun DeliveryChalanScreen(
     val productListViewModel: ProductListViewModel = hiltViewModel()
     var showInvoiceDialog by remember { mutableStateOf(false) }
     var invoiceFields by remember { mutableStateOf<InvoiceFields?>(null) }
+
     // Sample branch/salesman lists (can come from API)
     //val branchList = listOf("Main Branch", "Sub Branch", "Online Branch")
     //val salesmanList = listOf("Rohit", "Priya", "Vikas")
