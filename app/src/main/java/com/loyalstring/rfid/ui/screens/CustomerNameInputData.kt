@@ -49,6 +49,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.viewmodel.OrderViewModel
 import java.util.Locale
 
 
@@ -69,9 +73,10 @@ fun CustomerNameInputData(
     employeeClientCode: String? = null,
     employeeId: String? = null
 ) {
+
     var isExpanded by remember { mutableStateOf(false) }
     var showAddCustomerDialog by remember { mutableStateOf(false) }
-
+    val orderViewModel: OrderViewModel = hiltViewModel()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -80,6 +85,8 @@ fun CustomerNameInputData(
     )
 
     val context: Context = LocalContext.current
+
+    val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
     val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
@@ -276,6 +283,7 @@ fun CustomerNameInputData(
             onSaveCustomer = {
                 onSaveCustomer(it)
                 showAddCustomerDialog = false
+                orderViewModel.getAllEmpList(employee?.clientCode.toString())
             },
             employeeClientCode = employeeClientCode,
             employeeId = employeeId
