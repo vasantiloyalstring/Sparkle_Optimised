@@ -54,15 +54,16 @@ import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
 import com.loyalstring.rfid.data.model.login.Employee
-import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.ui.utils.formatDate_ddMMyyyy
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -92,7 +93,7 @@ fun OrderDetailsDialog(
 
     selectedCustomerId: Int?,
     selectedCustomer: EmployeeList?,
-    selectedItem: ItemCodeResponse,
+    selectedItem: OrderItem,
     branchList: List<BranchModel>,
     onDismiss: () -> Unit,
     onSave: (OrderDetails) -> Unit,
@@ -100,7 +101,7 @@ fun OrderDetailsDialog(
 
     ) {
 
-    Log.e("TAG", "RFID Code: ${selectedItem?.RFIDCode}")
+    Log.e("TAG", "RFID Code: ${selectedItem?.rfidCode}")
 
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
@@ -120,19 +121,19 @@ fun OrderDetailsDialog(
     var deliverDate by remember { mutableStateOf("") }
 
     LaunchedEffect(selectedItem) {
-        branch = selectedItem.BranchName ?: ""
-        exhibition = "" // if you store this anywhere in selectedItem
-        remark = "" // same as above
-        purity = selectedItem.PurityName ?: ""
-        size = selectedItem.Size ?: ""
-        length = "" // if applicable
-        typeOfColors = selectedItem.Colour ?: ""
-        screwType = "" // if stored
-        polishType = "" // if stored
-        finePercentage = selectedItem.FinePercent ?: ""
-        wastage = selectedItem.MakingPercentage ?: ""
-        orderDate = "" // if you want to show default
-        deliverDate = ""
+        branch = selectedItem.branchName ?: ""
+        exhibition = selectedItem.exhibition// if you store this anywhere in selectedItem
+        remark = selectedItem.remark // same as above
+        purity = selectedItem.purity ?: ""
+        size = selectedItem.size ?: ""
+        length = selectedItem.length // if applicable
+        typeOfColors = selectedItem.typeOfColor ?: ""
+        screwType = selectedItem.screwType // if stored
+        polishType = selectedItem.polishType // if stored
+        finePercentage = selectedItem.finePer ?: ""
+        wastage = selectedItem.makingPercentage ?: ""
+        orderDate = formatDate_ddMMyyyy(selectedItem.orderDate) // if you want to show default
+        deliverDate = formatDate_ddMMyyyy(selectedItem.deliverDate)
     }
 
     val IST = ZoneId.of("Asia/Kolkata")
@@ -164,6 +165,21 @@ fun OrderDetailsDialog(
     var expandedColors by remember { mutableStateOf(false) }
     var expandedScrew by remember { mutableStateOf(false) }
     var expandedPolish by remember { mutableStateOf(false) }
+    val todayDate = formatDate(
+        ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).toString()
+    )
+
+    fun formatOrToday(date: String): String {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        return try {
+            if (date.isBlank())
+                LocalDate.now().format(formatter)
+            else
+                LocalDate.parse(date).format(formatter)
+        } catch (e: Exception) {
+            LocalDate.now().format(formatter)
+        }
+    }
 
     // Inside @Composable
 
@@ -847,8 +863,9 @@ fun OrderDetailsDialog(
                                 polishType = polishType,
                                 finePercentage = finePercentage,
                                 wastage = wastage,
-                                orderDate = orderDate?.takeIf { it.isNotBlank() && !it.equals("null", true) } ?: nowIsoDateTime(),
-                                deliverDate = deliverDate?.takeIf { it.isNotBlank() && !it.equals("null", true) } ?: nowIsoDateTime())
+                                orderDate = formatOrToday(orderDate),
+                                deliverDate = formatOrToday(deliverDate)
+                            )
 
                             Log.d("",""+typeOfColors+" "+screwType+""+polishType+" "+orderDate+" "+deliverDate)
 
@@ -985,7 +1002,9 @@ fun <T> DropdownMenuField(
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
-                    Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(

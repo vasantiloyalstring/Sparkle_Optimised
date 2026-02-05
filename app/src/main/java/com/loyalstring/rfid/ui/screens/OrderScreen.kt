@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +79,7 @@ import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
+import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.NetworkUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -97,6 +99,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.Locale
 
 
@@ -439,6 +442,24 @@ fun OrderScreen(
                             it.rfid?.contains(query, ignoreCase = true) == true
                 }
             }
+        }
+    }
+
+    val addCustomerState by orderViewModel.addEmpReposnes.observeAsState()
+    LaunchedEffect(addCustomerState) {
+        when (val state = addCustomerState) {
+            is Resource.Success -> {
+                Toast.makeText(
+                    context,
+                    state.message ?: "Customer added successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            is Resource.Error -> {
+                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+            }
+            is Resource.Loading -> {}
+            null -> {}
         }
     }
 
@@ -1962,7 +1983,7 @@ fun OrderScreen(
         OrderDetailsDialog(
             selectedCustomerId = customerId,
             selectedCustomer = selectedCustomer,
-            selectedItem = selectedItem!!,
+            selectedItem = productList.get(0),
             branchList = branchList,
             onDismiss = { showOrderDetailsDialog = false },
             onSave = { details ->
@@ -2026,6 +2047,11 @@ fun OrderScreen(
                         val makingAmt = makingPerGram + makingFixed + ((makingPercent / 100.0) * netWt) + fixWastage
                         val newItemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
                         Log.d("",""+details.deliverDate+" "+details.orderDate+""+details.polishType)
+                        val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+                        val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+                        val order: Date? = inputFormat.parse(details.orderDate)
+                        val delivery: Date? = inputFormat.parse(details.deliverDate)
 
                         productList[i] = old.copy(
 
@@ -2046,8 +2072,8 @@ fun OrderScreen(
                             makingPercentage = details.wastage,
 
                             // normalized dates apply to all
-                            orderDate = details.orderDate?: nowIsoDateTime(),
-                            deliverDate = details.deliverDate?:nowIsoDateTime(),
+                            orderDate = outputFormat.format(order),
+                            deliverDate = outputFormat.format(delivery),
 
                             // update rate + amounts
                             todaysRate = rate.toString(),

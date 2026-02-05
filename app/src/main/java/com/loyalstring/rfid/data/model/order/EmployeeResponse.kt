@@ -42,4 +42,6 @@ data class EmployeeResponse (  val FirstName: String = "",
                                val Id: Int = 0,
                                val CreatedOn: String = "",
                                val LastUpdated: String = "",
-                               val StatusType: Boolean = true)
+                               val StatusType: Boolean = true,
+                               @SerializedName("Message")
+                               val message: String? = null)

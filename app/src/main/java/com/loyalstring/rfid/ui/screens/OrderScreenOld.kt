@@ -3250,7 +3250,7 @@ fun ItemCodeInputRow(
             OrderDetailsDialog(
                 customerId,
                 selectedCustomer,
-                selectedItem,
+                productList.get(0),
                 branchList,
                 onDismiss = { showOrderDialog = false },
                 onSave = { showOrderDialog = false }

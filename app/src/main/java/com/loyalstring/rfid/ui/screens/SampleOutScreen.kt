@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,7 @@ import com.loyalstring.rfid.data.model.sampleOut.SampleOutIssueItem
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintData
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutPrintItem
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutUpdateRequest
+import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -182,6 +184,24 @@ fun SampleOutScreen(
                 }
             }
             else -> emptyList()
+        }
+    }
+
+    val addCustomerState by orderViewModel.addEmpReposnes.observeAsState()
+    LaunchedEffect(addCustomerState) {
+        when (val state = addCustomerState) {
+            is Resource.Success -> {
+                Toast.makeText(
+                    context,
+                    state.message ?: "Customer added successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            is Resource.Error -> {
+                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+            }
+            is Resource.Loading -> {}
+            null -> {}
         }
     }
 

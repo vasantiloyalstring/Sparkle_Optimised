@@ -1793,8 +1793,12 @@ viewModelScope.launch(Dispatchers.IO) {
 }
 }
 */
+val usedEpcSet = mutableSetOf<String>()
 fun syncItems(context: Context) {
-syncScope.scope.launch(Dispatchers.IO) {
+
+    usedEpcSet.clear()
+    //repository
+    syncScope.scope.launch(Dispatchers.IO) {
 
     val UI_UPDATE_INTERVAL = 700L
     var lastUiUpdate = System.currentTimeMillis()
@@ -1827,7 +1831,7 @@ syncScope.scope.launch(Dispatchers.IO) {
             // 🔹 Mapping stays in ViewModel (SAFE)
             mapItem = { serverItem ->
                 try {
-                    mapServerItemToBulkItem(serverItem, tagType,skippedItems)
+                    mapServerItemToBulkItem(serverItem, tagType,skippedItems,usedEpcSet)
                 } catch (e: Exception) {
 
                     skippedItems.add(
@@ -1929,7 +1933,8 @@ return when {
 private fun mapServerItemToBulkItem(
 serverItem: AlllabelResponse.LabelItem,
 tagType: String,
-skippedItems: MutableList<SyncSkippedItem>
+skippedItems: MutableList<SyncSkippedItem>,
+usedEpcSet: MutableSet<String>
 ): BulkItem? {
 
 // ❌ Status invalid
@@ -2016,6 +2021,24 @@ return when {
             // ✅ If RFID present but EPC missing → generate EPC
             if (!item.rfid.isNullOrBlank() && item.epc.isNullOrBlank()) {
                 item.epc = syncAndMapRow(item.rfid!!)
+            }
+
+
+            // 🔥 DUPLICATE EPC CHECK
+            val epcKey = item.epc?.trim()?.uppercase()
+            if (!epcKey.isNullOrBlank()) {
+                if (usedEpcSet.contains(epcKey)) {
+                    skippedItems.add(
+                        SyncSkippedItem(
+                            itemCode = "${item.itemCode ?: "UNKNOWN"} - Duplicate EPC",
+                            rfid = item.rfid,
+                            tid = item.tid,
+                            reason = "Duplicate EPC detected"
+                        )
+                    )
+                    return null
+                }
+                usedEpcSet.add(epcKey)
             }
 
             // ✅ VALID ITEM → ADD

@@ -2,6 +2,7 @@ package com.example.sparklepos.models.loginclasses.customerBill
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.google.gson.annotations.SerializedName
 
 @Entity(tableName = "customer")
 data class EmployeeList(
@@ -49,5 +50,8 @@ data class EmployeeList(
     val Remark: String? = null,
     val Area: String? = null,
     val City: String? = null,
-    val Country: String? = null
+    val Country: String? = null,
+
+    @SerializedName("Message")
+val message: String? = null
 )

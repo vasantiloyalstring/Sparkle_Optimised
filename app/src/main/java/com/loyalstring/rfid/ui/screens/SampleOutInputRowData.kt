@@ -113,7 +113,7 @@ fun SampleOutInputRowData(
                     ) {
                         if (itemCode.text.isEmpty()) {
                             Text(
-                                text = localizedContext.getString(R.string.enter_rfid_itemcode),
+                                text = localizedContext.getString(R.string.enter_sample_out),
                                 fontSize = 12.sp,
                                 color = Color.Gray
                             )

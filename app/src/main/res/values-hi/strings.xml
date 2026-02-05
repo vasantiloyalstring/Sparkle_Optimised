@@ -382,5 +382,6 @@
     <string name="scan_box">स्कैन बॉक्स</string>
     <string name="scan_branch">स्कैन शाखा</string>
     <string name="exhibition">प्रदर्शनी</string>
+    <string name="enter_sample_out">सैंपल आउट नंबर दर्ज करें</string>
 
 </resources>

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +76,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.items
 import com.loyalstring.rfid.worker.LocaleHelper
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -137,7 +137,10 @@ fun ProductManagementScreen(
 
     var dialogMessage by remember { mutableStateOf<String?>(null) }
     val syncStatus by viewModel.syncStatusText.collectAsStateWithLifecycle(initialValue = "")
-
+    val expanded = remember { mutableStateOf(false) }
+    val maxItems = if (expanded.value) skipped.size else 10
+    val showList = skipped.take(maxItems)
+    val more = skipped.size - showList.size
 
     val scanTrigger by viewModel.scanTrigger.collectAsStateWithLifecycle()
     var isScanning by remember { mutableStateOf(false) }
@@ -305,7 +308,8 @@ fun ProductManagementScreen(
             syncedCount = syncSynced,
             skippedItemCodes = skipped,
             onDismiss = { showSuccessDialog = false
-                viewModel.clearSyncCompleted() }
+                viewModel.clearSyncCompleted() },
+            expanded=expanded
         )
     }
 
@@ -602,7 +606,8 @@ fun SyncSuccessDialog(
     totalCount: Int,
     syncedCount: Int,
     skippedItemCodes: List<String>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    expanded: MutableState<Boolean>
 ) {
 
     val showList = skippedItemCodes.take(10)   // ✅ optional: show only 10
@@ -651,7 +656,7 @@ fun SyncSuccessDialog(
                     )
 
                     // ✅ NEW: show not synced item codes
-                    if (skippedItemCodes.isNotEmpty()) {
+                   /* if (skippedItemCodes.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "Not Synced (${skippedItemCodes.size}):",
@@ -675,7 +680,48 @@ fun SyncSuccessDialog(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = "+ $more more...", fontSize = 12.sp, color = Color.Gray)
                         }
+                    }*/
+                    // ✅ Skipped items section
+                    if (skippedItemCodes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Not Synced (${skippedItemCodes.size}):",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFE82E5A)
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp) // 🔒 fixed height → button safe
+                        ) {
+                            items(showList) { code ->
+                                Text(
+                                    text = "• $code",
+                                    fontSize = 12.sp,
+                                    color = Color.Black
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                            }
+                        }
+
+                        // ✅ SHOW MORE / LESS
+                        if (skippedItemCodes.size > 10) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (expanded.value) "Show less" else "Show more (${more})",
+                                fontSize = 12.sp,
+                                color = Color(0xFF3053F0),
+                                modifier = Modifier
+                                    .clickable { expanded.value = !expanded.value }
+                            )
+                        }
                     }
+
 
                     Spacer(modifier = Modifier.height(20.dp))
 

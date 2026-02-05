@@ -42,7 +42,7 @@ fun schedulePeriodicSync(
         .build()
 
     val request = PeriodicWorkRequestBuilder<SyncDataWorker>(
-        intervalMinutes.coerceAtLeast(15),
+        intervalMinutes.coerceAtLeast(intervalMinutes),
         TimeUnit.MINUTES
     )
         .setConstraints(constraints)

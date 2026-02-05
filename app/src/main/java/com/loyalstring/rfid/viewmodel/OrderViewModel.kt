@@ -147,9 +147,24 @@ class OrderViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     val body = response.body()
                     Log.d("orderViewModel", "Response Body: $body")
-                    if (body != null) {
-                        _addEmpResponse.value = Resource.Success(body)
-                    } else {
+
+                    if (response.isSuccessful) {
+                        val body = response.body()
+
+                        if (body?.message != null) {
+                            // ❌ logical error (even though 200)
+                            _addEmpResponse.value =
+                                Resource.Error(body.message)
+                        } else if (body?.Id != null) {
+                            // ✅ real success
+                            _addEmpResponse.value =
+                                Resource.Success(body, "Employee added successfully")
+                        } else {
+                            _addEmpResponse.value =
+                                Resource.Error("Unknown server response")
+                        }
+
+                    }  else {
                         saveEmployeeOffline(request)
                         _addEmpResponse.value = Resource.Error("Invalid response data")
                     }

@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.repository
 
+import android.util.Log
 import com.loyalstring.rfid.data.local.dao.BulkItemDao
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.EpcDto
@@ -64,6 +65,7 @@ interface BulkRepository {
 
     suspend fun syncAndSaveBulkItems(clientCode: String) {
         val response = syncBulkItemsFromServer(ClientCodeRequest(clientCode))
+        Log.d("@@ offline sync","response"+response)
 
         val bulkItems = response.map { it.toBulkItem() }
 

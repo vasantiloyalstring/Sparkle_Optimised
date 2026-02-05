@@ -346,19 +346,22 @@ fun DeliveryChalanScreen(
 
 
     val addCustomerState by orderViewModel.addEmpReposnes.observeAsState()
-
     LaunchedEffect(addCustomerState) {
-        when (addCustomerState) {
+        when (val state = addCustomerState) {
             is Resource.Success -> {
-                Toast.makeText(context, "✅ Customer added successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    state.message ?: "Cmployee added successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             is Resource.Error -> {
-                Toast.makeText(context, "❌ Failed to add customer!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
             }
-            else -> { /* Loading or Idle */ }
+            is Resource.Loading -> {}
+            null -> {}
         }
     }
-
     /*LaunchedEffect(tags) {
         if (tags.isNotEmpty()) {
             Log.d("RFIDScan", "📦 Received ${tags.size} scanned tags: $tags")
