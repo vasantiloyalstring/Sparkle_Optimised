@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
@@ -797,7 +798,14 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                     "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
                             //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
                             //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
-                            val json = Gson().toJson(scannedItems)
+                            //val json = Gson().toJson(scannedItems)
+                            val root = JsonObject()
+
+                            root.addProperty("ClientCode", clientCode)
+                            root.add("Items", Gson().toJsonTree(scannedItems))
+                            val json = root.toString()
+
+                            //Log.d("JSON_BODY", json)
                             val file = writeToFile(context, json)
                             Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")
                             //scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 2000)
