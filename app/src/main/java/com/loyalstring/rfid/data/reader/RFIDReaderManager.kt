@@ -27,6 +27,7 @@ class RFIDReaderManager @Inject constructor(
     private var soundPool: SoundPool? = null
     private var volumeRatio = 0f
     private var am: AudioManager? = null
+    private val soundStreamIds = mutableMapOf<Int, Int>()
 
     fun initReader(): Boolean {
         return try {
@@ -85,14 +86,41 @@ class RFIDReaderManager @Inject constructor(
         am = context.getSystemService(AUDIO_SERVICE) as AudioManager
     }
 
-    fun playSound(type: Int = 1, loop: Int = 1) {
+   /* fun playSound(type: Int = 1, loop: Int = 1) {
         val maxVolume = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
         val currentVolume = am?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
         volumeRatio = currentVolume / maxVolume
         soundMap[type]?.let {
             soundPool?.play(it, volumeRatio, volumeRatio, 1, loop, 1f)
         }
-    }
+    }*/
+   fun playSound(id: Int, loop: Int = 0) {
+       try {
+           val audioMaxVolume =
+               am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
+
+           val audioCurrentVolume =
+               am?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
+
+           volumeRatio = audioCurrentVolume / audioMaxVolume
+
+           val soundId = soundMap[id] ?: return
+
+           val streamId = soundPool?.play(
+               soundId,
+               volumeRatio,   // left volume
+               volumeRatio,   // right volume
+               1,             // priority
+               loop,          // loop count (0 = no loop, -1 = infinite)
+               1f             // playback rate
+           ) ?: return
+
+           soundStreamIds[id] = streamId   // ✅ SAME as Java
+       } catch (e: Exception) {
+           e.printStackTrace()
+       }
+   }
+
 
     fun stopSound(id: Int) {
         soundPool?.stop(id)

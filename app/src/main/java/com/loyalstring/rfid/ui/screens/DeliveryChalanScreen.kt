@@ -351,7 +351,7 @@ fun DeliveryChalanScreen(
             is Resource.Success -> {
                 Toast.makeText(
                     context,
-                    state.message ?: "Cmployee added successfully",
+                    state.message ?: "Customer added successfully",
                     Toast.LENGTH_SHORT
                 ).show()
             }
