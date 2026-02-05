@@ -1359,9 +1359,15 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                                 // build + generate file (IO)
                                 val reportFile = withContext(Dispatchers.IO) {
-                                    val summaryList = scanDisplayViewModel.buildSummary(itemsForReport.map { it.originalBulkItem })
-                                    val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(itemsForReport.map { it.originalBulkItem })
-
+                                    // Copy BulkItem with correct scannedStatus from ScannedBulkItem
+                                    val bulkItemsWithStatus = itemsForReport.map {
+                                        it.originalBulkItem.copy(scannedStatus = it.currentScannedStatus)
+                                    }
+                                    val summaryList = scanDisplayViewModel.buildSummary(bulkItemsWithStatus)
+                                    val (matched, unmatched) = scanDisplayViewModel.buildDetailedLists(bulkItemsWithStatus)
+                                    /*Log.d("matched_length", ""+summaryList.size)
+                                    Log.d("matched_length", ""+matched.size)
+                                    Log.d("matched_length", ""+unmatched.size)*/
                                     /*scanDisplayViewModel.generateScanReportExcel(
                                         context, summaryList, matched, unmatched
                                     )*/
