@@ -1,6 +1,5 @@
 package com.loyalstring.rfid.viewmodel
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+
 import ScannedDataToService
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -27,9 +26,6 @@ import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.ScannedItem
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.login.SyncSkippedItem
-import com.loyalstring.rfid.data.model.order.Diamond
-import com.loyalstring.rfid.data.model.order.Stone
-
 import com.loyalstring.rfid.data.reader.BarcodeReader
 import com.loyalstring.rfid.data.reader.RFIDReaderManager
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
@@ -39,7 +35,6 @@ import com.loyalstring.rfid.di.SyncScope
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.DropdownRepository
 import com.loyalstring.rfid.ui.screens.hexToAscii
-import com.loyalstring.rfid.ui.screens.showToast
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.toBulkItem
@@ -54,6 +49,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -61,7 +57,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -76,7 +71,6 @@ import java.net.SocketException
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -491,18 +485,31 @@ class BulkViewModel @Inject constructor(
         }*/
     }
 
+    /*  it working all counter and all
+       init {
+            viewModelScope.launch {
+                bulkRepository.getAllBulkItems().collect { items ->
+
+                    // ✅ THIS WAS MISSING (CRITICAL)
+                    _allItems.value = items
+                    withContext(Dispatchers.Main) {
+                        preloadFilters(items)
+                    }
+
+                    _scannedFilteredItems.value = items
+                    isDataLoaded = true
+                }
+            }
+        }*/
+
     init {
         viewModelScope.launch {
-            bulkRepository.getAllBulkItems().collect { items ->
-
-                // ✅ THIS WAS MISSING (CRITICAL)
-                _allItems.value = items
-
-                preloadFilters(items)
-
-                _scannedFilteredItems.value = items
-                isDataLoaded = true
-            }
+            bulkRepository.getMinimalItemsFlow()   // 👈 NOT full table
+                .collectLatest { items ->
+                    _allItems.value = items
+                    _scannedFilteredItems.value = items
+                    // ❌ DO NOT preload filters here
+                }
         }
     }
 
@@ -1796,13 +1803,14 @@ viewModelScope.launch(Dispatchers.IO) {
 val usedEpcSet = mutableSetOf<String>()
 fun syncItems(context: Context) {
 
-    usedEpcSet.clear()
+
     //repository
     syncScope.scope.launch(Dispatchers.IO) {
 
     val UI_UPDATE_INTERVAL = 700L
     var lastUiUpdate = System.currentTimeMillis()
     _syncSkippedItems.value = emptyList()
+
     val skippedItems = mutableListOf<SyncSkippedItem>()
     try {
         withContext(Dispatchers.Main) {
@@ -1822,6 +1830,8 @@ fun syncItems(context: Context) {
             ?: "webreusable"
 
         // Clear old data first
+        delay(300)
+        usedEpcSet.clear()
         bulkRepository.clearAllItems()
 
         bulkRepository.syncBulkItemsFromServer(
@@ -1833,16 +1843,17 @@ fun syncItems(context: Context) {
                 try {
                     mapServerItemToBulkItem(serverItem, tagType,skippedItems,usedEpcSet)
                 } catch (e: Exception) {
+                    if (skippedItems.size < 10_000) {
+                        skippedItems.add(
+                            SyncSkippedItem(
+                                itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${e.message ?: "UNKNOWN"}",
+                                rfid = serverItem.rfidCode,
+                                tid = serverItem.tidNumber,
+                                reason = e.message ?: "Mapping failed"
+                            )
 
-                    skippedItems.add(
-                        SyncSkippedItem(
-                            itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${e.message ?: "UNKNOWN"}",
-                            rfid = serverItem.rfidCode,
-                            tid = serverItem.tidNumber,
-                            reason = e.message ?: "Mapping failed"
                         )
-
-                    )
+                    }
 
                     null // IMPORTANT: skip this item
                 }
@@ -1879,12 +1890,12 @@ fun syncItems(context: Context) {
             _toastMessage.emit("✅ Sync completed successfully")
             Log.d("SKIPPED_VM", "Skipped size = ${_syncSkippedItems.value.size}")
 
-            viewModelScope.launch {
-                bulkRepository.getAllBulkItems().collect { items ->
-                    _allItems.value = items
-                    preloadFilters(items)
-                }
-            }
+            /* viewModelScope.launch {
+                 bulkRepository.getAllBulkItems().collect { items ->
+                     _allItems.value = items
+                     preloadFilters(items)
+                 }
+             }*/
         }
 
     } catch (e: SocketException) {
@@ -1942,14 +1953,16 @@ if (
     serverItem.status != "ApiActive" &&
     serverItem.status != "Active"
 ) {
-    skippedItems.add(
-        SyncSkippedItem(
-            itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${serverItem.status ?: "UNKNOWN"}",
-            rfid = serverItem.rfidCode,
-            tid = serverItem.tidNumber,
-            reason = "Inactive status: ${serverItem.status ?: "UNKNOWN"}"
+    if (skippedItems.size < 10_000) {
+        skippedItems.add(
+            SyncSkippedItem(
+                itemCode = "${serverItem.itemCode ?: "UNKNOWN"} and ${serverItem.status ?: "UNKNOWN"}",
+                rfid = serverItem.rfidCode,
+                tid = serverItem.tidNumber,
+                reason = "Inactive status: ${serverItem.status ?: "UNKNOWN"}"
+            )
         )
-    )
+    }
     return null
 }
 
@@ -1967,14 +1980,16 @@ if (
     }
 
     if (missingReason != null) {
-        skippedItems.add(
-            SyncSkippedItem(
-                itemCode = "${serverItem.itemCode ?: "UNKNOWN"} - ${missingReason}",
-                rfid = serverItem.rfidCode,
-                tid = serverItem.tidNumber,
-                reason = missingReason
+        if (skippedItems.size < 10_000) {
+            skippedItems.add(
+                SyncSkippedItem(
+                    itemCode = "${serverItem.itemCode ?: "UNKNOWN"} - ${missingReason}",
+                    rfid = serverItem.rfidCode,
+                    tid = serverItem.tidNumber,
+                    reason = missingReason
+                )
             )
-        )
+        }
 
         return null
     }
@@ -2008,14 +2023,16 @@ return when {
 
         // ❌ Skip only if NOTHING usable
         if (!hasItemCode || (!hasRfid && !hasEpcOrTid)) {
-            skippedItems.add(
-                SyncSkippedItem(
-                    itemCode = "${item.itemCode ?: "UNKNOWN"} - No RFID/EPC/TID",
-                    rfid = item.rfid,
-                    tid = item.tid,
-                    reason = "RFID, EPC and TID all blank"
+            if (skippedItems.size < 10_000) {
+                skippedItems.add(
+                    SyncSkippedItem(
+                        itemCode = "${item.itemCode ?: "UNKNOWN"} - No RFID/EPC/TID",
+                        rfid = item.rfid,
+                        tid = item.tid,
+                        reason = "RFID, EPC and TID all blank"
+                    )
                 )
-            )
+            }
             null
         } else {
             // ✅ If RFID present but EPC missing → generate EPC
@@ -2025,21 +2042,50 @@ return when {
 
 
             // 🔥 DUPLICATE EPC CHECK
+            /* val epcKey = item.epc?.trim()?.uppercase()
+             if (!epcKey.isNullOrBlank()) {
+                 if (usedEpcSet.contains(epcKey)) {
+                     if (skippedItems.size < 10_000) {
+                         skippedItems.add(
+                             SyncSkippedItem(
+                                 itemCode = "${item.itemCode ?: "UNKNOWN"} - Duplicate EPC",
+                                 rfid = item.rfid,
+                                 tid = item.tid,
+                                 reason = "Duplicate EPC detected"
+                             )
+                         )
+                     }
+                     return null
+                 }
+                 usedEpcSet.add(epcKey)
+             }*/
             val epcKey = item.epc?.trim()?.uppercase()
             if (!epcKey.isNullOrBlank()) {
+
+                // ✅ SAFETY GUARD — prevent memory blow-up
+                if (usedEpcSet.size > 300_000) {
+                    usedEpcSet.clear()
+                }
+
+                // 🔁 DUPLICATE CHECK
                 if (usedEpcSet.contains(epcKey)) {
-                    skippedItems.add(
-                        SyncSkippedItem(
-                            itemCode = "${item.itemCode ?: "UNKNOWN"} - Duplicate EPC",
-                            rfid = item.rfid,
-                            tid = item.tid,
-                            reason = "Duplicate EPC detected"
+                    if (skippedItems.size < 10_000) {
+                        skippedItems.add(
+                            SyncSkippedItem(
+                                itemCode = "${item.itemCode ?: "UNKNOWN"} - Duplicate EPC",
+                                rfid = item.rfid,
+                                tid = item.tid,
+                                reason = "Duplicate EPC detected"
+                            )
                         )
-                    )
+                    }
                     return null
                 }
+
+                // ✅ ADD EPC
                 usedEpcSet.add(epcKey)
             }
+
 
             // ✅ VALID ITEM → ADD
             item
@@ -2049,14 +2095,16 @@ return when {
 
     tagType != "webreusable" -> {
         if (item.itemCode.isNullOrBlank()) {
-            skippedItems.add(
-                SyncSkippedItem(
-                    itemCode = "ItemCode blank - UNKNOWN",
-                    rfid = item.rfid,
-                    tid = item.tid,
-                    reason = "ItemCode blank"
+            if (skippedItems.size < 10_000) {
+                skippedItems.add(
+                    SyncSkippedItem(
+                        itemCode = "ItemCode blank - UNKNOWN",
+                        rfid = item.rfid,
+                        tid = item.tid,
+                        reason = "ItemCode blank"
+                    )
                 )
-            )
+            }
             null
         } else {
             val hex =convertToHex(item.itemCode)
@@ -2070,16 +2118,17 @@ return when {
 
     else -> {
         val reasonText = "Unknown mapping rule"
+        if (skippedItems.size < 10_000) {
+            skippedItems.add(
 
-        skippedItems.add(
-
-        SyncSkippedItem(
-            itemCode = "${item.itemCode ?: "UNKNOWN"} ($reasonText)",
-            rfid = item.rfid,
-            tid = item.tid,
-            reason = reasonText
-        )
-        )
+                SyncSkippedItem(
+                    itemCode = "${item.itemCode ?: "UNKNOWN"} ($reasonText)",
+                    rfid = item.rfid,
+                    tid = item.tid,
+                    reason = reasonText
+                )
+            )
+        }
         null
     }
 }

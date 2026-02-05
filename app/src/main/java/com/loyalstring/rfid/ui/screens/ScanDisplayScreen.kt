@@ -1860,7 +1860,7 @@ private fun buildItemsForUpload(all: List<ScannedBulkItem>): List<Item> { // Acc
                 else -> "unmatch"
             }
 
-            Log.d("@@","status"+status)
+           // Log.d("@@","status"+status)
             b.originalBulkItem.toItem(status) // Pass originalBulkItem to toItem
         }
         .filter { !it.itemCode.isNullOrBlank() }

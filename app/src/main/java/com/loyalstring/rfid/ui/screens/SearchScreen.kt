@@ -38,6 +38,7 @@ import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SearchViewModel
+import com.rscja.deviceapi.RFIDWithUHFUART
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -96,7 +97,14 @@ fun SearchScreen(
 
 
 
+    BackHandler { onBack() }
 
+    // ✅ Load DB items once
+    LaunchedEffect(Unit) {
+        allDbItems = withContext(Dispatchers.IO) {
+            searchViewModel.getAllBulkItemsFromDb()
+        }
+    }
 
     // ✅ For unmatched — start search immediately
     LaunchedEffect(isUnmatchedList, inputItems) {
@@ -104,6 +112,7 @@ fun SearchScreen(
         withContext(Dispatchers.IO) {
             if (isUnmatchedList && inputItems.isNotEmpty()) {
                 searchViewModel.startSearch(inputItems, selectedPower)
+                isScanning = true
             } else {
                 searchViewModel.clearSearchItems()
             }
