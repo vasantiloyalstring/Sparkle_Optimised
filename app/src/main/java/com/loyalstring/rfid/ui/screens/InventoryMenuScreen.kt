@@ -95,7 +95,7 @@ fun InventoryMenuScreen(
     // Warm cache after first frame so compose can finish rendering
     LaunchedEffect(Unit) {
         withFrameNanos { /* wait for first frame */ }
-        bulkViewModel.ensureFiltersLoaded()
+        bulkViewModel.startMinimalItemsCollector()
     }
     
     // Use remember to avoid recreating on recomposition

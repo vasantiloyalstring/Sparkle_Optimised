@@ -176,4 +176,9 @@ interface BulkItemDao {
  @Query("SELECT * FROM bulk_items")
  suspend fun getAllBulkItemsOnce(): List<BulkItem>
 
+ @Query("DELETE FROM bulk_items")
+ suspend fun deleteAll()
+
+
+
 }

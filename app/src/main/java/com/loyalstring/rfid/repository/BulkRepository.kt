@@ -81,6 +81,13 @@ interface BulkRepository {
         bulkItemDao.updateBulkItems(items)
     }
 
+    suspend fun clearAllItemsSafely() {
+     //   bulkItemDao.runInTransaction {
+            bulkItemDao.deleteAll()
+
+       // }
+    }
+
 
 
 

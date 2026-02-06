@@ -398,6 +398,8 @@ class BulkRepositoryImpl @Inject constructor(
     }*/
 
 
+
+
     override suspend fun syncBulkItemsFromServer(
         request: ClientCodeRequest,
         tagType: String,
