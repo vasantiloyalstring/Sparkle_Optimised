@@ -1,7 +1,7 @@
 package com.loyalstring.rfid.data.remote.data
 
 data class ProductDeleteResponse(
-    val ProductTitle: String?,
+  /*  val ProductTitle: String?,
     val ItemCode: String?,
     val HSNCode: String?,
     val Description: String?,
@@ -129,5 +129,6 @@ data class ProductDeleteResponse(
     val Id: Int,
     val CreatedOn: String?,
     val LastUpdated: String?,
-    val StatusType: Boolean
+    val StatusType: Boolean*/
+    val message:String?
 )

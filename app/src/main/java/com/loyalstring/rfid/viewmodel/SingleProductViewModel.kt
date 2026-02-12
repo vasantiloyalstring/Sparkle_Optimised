@@ -98,8 +98,8 @@ class SingleProductViewModel @Inject constructor(
     var exhibitions by mutableStateOf<List<BranchModel>>(emptyList())
         private set
 
-    private val _productDeleteResponse = MutableLiveData<Resource<List<ProductDeleteResponse>>>()
-    val productDeleetResponse: LiveData<Resource<List<ProductDeleteResponse>>> = _productDeleteResponse
+    private val _productDeleteResponse = MutableLiveData<Resource<ProductDeleteResponse>>()
+    val productDeleetResponse: LiveData<Resource<ProductDeleteResponse>> = _productDeleteResponse
 
     private val _deleteResult = MutableStateFlow<Int?>(null)
     val deleteResult: StateFlow<Int?> = _deleteResult
@@ -280,8 +280,10 @@ class SingleProductViewModel @Inject constructor(
                 val response = repository.deleteProduct(request)
                 if (response.isSuccessful && response.body() != null) {
                     _productDeleteResponse.value = Resource.Success((response.body()!!))
-                    bulkRepository.syncBulkItemsFromServer(ClientCodeRequest(request.get(0).ClientCode))
-
+                   // bulkRepository.syncBulkItemsFromServer(ClientCodeRequest(request.get(0).ClientCode))
+                    bulkRepository.syncAndSaveBulkItems(
+                        request[0].ClientCode
+                    )
                     Log.d("SingleProductViewModel", "Product delete" + response.body())
                 } else {
                     _productDeleteResponse.value = Resource.Error("Something went wrong please check: ${response.message()}")

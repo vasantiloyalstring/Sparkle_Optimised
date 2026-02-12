@@ -65,7 +65,7 @@ class SingleProductRepository @Inject constructor(
     }
 
 
-    suspend fun deleteProduct(request: List<ProductDeleteModelReq>): Response<List<ProductDeleteResponse>> {
+    suspend fun deleteProduct(request: List<ProductDeleteModelReq>): Response<ProductDeleteResponse> {
         return apiService.deleteProduct(request)
     }
 

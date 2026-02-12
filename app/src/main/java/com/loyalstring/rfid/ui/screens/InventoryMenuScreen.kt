@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,6 +57,8 @@ import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 @Composable
 fun InventoryMenuScreen(
@@ -418,7 +422,7 @@ fun SelectionDialog(
             }
 
             // Expandable list
-            if (expanded) {
+           /* if (expanded) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -426,6 +430,33 @@ fun SelectionDialog(
                         .background(Color(0xFFF5F3F3), RoundedCornerShape(12.dp))
                 ) {
                     items.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelect(item)
+                                    expanded = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = item,
+                                fontFamily = poppins,
+                                fontSize = 14.sp,
+                                color = Color(0xFF3B363E)
+                            )
+                        }
+                    }
+                }
+            }*/
+            if (expanded) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .background(Color(0xFFF5F3F3), RoundedCornerShape(12.dp))
+                ) {
+                    items(items) { item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

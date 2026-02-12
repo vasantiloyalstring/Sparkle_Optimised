@@ -2,6 +2,7 @@ package com.loyalstring.rfid.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,8 +29,10 @@ class SearchViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private var _searchItems = mutableStateListOf<SearchItem>()
-    val searchItems: List<SearchItem> get() = _searchItems
+  /*  private var _searchItems = mutableStateListOf<SearchItem>()
+    val searchItems: List<SearchItem> get() = _searchItems*/
+  private val _searchItems = mutableStateListOf<SearchItem>()
+    val searchItems: SnapshotStateList<SearchItem> = _searchItems
 
     init {
         val unmatched = savedStateHandle.get<List<BulkItem>>("unmatchedItems") ?: emptyList()
@@ -160,16 +163,16 @@ class SearchViewModel @Inject constructor(
         lastBlinkEpc = null
     }
 
- /*   private fun convertRssiToProximity(rssi: String): Int {
+  private fun convertRssiToProximity(rssi: String): Int {
         return try {
             val rssiValue = rssi.toFloat()
             ((rssiValue + 80).coerceAtLeast(0f) * 100f / 40f).toInt().coerceIn(0, 100)
         } catch (e: NumberFormatException) {
             0
         }
-    }*/
+    }
 
-    private fun convertRssiToProximity(rssi: String): Int {
+   /* private fun convertRssiToProximity(rssi: String): Int {
         return try {
             val cleanRssi = rssi
                 .replace("dBm", "", ignoreCase = true)
@@ -184,7 +187,7 @@ class SearchViewModel @Inject constructor(
             Log.e("RSSI", "Invalid RSSI: $rssi")
             0
         }
-    }
+    }*/
 
 
     /**

@@ -38,6 +38,10 @@ class ProductListViewModel @Inject constructor(
     val currentPage: StateFlow<Int> = _currentPage
 
     init {
+       refrshProductList()
+    }
+
+    fun refrshProductList() {
         viewModelScope.launch {
 
             /*try {

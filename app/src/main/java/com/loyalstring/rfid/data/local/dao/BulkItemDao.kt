@@ -180,5 +180,13 @@ interface BulkItemDao {
  suspend fun deleteAll()
 
 
+ @Query("""
+    SELECT DISTINCT TRIM(counterName) 
+    FROM bulk_items 
+    WHERE counterName IS NOT NULL AND TRIM(counterName) != ''
+""")
+ suspend fun getDistinctCounters(): List<String>
+
+
 
 }

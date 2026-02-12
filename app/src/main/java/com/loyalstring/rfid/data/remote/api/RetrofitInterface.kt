@@ -216,7 +216,7 @@ interface RetrofitInterface {
     @POST("/api/ProductMaster/DeleteLabeledStock")
     suspend fun deleteProduct(
         @Body request: List<ProductDeleteModelReq>
-    ): Response<List<ProductDeleteResponse>>
+    ): Response<ProductDeleteResponse>
 
 
 

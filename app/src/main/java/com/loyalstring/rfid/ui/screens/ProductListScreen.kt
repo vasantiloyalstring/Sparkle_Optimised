@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
@@ -126,6 +127,17 @@ fun ProductListScreen(
         }
     }
 
+ //   val allItems by viewModel.productList.collectAsState(initial = emptyList())
+    val allItems by viewModel.productList.collectAsStateWithLifecycle()
+    val filteredItems = remember(searchQuery.value, allItems) {
+        allItems.filter { item ->
+            val query = searchQuery.value.trim().lowercase()
+            item.itemCode!!.lowercase().contains(query) ||
+                    item.productName!!.lowercase().contains(query) ||
+                    item.rfid!!.lowercase().contains(query)
+        }
+    }
+
     LaunchedEffect(deleteResponse) {
         when (deleteResponse) {
             is Resource.Success -> {
@@ -133,6 +145,7 @@ fun ProductListScreen(
                    // singleproductViewModel.insertLabelledStock(request)
                    // singleproductViewModel.deleteItem(id) // ✅ local delete with cached id
                     Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
+                 //  viewModel.refrshProductList()
 
 
             }
@@ -159,15 +172,7 @@ fun ProductListScreen(
 
 
 
-    val allItems by viewModel.productList.collectAsState(initial = emptyList())
-    val filteredItems = remember(searchQuery.value, allItems) {
-        allItems.filter { item ->
-            val query = searchQuery.value.trim().lowercase()
-            item.itemCode!!.lowercase().contains(query) ||
-                    item.productName!!.lowercase().contains(query) ||
-                    item.rfid!!.lowercase().contains(query)
-        }
-    }
+
 
     Scaffold(
         topBar = {

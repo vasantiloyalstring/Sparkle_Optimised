@@ -306,7 +306,9 @@ class BulkViewModel @Inject constructor(
     fun preloadFilters(allItems: List<BulkItem>) {
         viewModelScope.launch(Dispatchers.Default) {
             // Process data on background thread
-            val counters = allItems.mapNotNull { it.counterName?.takeIf { it.isNotBlank() } }.distinct()
+          val counters=bulkItemDao.getDistinctCounters()
+          // val counters = allItems.mapNotNull { it.counterName }
+           // val counters = allItems.mapNotNull { it.counterName?.takeIf { it.isNotBlank() } }.distinct()
             val branches = allItems.mapNotNull { it.branchName?.takeIf { it.isNotBlank() } }.distinct()
             val boxes = allItems.mapNotNull { it.boxName?.takeIf { it.isNotBlank() } }.distinct()
             val exhibitions = allItems
