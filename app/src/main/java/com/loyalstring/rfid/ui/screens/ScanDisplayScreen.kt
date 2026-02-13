@@ -523,7 +523,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
         // 🔹 CASE 3: Exit screen
         // stop scanning
-        bulkViewModel.stopScanningAndCompute()
+        scope.launch {
+            bulkViewModel.stopScanningAndCompute()
+        }
 
         // cancel upload
         scanDisplayViewModel.clearMessages()

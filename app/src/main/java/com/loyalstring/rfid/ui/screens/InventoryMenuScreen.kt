@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.DisposableEffect
 
 @Composable
 fun InventoryMenuScreen(
@@ -101,6 +102,7 @@ fun InventoryMenuScreen(
         withFrameNanos { /* wait for first frame */ }
         bulkViewModel.startMinimalItemsCollector()
     }
+
     
     // Use remember to avoid recreating on recomposition
    /* val counters by remember { bulkViewModel.counters }.collectAsState()
