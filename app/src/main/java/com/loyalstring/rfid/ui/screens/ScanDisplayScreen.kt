@@ -254,10 +254,16 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
       }*/
 
     LaunchedEffect(emailStatus) {
-        when (emailStatus) {
-            "success" -> Toast.makeText(context, "Email Sent successfully", Toast.LENGTH_LONG).show()
-            null -> Unit
-            else -> Toast.makeText(context, emailStatus ?: "Error", Toast.LENGTH_LONG).show()
+        emailStatus?.let { status ->
+
+            if (status == "success") {
+                Toast.makeText(context, "Email Sent successfully", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, status, Toast.LENGTH_LONG).show()
+            }
+
+            // ✅ VERY IMPORTANT
+            scanDisplayViewModel.clearEmailStatus()
         }
     }
 
@@ -405,7 +411,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     LaunchedEffect(successMsg) {
         successMsg?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            // scanDisplayViewModel.clearSuccessMsg()
+            scanDisplayViewModel.clearMessages()
         }
     }
 
@@ -516,6 +522,18 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         }
 
         // 🔹 CASE 3: Exit screen
+        // stop scanning
+        bulkViewModel.stopScanningAndCompute()
+
+        // cancel upload
+        scanDisplayViewModel.clearMessages()
+
+        // reset email state
+        scanDisplayViewModel.clearEmailStatus()
+
+        // reset UI states
+        isSending = false
+        showEmailDialog = false
         onBack()
     }
     fun handleBackPress() {

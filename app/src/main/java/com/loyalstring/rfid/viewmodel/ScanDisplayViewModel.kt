@@ -105,6 +105,10 @@ class ScanDisplayViewModel @Inject constructor(
         return customerEmailDao.getAllEmails().map { it.email }
     }
 
+    fun clearEmailStatus() {
+        _emailStatus.value = null
+    }
+
     private fun toDetailedItemSafe(it: BulkItem): DetailedItem {
         return DetailedItem(
             counterName = it.counterName,
@@ -2002,5 +2006,7 @@ class ScanDisplayViewModel @Inject constructor(
             _error.value = null
         }
     }
+
+
 
 
