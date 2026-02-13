@@ -111,7 +111,13 @@ class SearchViewModel @Inject constructor(
                                 proximityPercent = proximity
                             )
 
-                            if (id != -1) {
+                            /*if (id != -1) {
+                                lastSoundId?.let { readerManager.stopSound(it) }
+                                lastSoundId = id
+                                readerManager.playSound(id)
+                            }*/
+
+                            if (lastSoundId != id) {
                                 lastSoundId?.let { readerManager.stopSound(it) }
                                 lastSoundId = id
                                 readerManager.playSound(id)
@@ -240,8 +246,8 @@ class SearchViewModel @Inject constructor(
 
             while (isActive) {
                 try {
-                    // Stop inventory temporarily
-                    readerManager.stopInventory()
+                    // Stop inventory temporarily vasanti
+                  //  readerManager.stopInventory()
 
                     // Trigger LED blink for the EPC
                     reader.readData(
@@ -261,8 +267,8 @@ class SearchViewModel @Inject constructor(
                 } catch (e: Exception) {
                     Log.e("RFID", "Error blinking tag: ${e.message}", e)
                 } finally {
-                    // Restart inventory
-                    readerManager.startInventoryTag(30, true)
+                    // Restart inventory vasanti
+                   // readerManager.startInventoryTag(30, true)
                 }
             }
         }

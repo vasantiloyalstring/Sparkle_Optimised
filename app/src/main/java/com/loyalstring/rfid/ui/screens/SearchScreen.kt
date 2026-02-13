@@ -40,6 +40,7 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SearchViewModel
 import com.rscja.deviceapi.RFIDWithUHFUART
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 @Composable
 fun SearchScreen(
@@ -95,8 +96,9 @@ fun SearchScreen(
     // ✅ For unmatched — start search immediately
     LaunchedEffect(isUnmatchedList, inputItems) {
         if (isUnmatchedList && inputItems.isNotEmpty()) {
+            delay(300)
             searchViewModel.startSearch(inputItems, selectedPower)
-            isScanning = true   // 🔥 ADD THIS
+            isScanning = true
             Log.d("AUTO_SCAN", "Unmatched auto scan started")
         } else {
             searchViewModel.clearSearchItems()
