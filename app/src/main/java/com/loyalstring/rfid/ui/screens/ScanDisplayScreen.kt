@@ -119,6 +119,9 @@ private const val MENU_MATCHED = "MATCHED"
 private const val MENU_UNMATCHED = "UNMATCHED"
 private const val MENU_SEARCH = "SEARCH"
 
+// Pre-compiled regex to avoid creating new Regex objects on each call (ANR fix)
+private val WEIGHT_CLEAN_REGEX = Regex("[^0-9.]")
+
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
@@ -2459,7 +2462,7 @@ fun MenuCard(item: MenuItem, onClick: () -> Unit) {
 fun parseWeightToBigDecimal(weight: String?): BigDecimal {
     if (weight.isNullOrBlank()) return BigDecimal.ZERO
     return try {
-        val cleaned = weight.replace(Regex("[^0-9.]"), "")
+        val cleaned = weight.replace(WEIGHT_CLEAN_REGEX, "")
         if (cleaned.isBlank()) BigDecimal.ZERO else BigDecimal(cleaned)
     } catch (e: Exception) {
         BigDecimal.ZERO
