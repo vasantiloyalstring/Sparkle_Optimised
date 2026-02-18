@@ -615,40 +615,51 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val _asyncDisplayItems = remember { MutableStateFlow<List<ScannedBulkItem>>(emptyList()) }
     val displayItems by _asyncDisplayItems.collectAsState() // Use collectAsState for flow
 
+    // Optimized: Debounce the computation to avoid excessive recomputations during rapid scanning
     LaunchedEffect(scannedItemsSequence, selectedMenu, stickyUnmatchedIds) {
-        scope.launch(Dispatchers.Default) {
-            val currentScannedSequence = scannedItemsSequence
+        // Small delay to debounce rapid updates during scanning
+        if (isScanning) {
+            delay(50) // Debounce during active scanning to reduce computation frequency
+        }
 
-            val computedItems = if (currentScannedSequence.iterator().hasNext().not()) { // Efficient check for empty sequence
-                emptyList()
-            } else {
-                val filteredSequence = when (selectedMenu) {
-                    MENU_MATCHED -> {
-                        currentScannedSequence
-                            .filter { it.currentScannedStatus == "Matched" }
+        scope.launch(Dispatchers.Default) {
+            try {
+                val currentScannedSequence = scannedItemsSequence
+
+                val computedItems = if (currentScannedSequence.iterator().hasNext().not()) {
+                    emptyList()
+                } else {
+                    val filteredSequence = when (selectedMenu) {
+                        MENU_MATCHED -> {
+                            currentScannedSequence
+                                .filter { it.currentScannedStatus == "Matched" }
+                        }
+                        MENU_UNMATCHED -> {
+                            val stickySet = stickyUnmatchedIds.toSet()
+                            val unmatchedNow = currentScannedSequence
+                                .filter { it.currentScannedStatus == "Unmatched" }
+                            val sticky = currentScannedSequence
+                                .filter {
+                                    val id = it.epc?.trim()?.uppercase()
+                                    id != null && stickySet.contains(id)
+                                }
+                            (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
+                        }
+                        else -> currentScannedSequence
                     }
-                    MENU_UNMATCHED -> {
-                        val stickySet = stickyUnmatchedIds.toSet()
-                        val unmatchedNow = currentScannedSequence
-                            .filter { it.currentScannedStatus == "Unmatched" }
-                        val sticky = currentScannedSequence
-                            .filter {
-                                val id = it.epc?.trim()?.uppercase()
-                                id != null && stickySet.contains(id)
-                            }
-                        (unmatchedNow + sticky).distinctBy { it.epc?.trim()?.uppercase() }
-                    }
-                    else -> currentScannedSequence
+                    filteredSequence.toList() // Materialize only once at the end
                 }
-                filteredSequence.toList() // Materialize only once at the end
+                _asyncDisplayItems.value = computedItems
+            } catch (e: Exception) {
+                Log.e("ScanDisplayScreen", "Error computing display items: ${e.message}")
             }
-            _asyncDisplayItems.value = computedItems
         }
     }
 
 
-    val allMatched by remember(scannedItemsSequence) {
-        derivedStateOf { scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" } }
+    // Optimized: Use displayItems which is already materialized instead of calling toList() twice
+    val allMatched by remember(displayItems) {
+        derivedStateOf { displayItems.isNotEmpty() && displayItems.all { it.currentScannedStatus == "Matched" } }
     }
 
     val activity = LocalContext.current as? MainActivity
@@ -705,8 +716,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             }
     }
 
-    LaunchedEffect(isScanning, scannedItemsSequence.toList().size) {
-        if (isScanning && scannedItemsSequence.toList().isEmpty()) {
+    // Optimized: Use displayItems instead of calling toList() on sequence
+    LaunchedEffect(isScanning, displayItems.size) {
+        if (isScanning && displayItems.isEmpty()) {
             bulkViewModel.stopScanningAndCompute()
             isScanning = false
         }
@@ -716,8 +728,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     } }
 
-    LaunchedEffect(scannedItemsSequence) {
-        if (isScanning && scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" }) { // Use currentScannedStatus
+    // Optimized: Use allMatched derived state instead of calling toList() twice
+    // This LaunchedEffect is now redundant since we have snapshotFlow above
+    // Commenting out to avoid duplicate logic
+    /*LaunchedEffect(scannedItemsSequence) {
+        if (isScanning && scannedItemsSequence.toList().isNotEmpty() && scannedItemsSequence.toList().all { it.currentScannedStatus == "Matched" }) {
 
             currentCategory = null
             currentProduct = null
@@ -732,7 +747,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
             isScanning = false
         }
-    }
+    }*/
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     LaunchedEffect(Unit) {
@@ -992,7 +1007,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                         }
                                     }
                                 }
-                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                            } else if (isLoadingAllItems || allItems.isNotEmpty()) {
+                                // Show loading indicator while data is being processed
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -1021,7 +1037,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                         }
                                     }
                                 }
-                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                            } else if (isLoadingAllItems || allItems.isNotEmpty()) {
+                                // Show loading indicator while data is being processed
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -1048,7 +1065,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                         }
                                     }
                                 }
-                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                            } else if (isLoadingAllItems || allItems.isNotEmpty()) {
+                                // Show loading indicator while data is being processed
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -1075,7 +1093,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                         showItemDialog = true
                                     }
                                 }
-                            } else if (scannedItemsSequence.firstOrNull() != null) {
+                            } else if (isLoadingAllItems || allItems.isNotEmpty()) {
+                                // Show loading indicator while data is being processed
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -1520,9 +1539,10 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 }
             }
         }*/
-    val matchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Matched" } }
-    val unmatchedCount = remember(scannedItemsSequence) { scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" } }
-    val totalCount = remember(scannedItemsSequence) { scannedItemsSequence.count() }
+    // Optimized: Use displayItems which is already materialized
+    val matchedCount = remember(displayItems) { displayItems.count { it.currentScannedStatus == "Matched" } }
+    val unmatchedCount = remember(displayItems) { displayItems.count { it.currentScannedStatus == "Unmatched" } }
+    val totalCount = remember(displayItems) { displayItems.size }
     /*val matchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Matched" } }
     val unmatchedCount = remember(summaryItems) { summaryItems.count { it.scannedStatus == "Unmatched" } }
     val totalCount = remember(summaryItems) { summaryItems.size }*/   // ✅ THIS LINE FIXED
