@@ -54,6 +54,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -154,8 +155,9 @@ class BulkViewModel @Inject constructor(
     val duplicateItems: State<List<UHFTAGInfo>> = _duplicateItems
     val rfidInput = mutableStateOf("")
 
-    val scannedEpcList =  HashSet<String>(600_000)
-    //private val scannedEpcSet = HashSet<String>(600_000)
+    // Thread-safe HashSet for concurrent access during high-volume scanning
+    // Using ConcurrentHashMap.newKeySet() for thread safety
+    val scannedEpcList: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet(300_000)
 
     private val _matchedItems = mutableStateListOf<BulkItem>()
     val matchedItems: List<BulkItem> get() = _matchedItems
@@ -670,54 +672,68 @@ class BulkViewModel @Inject constructor(
 
 
     fun startScanningInventory(selectedPower: Int) {
-//if (!success || _isScanning.value) return
+        // Prevent multiple scan sessions
+        if (_isScanning.value) return
+
         _scannedKeySet.value = emptySet()
         scanJob?.cancel()
         _isScanning.value = true
+
         viewModelScope.launch(Dispatchers.IO) {
             if (!ensureReader()) {
                 _isScanning.value = false
                 return@launch
             }
 
-
             readerManager.startInventoryTag(selectedPower, false)
             readerManager.playSound(1)
 
             // Build EPC set if not already prepared
-            // Build EPC set if not already prepared
             if (filteredDbEpcSet.isEmpty()) {
                 filteredDbEpcSet = _filteredSource.mapNotNull { it.epc?.trim()?.uppercase() }.toHashSet()
-                // filteredDbTidSet = _filteredSource.mapNotNull { it.tid?.trim()?.uppercase() }.toHashSet() // TID matching disabled
             }
 
             // Loop: only update matched set; avoid remapping list on main thread per tag
             scanJob = viewModelScope.launch(Dispatchers.IO) {
+                var tagCount = 0
+                var lastUpdateTime = System.currentTimeMillis()
+
                 while (isActive) {
-                    val tag = readerManager.readTagFromBuffer()
-                    if (tag != null) {
-                        val scannedEpc = tag.epc?.trim()?.uppercase()
-                        // val scannedTid = tag.tid?.trim()?.uppercase() // TID matching disabled
-                        // Track seen EPCs to avoid repeated processing
-                        if (!scannedEpc.isNullOrBlank()) {
-                            scannedEpcList.add(scannedEpc)
-                        }
+                    try {
+                        val tag = readerManager.readTagFromBuffer()
+                        if (tag != null) {
+                            val scannedEpc = tag.epc?.trim()?.uppercase()
 
-                        // EPC match
-                        if (!scannedEpc.isNullOrBlank() && filteredDbEpcSet.contains(scannedEpc)) {
-                            val currentE = _matchedEpcSet.value
-                            if (!currentE.contains(scannedEpc)) {
-                                _matchedEpcSet.value = currentE + scannedEpc
+                            // Track seen EPCs - null-safe check
+                            if (!scannedEpc.isNullOrBlank()) {
+                                scannedEpcList.add(scannedEpc)
+                                tagCount++
+
+                                // EPC match - update matched set
+                                if (filteredDbEpcSet.contains(scannedEpc)) {
+                                    val currentE = _matchedEpcSet.value
+                                    if (!currentE.contains(scannedEpc)) {
+                                        _matchedEpcSet.value = currentE + scannedEpc
+                                    }
+                                }
+
+                                // Yield periodically to prevent UI freeze on high-volume scanning
+                                // Update UI every 100 tags or every 100ms
+                                if (tagCount % 100 == 0) {
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastUpdateTime > 100) {
+                                        yield()
+                                        lastUpdateTime = now
+                                    }
+                                }
                             }
+                        } else {
+                            // No tag available, small delay to prevent tight loop
+                            delay(1)
                         }
-
-                        // TID match (disabled)
-                        // if (!scannedTid.isNullOrBlank() && filteredDbTidSet.contains(scannedTid)) {
-                        //     val currentT = _matchedTidSet.value
-                        //     if (!currentT.contains(scannedTid)) {
-                        //         _matchedTidSet.value = currentT + scannedTid
-                        //     }
-                        // }
+                    } catch (e: Exception) {
+                        Log.e("RFID", "Error in scan loop: ${e.message}")
+                        delay(10) // Brief delay on error to prevent spam
                     }
                 }
             }
@@ -802,7 +818,6 @@ class BulkViewModel @Inject constructor(
 
 
     fun startScanning(selectedPower: Int) {
-//if (success) {
         viewModelScope.launch(Dispatchers.IO) {
             if (!ensureReader()) {
                 Log.e("RFID", "Reader not connected.")
@@ -814,13 +829,16 @@ class BulkViewModel @Inject constructor(
             if (scanJob?.isActive == true) return@launch
 
             scanJob = viewModelScope.launch(Dispatchers.IO) {
-
                 while (isActive) {
-                    val tag = readerManager.readTagFromBuffer()
-                    if (tag != null) {
-                        val epc = tag.epc ?: continue
-                        // Avoid DB calls in the hot path; update UI immediately
-                        handleScannedTag(tag)
+                    try {
+                        val tag = readerManager.readTagFromBuffer()
+                        // Null-safe check for tag and epc
+                        if (tag != null && !tag.epc.isNullOrBlank()) {
+                            // Avoid DB calls in the hot path; update UI immediately
+                            handleScannedTag(tag)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("RFID", "Error reading tag: ${e.message}")
                     }
                 }
             }
@@ -993,40 +1011,72 @@ class BulkViewModel @Inject constructor(
         return bulkItemDao.getItemByEpc(epc) != null
     }
 
-    private fun addTagUnique(tag: UHFTAGInfo) {
+    private fun addTagUnique(tag: UHFTAGInfo?) {
+        // Null safety check - skip if tag or epc is null
+        if (tag == null || tag.epc.isNullOrBlank()) return
+
         val current = _scannedTags.value
-        if (current.none { it.epc == tag.epc }) {
+        val tagEpc = tag.epc?.trim()?.uppercase()
+        if (tagEpc != null && current.none { it.epc?.trim()?.uppercase() == tagEpc }) {
             // Defer emitting to reduce recompositions under rapid scans
-            pendingTagsBuffer.add(tag)
+            synchronized(pendingTagsBufferLock) {
+                pendingTagsBuffer.add(tag)
+            }
             schedulePendingFlush()
         }
     }
 
     // Buffer to accumulate rapid incoming tags and emit in batches
+    // Using synchronized lock for thread safety when scanning large volumes
     private val pendingTagsBuffer: MutableList<UHFTAGInfo> = mutableListOf()
+    private val pendingTagsBufferLock = Any()
     private var flushJob: Job? = null
 
     private fun schedulePendingFlush() {
-// Emit immediately to avoid visible buffering
-        if (pendingTagsBuffer.isEmpty()) return
-        val snapshot = pendingTagsBuffer.toList()
-        pendingTagsBuffer.clear()
+        // Emit immediately to avoid visible buffering
+        val snapshot: List<UHFTAGInfo>
+        synchronized(pendingTagsBufferLock) {
+            if (pendingTagsBuffer.isEmpty()) return
+            snapshot = pendingTagsBuffer.toList()
+            pendingTagsBuffer.clear()
+        }
+
         val existing = _scannedTags.value
+        val existingEpcSet = existing.mapNotNull { it.epc?.trim()?.uppercase() }.toSet()
+
         val merged = buildList(existing.size + snapshot.size) {
             addAll(existing)
-            snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
+            snapshot.forEach { t ->
+                // Null-safe check for epc
+                val tEpc = t.epc?.trim()?.uppercase()
+                if (tEpc != null && !existingEpcSet.contains(tEpc)) {
+                    add(t)
+                }
+            }
         }
         _scannedTags.value = merged
     }
 
     private fun flushPendingTags() {
-        if (pendingTagsBuffer.isEmpty()) return
-        val snapshot = pendingTagsBuffer.toList()
-        pendingTagsBuffer.clear()
+        val snapshot: List<UHFTAGInfo>
+        synchronized(pendingTagsBufferLock) {
+            if (pendingTagsBuffer.isEmpty()) return
+            snapshot = pendingTagsBuffer.toList()
+            pendingTagsBuffer.clear()
+        }
+
         val existing = _scannedTags.value
+        val existingEpcSet = existing.mapNotNull { it.epc?.trim()?.uppercase() }.toSet()
+
         val merged = buildList(existing.size + snapshot.size) {
             addAll(existing)
-            snapshot.forEach { t -> if (existing.none { it.epc == t.epc }) add(t) }
+            snapshot.forEach { t ->
+                // Null-safe check for epc
+                val tEpc = t.epc?.trim()?.uppercase()
+                if (tEpc != null && !existingEpcSet.contains(tEpc)) {
+                    add(t)
+                }
+            }
         }
         _scannedTags.value = merged
     }
@@ -1100,65 +1150,86 @@ class BulkViewModel @Inject constructor(
         return index.toString()
     }
 
-    private suspend fun handleScannedTag(tag: UHFTAGInfo) {
-        val epc = tag.epc ?: return
-// 1) Update UI list immediately
+    private suspend fun handleScannedTag(tag: UHFTAGInfo?) {
+        // Null safety check - skip if tag or epc is null/blank
+        if (tag == null) return
+        val epc = tag.epc?.trim()?.uppercase()
+        if (epc.isNullOrBlank()) return
+
+        // 1) Update UI list immediately
         addTagUnique(tag)
 
-// 2) Resolve duplicate/existing info off the critical path
+        // 2) Resolve duplicate/existing info off the critical path
         viewModelScope.launch(Dispatchers.IO) {
-            val exists = isTagExistsInDatabase(epc)
-            withContext(Dispatchers.Main) {
-                val alreadyInExisting = existingTags.any { it.epc == epc }
-                val alreadyInScanned = _allScannedTags.value.any { it.epc == epc }
-                val alreadyInDuplicates = duplicateTags.any { it.epc == epc }
+            try {
+                val exists = isTagExistsInDatabase(epc)
+                withContext(Dispatchers.Main) {
+                    val alreadyInExisting = existingTags.any { it.epc?.trim()?.uppercase() == epc }
+                    val alreadyInScanned = _allScannedTags.value.any { it.epc?.trim()?.uppercase() == epc }
+                    val alreadyInDuplicates = duplicateTags.any { it.epc?.trim()?.uppercase() == epc }
 
-                if (!alreadyInExisting) {
-                    if (alreadyInScanned) {
-                        if (!alreadyInDuplicates) {
-                            duplicateTags.add(tag)
-                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
-                            setLastEpc(epc)
-                            _duplicateItems.value = duplicateTags.toList()
-                        }
-                    } else {
-                        _allScannedTags.value += tag
-                        if (exists && !alreadyInDuplicates) {
-                            existingTags.add(tag)
-                            val epc = tag.epc  // or tid/epc jo bhi mil raha ho
-                            setLastEpc(epc)
-                            _existingItems.value = existingTags.toList()
+                    if (!alreadyInExisting) {
+                        if (alreadyInScanned) {
+                            if (!alreadyInDuplicates) {
+                                duplicateTags.add(tag)
+                                setLastEpc(epc)
+                                _duplicateItems.value = duplicateTags.toList()
+                            }
+                        } else {
+                            _allScannedTags.value += tag
+                            if (exists && !alreadyInDuplicates) {
+                                existingTags.add(tag)
+                                setLastEpc(epc)
+                                _existingItems.value = existingTags.toList()
+                            }
                         }
                     }
+                    Log.d("RFID", "Processed EPC: $epc")
                 }
-                Log.d("RFID", "Processed EPC: $epc")
-
+            } catch (e: Exception) {
+                Log.e("RFID", "Error processing tag: ${e.message}")
             }
         }
     }
 
 
     fun stopScanning() {
-// Attempt to drain remaining tags from device buffer quickly before stopping
-        repeat(25) {
-            val tag = readerManager.readTagFromBuffer()
-            if (tag != null && !tag.epc.isNullOrBlank()) {
-                // Fire-and-forget; UI list updates immediately
-                viewModelScope.launch(Dispatchers.Default) {
-                    handleScannedTag(tag)
-                }
-            }
-        }
-
-// Stop reader
-        readerManager.stopSound(1)
-        readerManager.stopInventory()
-        _isScanning.value = false
-
-// Ensure any buffered tags are emitted immediately
-        flushPendingTags()
+        // Cancel scan job first to stop incoming tags
         scanJob?.cancel()
         scanJob = null
+
+        // Stop reader hardware
+        try {
+            readerManager.stopSound(1)
+            readerManager.stopInventory()
+        } catch (e: Exception) {
+            Log.e("RFID", "Error stopping reader: ${e.message}")
+        }
+
+        _isScanning.value = false
+
+        // Attempt to drain remaining tags from device buffer quickly before stopping
+        // Using try-catch to prevent crashes during buffer drain
+        try {
+            repeat(25) {
+                val tag = readerManager.readTagFromBuffer()
+                if (tag != null && !tag.epc.isNullOrBlank()) {
+                    // Process synchronously on Default dispatcher to avoid race conditions
+                    viewModelScope.launch(Dispatchers.Default) {
+                        try {
+                            handleScannedTag(tag)
+                        } catch (e: Exception) {
+                            Log.e("RFID", "Error handling tag during stop: ${e.message}")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RFID", "Error draining buffer: ${e.message}")
+        }
+
+        // Ensure any buffered tags are emitted immediately
+        flushPendingTags()
     }
 
 
