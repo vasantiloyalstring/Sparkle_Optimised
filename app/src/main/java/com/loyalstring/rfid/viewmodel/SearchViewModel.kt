@@ -133,10 +133,10 @@ class SearchViewModel @Inject constructor(
                                     lastBlinkEpc = null // reset after blink
                                 }
                             }*/
-                            if (epcMatched && proximity >= 1) {
+                            if (epcMatched && proximity >= 40) {
                                 if (lastBlinkEpc != epc) {
                                     lastBlinkEpc = epc
-                                    startBlinkingEpc(epc)
+                                    startContinuousBlink(epc)
                                 }
                             } else {
                                 stopBlinkingEpc()
@@ -234,7 +234,7 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    private fun startBlinkingEpc(epc: String) {
+  /*  private fun startBlinkingEpc(epc: String) {
         // Cancel any previous blinking
         blinkingJob?.cancel()
 
@@ -247,7 +247,7 @@ class SearchViewModel @Inject constructor(
             while (isActive) {
                 try {
                     // Stop inventory temporarily vasanti
-                  //  readerManager.stopInventory()
+                   readerManager.stopInventory()
 
                     // Trigger LED blink for the EPC
                     reader.readData(
@@ -268,11 +268,53 @@ class SearchViewModel @Inject constructor(
                     Log.e("RFID", "Error blinking tag: ${e.message}", e)
                 } finally {
                     // Restart inventory vasanti
-                   // readerManager.startInventoryTag(30, true)
+                   readerManager.startInventoryTag(30, true)
                 }
             }
         }
-    }
+    }*/
+  private fun startContinuousBlink(epc: String) {
+      blinkingJob?.cancel()
+
+      blinkingJob = viewModelScope.launch(Dispatchers.IO) {
+          val reader = readerManager.reader ?: return@launch
+
+          val filterBank = RFIDWithUHFUART.Bank_EPC
+          val filterPtr = 32
+          val filterCnt = epc.length * 4
+
+          while (isActive) {
+
+              try {
+                  // Pause scanning briefly
+                  readerManager.stopInventory()
+
+                  reader.readData(
+                      "00000000",
+                      filterBank,
+                      filterPtr,
+                      filterCnt,
+                      epc,
+                      IUHF.Bank_RESERVED,
+                      4,
+                      1
+                  )
+
+                  delay(150) // LED ON duration
+
+              } catch (e: Exception) {
+                  Log.e("RFID", "Blink error: ${e.message}")
+              } finally {
+                  readerManager.startInventoryTag(30, true)
+              }
+
+              // 🔥 IMPORTANT: delay between blinks
+              delay(700)  // adjust for blink speed (500–1000ms ideal)
+          }
+      }
+  }
+
+
 
     private fun stopBlinkingEpc() {
         blinkingJob?.cancel()
