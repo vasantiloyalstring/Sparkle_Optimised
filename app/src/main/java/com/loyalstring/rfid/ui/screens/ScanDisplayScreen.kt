@@ -118,6 +118,8 @@ private const val MENU_ALL = "ALL"
 private const val MENU_MATCHED = "MATCHED"
 private const val MENU_UNMATCHED = "UNMATCHED"
 private const val MENU_SEARCH = "SEARCH"
+private const val MENU_UNLABELLED = "UNLABELLED"
+private const val MENU_RESUME = "RESUME"
 
 // Pre-compiled regex to avoid creating new Regex objects on each call (ANR fix)
 private val WEIGHT_CLEAN_REGEX = Regex("[^0-9.]")
@@ -541,6 +543,16 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         showEmailDialog = false
         onBack()
     }
+
+    fun getToolbarTitle(): String {
+        return when (selectedMenu) {
+            MENU_MATCHED -> "Matched Items"
+            MENU_UNMATCHED -> "UnMatched Items"
+            MENU_UNLABELLED -> "Unlabelled Items"
+            MENU_RESUME -> "Resume Scan"
+            else -> filterValue ?: "Inventory"
+        }
+    }
     fun handleBackPress() {
         // 🔹 CASE 2: Drill-down back
         when (currentLevel) {
@@ -779,7 +791,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         topBar = {
             filterValue?.let {
                 GradientTopBar(
-                    title = it,
+                    title =getToolbarTitle(),
                     navigationIcon = {
                         IconButton(onClick = { /*shouldNavigateBack = true*/
                             handleBackPress()}) {
@@ -1644,7 +1656,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                         }
 
                         "Unlabelled Items" -> {
-                            selectedMenu = MENU_ALL
+                            selectedMenu = MENU_UNLABELLED
+                            currentLevel = "DesignItems"
                             bulkViewModel.clearStickyUnmatched()
                         }
                         // In ScanDisplayScreen
@@ -1703,7 +1716,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 bulkViewModel. restoreScanFromDatabase()
                               //  bulkViewModel.restoreScanFromSavedBulkItems(allItems)
 
-                                selectedMenu = MENU_ALL
+                                selectedMenu = MENU_RESUME
                                 currentLevel = "DesignItems"
 
                                 Toast.makeText(
