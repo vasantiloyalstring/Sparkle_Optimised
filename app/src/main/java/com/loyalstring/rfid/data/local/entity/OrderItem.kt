@@ -60,6 +60,7 @@ data class OrderItem(
     val makingFixedWastage: String,
     val makingPerGram: String,
     val CategoryWt:String,
+    val labelStockId:Int,
 
 
 )

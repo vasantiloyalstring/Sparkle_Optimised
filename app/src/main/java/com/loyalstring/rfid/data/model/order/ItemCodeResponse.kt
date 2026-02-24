@@ -10,6 +10,7 @@ import com.loyalstring.rfid.data.local.converters.OrderTypeConverter
 @TypeConverters(OrderTypeConverter::class)
 data class ItemCodeResponse(
     @PrimaryKey
+    val bulkItemId:Int?= 0,
     @SerializedName("Id") var Id: Int? = null,
     @SerializedName("SKUId") var SKUId: Int? = null,
     @SerializedName("ProductTitle") var ProductTitle: String? = null,

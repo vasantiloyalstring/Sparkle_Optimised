@@ -1,11 +1,14 @@
 package com.loyalstring.rfid.ui.screens
+import android.os.Environment
 
+import com.itextpdf.layout.borders.SolidBorder
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,10 +44,12 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -53,11 +58,15 @@ import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.itextpdf.io.image.ImageDataFactory
+import com.itextpdf.kernel.colors.ColorConstants
 import com.itextpdf.kernel.geom.PageSize
 import com.itextpdf.kernel.pdf.PdfDocument
+
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.Document
+import com.itextpdf.layout.borders.Border
 import com.itextpdf.layout.element.AreaBreak
+import com.itextpdf.layout.element.Cell
 import com.itextpdf.layout.element.Image
 import com.itextpdf.layout.element.Paragraph
 import com.itextpdf.layout.element.Table
@@ -77,6 +86,7 @@ import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
@@ -91,6 +101,7 @@ import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -337,6 +348,7 @@ fun OrderScreen(
                     makingFixedWastage = coItem.MakingFixedWastage,
                     makingPerGram = coItem.MakingPerGram.orEmpty(),
                     CategoryWt = coItem.WeightCategories.toString(),
+                    labelStockId=coItem.LabelledStockId!!.toInt()
 
 
                 )
@@ -534,7 +546,7 @@ fun OrderScreen(
             Log.d("ManualEntry", "Found: ${matchedItem.itemCode}")
 
             // Prevent duplicates by RFID
-            if (productList.any { it.rfidCode.equals(matchedItem.rfid, ignoreCase = true) }) {
+            if (productList.any { it.itemCode.equals(matchedItem.itemCode, ignoreCase = true) }) {
                 Log.d("ManualEntry", "⚠️ Already exists: ${matchedItem.itemCode}")
                 return@LaunchedEffect
             }
@@ -679,6 +691,7 @@ fun OrderScreen(
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
                 CategoryWt = matchedItem.CategoryWt.toString(),
+                labelStockId=matchedItem.bulkItemId
 
 
 
@@ -844,6 +857,7 @@ fun OrderScreen(
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
                 CategoryWt = matchedItem.CategoryWt.toString(),
+                labelStockId=matchedItem.bulkItemId
 
 
             )
@@ -861,7 +875,6 @@ fun OrderScreen(
     /*scan bar code */
     LaunchedEffect(allItems, dailyRates) {
         viewModel.barcodeReader.openIfNeeded()
-
         fun normalize(value: String?): String =
             value
                 ?.trim()
@@ -870,7 +883,6 @@ fun OrderScreen(
                 ?.replace("\n", "")
                 ?.replace("\r", "")
                 ?: ""
-
 
         viewModel.barcodeReader.setOnBarcodeScanned { scannedRaw ->
             val scanned = normalize(scannedRaw)
@@ -892,12 +904,12 @@ fun OrderScreen(
 
             // ✅ Match multiple fields: RFID + ItemCode + ProductCode + TID
             val matchedItem = currentItems.firstOrNull { item ->
-                val codeRfid     = normalize(item.rfid)
+                // val codeRfid     = normalize(item.rfid)
                 val codeItemCode = normalize(item.itemCode)
                 val codeProduct  = normalize(item.productCode)
                 val codeTid      = normalize(item.tid)
 
-                val candidates = listOf(codeRfid, codeItemCode, codeProduct, codeTid)
+                val candidates = listOf( codeItemCode, codeProduct, codeTid)
 
                 candidates.any { code ->
                     code == scanned ||           // exact match
@@ -912,8 +924,8 @@ fun OrderScreen(
             }
 
             // 2️⃣ Duplicate skip
-            if (productList.any { it.rfidCode.equals(matchedItem.rfid, ignoreCase = true) }) {
-                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.itemCode}")
+            if (productList.any { it.tid.equals(matchedItem.tid, ignoreCase = true) }) {
+                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.tid}")
                 return@setOnBarcodeScanned
             }
 
@@ -953,6 +965,7 @@ fun OrderScreen(
             val imageString = matchedItem.imageUrl.orEmpty()
             val lastImagePath = imageString.split(",").lastOrNull()?.trim()
             val finalImageUrl = if (!lastImagePath.isNullOrBlank()) "$baseUrl$lastImagePath" else ""
+
             selectedItem = matchedItem.toItemCodeResponse()
             val newProduct = OrderItem(
 
@@ -1021,6 +1034,7 @@ fun OrderScreen(
                 makingFixedWastage = fixWastageFinal.toString(),
                 makingPerGram = makingPerGramFinal.toString(),
                 CategoryWt = matchedItem.CategoryWt.toString(),
+                labelStockId=matchedItem.bulkItemId
 
 
             )
@@ -1283,7 +1297,7 @@ fun OrderScreen(
                     CompanyId = item.companyId ?: 0,
 
 
-                    LabelledStockId =  0,
+                    LabelledStockId =  item.labelStockId ?: 0,
 
                     TotalStoneWeight = item.stoneWt ?: "0.0",
 
@@ -1394,7 +1408,8 @@ fun OrderScreen(
             if (!isEditMode) {
                 orderViewModel.setOrderResponse(it)
                 Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
-                generateTablePdfWithImages(context, it)
+              //  generateTablePdfWithImages(context, it)
+                generateOrderPdf(context,it,orderViewModel)
                 //showInvoice = true
                 orderViewModel.clearOrderItems()
                 customerName = customerName
@@ -1643,7 +1658,7 @@ fun OrderScreen(
                                    MakingFixedWastage = "",
                                    Description = product.remark,
                                    CompanyId = 0,
-                                   LabelledStockId = 0,
+                                   LabelledStockId = product.labelStockId,
                                    TotalStoneWeight = product.stoneWt,
                                    BranchId = 0,
                                    BranchName = product.branchName,
@@ -1787,7 +1802,8 @@ fun OrderScreen(
 // ✅ 4) Generate + open PDF (offline request-based)
 
                            scope.launch {
-                               generateTablePdfWithImages1(context, request)
+                              // generateTablePdfWithImages1(context, request)
+                               //generateOrderPdf(context,request,orderViewModel)
                            }
 
 // ✅ 5) Reset UI (IMPORTANT: return should be at end)
@@ -2098,6 +2114,258 @@ fun OrderScreen(
 
 
 }
+
+
+
+suspend fun generateOrderPdf(
+    context: Context,
+    order: CustomOrderResponse,
+    orderViewModel: OrderViewModel
+) {
+    // ===============================
+    // 🔹 CREATE FILE
+    // ===============================
+    val file = File(
+        context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+        "Order_${order.Customer.FirstName}.pdf"
+    )
+
+    val writer = PdfWriter(file)
+    val pdf = PdfDocument(writer)
+    val doc = Document(pdf, PageSize.A4) // Portrait A4
+    doc.setMargins(15f, 15f, 15f, 15f)
+
+    // ===============================
+    // 🔹 TITLE
+    // ===============================
+    doc.add(
+        Paragraph("CUSTOMER ORDER")
+            .setBold()
+            .setFontSize(20f) // slightly bigger
+            .setTextAlignment(TextAlignment.CENTER)
+    )
+    doc.add(Paragraph("\n"))
+
+    // ===============================
+// 🔹 MAIN HEADER (PROFORMA STYLE)
+// ===============================
+    doc.add(Paragraph("\n"))
+    // Full width table
+    val headerTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 1f)))
+    headerTable.setWidth(UnitValue.createPercentValue(100f))
+
+    fun leftHeader(text: String) = Cell()
+        .add(Paragraph(text).setFontSize(10f))
+        .setTextAlignment(TextAlignment.LEFT)
+        .setBorder(Border.NO_BORDER)
+        .setPadding(0f)
+
+    fun rightHeader(text: String) = Cell()
+        .add(
+            Paragraph(text)
+                .setFontSize(10f)
+                .setTextAlignment(TextAlignment.RIGHT)
+        )
+        .setBorder(Border.NO_BORDER)
+        .setPaddingRight(50f)   // Important
+        .setPaddingLeft(0f)
+        .setPaddingTop(0f)
+        .setPaddingBottom(0f)
+
+// Row 1
+    headerTable.addCell(leftHeader("DATE: ${SimpleDateFormat("dd-MM-yyyy").format(Date())}"))
+    headerTable.addCell(rightHeader(""))
+    // headerTable.addCell(rightHeader("GST: -"))
+
+// Row 2
+    headerTable.addCell(leftHeader("CUSTOMER NAME: ${order.Customer.FirstName}"))
+    headerTable.addCell(rightHeader(""))
+    // headerTable.addCell(rightHeader("SCREW: -"))
+
+// Row 3
+    headerTable.addCell(leftHeader("PHONE NO: ${order.Customer.Mobile ?: "-"}"))
+    headerTable.addCell(rightHeader(""))
+    //headerTable.addCell(rightHeader("HALLMARK: ${order.HallmarkAmount ?: "-"}"))
+
+    doc.add(headerTable)
+    doc.add(Paragraph("\n"))
+
+    // ===============================
+    // 🔹 COLLECT ALL UNIQUE STONES
+    // ===============================
+    val allStones = mutableListOf<Stone>()
+    for (item in order.CustomOrderItem) {
+        val labelId = item.LabelledStockId ?: continue
+        val stones = orderViewModel.getStonesList(labelId.toString())
+        allStones.addAll(stones)
+    }
+
+    val uniqueStoneNames = allStones
+        .mapNotNull { it.StoneName }
+        .distinct()
+        .sorted()
+
+    // ===============================
+    // 🔹 COMPUTE TOTAL WEIGHT PER STONE
+    // ===============================
+    val totalStoneWeights = mutableMapOf<String, Double>()
+    uniqueStoneNames.forEach { stoneName ->
+        val totalWeight = allStones
+            .filter { it.StoneName.equals(stoneName, true) }
+            .sumOf { it.StoneWeight?.toDoubleOrNull() ?: 0.0 }
+        totalStoneWeights[stoneName] = totalWeight
+    }
+
+    // ===============================
+    // 🔹 COLUMN WIDTHS
+    // ===============================
+    val fixedColumns = floatArrayOf(
+        1f,    // S.No
+        2f,    // Item Code
+        3f,    // Particulars (reduced from 4f to 3f)
+        2f     // Gross Wt
+    )
+    val stoneColumns = FloatArray(uniqueStoneNames.size) { 1.5f }
+    val endingColumns = floatArrayOf(2f)   // Net Wt
+    val columnWidths = fixedColumns + stoneColumns + endingColumns
+
+    val table = Table(UnitValue.createPercentArray(columnWidths))
+    table.setWidth(UnitValue.createPercentValue(100f))
+    table.setFontSize(11f)  // slightly bigger than before
+
+    // ===============================
+    // 🔹 CELL FUNCTIONS
+    // ===============================
+    fun headerCell(text: String): Cell = Cell()
+        .add(Paragraph(text).setBold().setFontColor(ColorConstants.RED).setFontSize(12f))
+        .setTextAlignment(TextAlignment.CENTER)
+        .setBorder(SolidBorder(1f))
+        .setPadding(5f)
+
+    fun dataCell(text: String, alignCenter: Boolean = true): Cell = Cell()
+        .add(Paragraph(text).setFontSize(11f))
+        .setTextAlignment(if (alignCenter) TextAlignment.CENTER else TextAlignment.LEFT)
+        .setBorder(SolidBorder(1f))
+        .setPadding(5f)
+
+    // ===============================
+    // 🔹 HEADER ROW
+    // ===============================
+    table.addHeaderCell(headerCell("S.NO"))
+    table.addHeaderCell(headerCell("ITEM CODE"))
+    table.addHeaderCell(headerCell("PARTICULARS"))
+    table.addHeaderCell(headerCell("GROSS WT"))
+    uniqueStoneNames.forEach { stoneName -> table.addHeaderCell(headerCell(stoneName.uppercase())) }
+    table.addHeaderCell(headerCell("NETWT"))
+
+    // ===============================
+    // 🔹 DATA ROWS
+    // ===============================
+    var totalGross = 0.0
+    var totalNet = 0.0
+
+    for ((index, item) in order.CustomOrderItem.withIndex()) {
+        val stones = orderViewModel.getStonesList(item.LabelledStockId?.toString() ?: "")
+
+        table.addCell(dataCell((index + 1).toString()))
+        table.addCell(dataCell(item.ItemCode ?: "-"))
+        table.addCell(dataCell(item.DesignName ?: "-", false))
+        table.addCell(dataCell(item.GrossWt ?: "0.000"))
+
+        totalGross += item.GrossWt?.toDoubleOrNull() ?: 0.0
+        totalNet += item.NetWt?.toDoubleOrNull() ?: 0.0
+
+        uniqueStoneNames.forEach { stoneName ->
+            val weight = stones
+                .filter { it.StoneName.equals(stoneName, true) }
+                .sumOf { it.StoneWeight?.toDoubleOrNull() ?: 0.0 }
+            val formatted = if (weight == 0.0) "0.000" else String.format("%.3f", weight)
+            table.addCell(dataCell(formatted))
+        }
+
+        table.addCell(dataCell(item.NetWt ?: "0.000"))
+    }
+
+    // ===============================
+    // 🔹 TOTAL ROW
+    // ===============================
+    val totalCellSpan = 3
+    table.addCell(
+        Cell(1, totalCellSpan)
+            .add(Paragraph("TOTAL").setBold())
+            .setFontColor(ColorConstants.RED)
+            .setFontSize(12f)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setBorder(SolidBorder(1f))
+    )
+    table.addCell(
+        Cell()
+            .add(Paragraph(String.format("%.3f", totalGross)).setBold())
+            .setFontColor(ColorConstants.RED)
+            .setFontSize(12f)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setBorder(SolidBorder(1f))
+    )
+
+    // Stone totals
+    uniqueStoneNames.forEach { stoneName ->
+        val total = totalStoneWeights[stoneName] ?: 0.0
+        val formatted = if (total == 0.0) "0.000" else String.format("%.3f", total)
+        table.addCell(
+            Cell()
+                .add(Paragraph(formatted).setBold())
+                .setFontColor(ColorConstants.RED)
+                .setFontSize(12f)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setBorder(SolidBorder(1f))
+        )
+    }
+
+    table.addCell(
+        Cell()
+            .add(Paragraph(String.format("%.3f", totalNet)).setBold())
+            .setFontColor(ColorConstants.RED)
+            .setFontSize(12f)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setBorder(SolidBorder(1f))
+    )
+
+    doc.add(table)
+
+    // ===============================
+// 🔹 FOOTER SECTION
+// ===============================
+    doc.add(Paragraph("\n"))
+
+    doc.add(
+        Paragraph("Pranav Jewellers")
+            .setFontSize(10f)
+    )
+
+    doc.add(
+        Paragraph("Note: This is not a Tax Invoice")
+            .setFontSize(9f)
+            .setFontColor(ColorConstants.RED)
+    )
+    doc.close()
+
+    // ===============================
+    // 🔹 OPEN PDF
+    // ===============================
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/pdf")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+
+    context.startActivity(Intent.createChooser(intent, "Open PDF"))
+}
+
 
 fun CustomOrderItem.toItemCodeResponse(): ItemCodeResponse {
     return ItemCodeResponse(
@@ -2779,7 +3047,7 @@ private fun buildOrderItemFromSelectedItem(
         makingPerGram = selectedItem.MakingPerGram?.toString() ?: "0",
         finePlusWt = "",
         CategoryWt = selectedItem.weightCategory.toString(),
-
+        labelStockId=selectedItem.Id!!.toInt()
 
 
     )

@@ -124,6 +124,7 @@ class BulkRepositoryImpl @Inject constructor(
         Log.d("SYNC_ITEM", "Server API syncBulkItemsFromServer Called Repository")
         val jsonObject = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
+            addProperty("Status","Active")
         }
 
 // Convert it to pretty JSON
@@ -411,6 +412,7 @@ class BulkRepositoryImpl @Inject constructor(
         var totalCount = 0;
         val requestBody = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
+            addProperty("Status","Active")
         }.toString().toRequestBody("application/json".toMediaType())
 
         val response = try {
@@ -433,7 +435,8 @@ class BulkRepositoryImpl @Inject constructor(
 
         val BATCH_SIZE = 500        // 🔥 safer for memory + DB
         val batch = ArrayList<BulkItem>(BATCH_SIZE)
-
+        val serverItemBatch = ArrayList<AlllabelResponse.LabelItem>(BATCH_SIZE)
+        val stoneBatch = ArrayList<Stone>(BATCH_SIZE)
         var processed = 0
         var synced = 0
 
@@ -463,13 +466,118 @@ class BulkRepositoryImpl @Inject constructor(
                     val bulkItem = mapItem(serverItem)
                     if (bulkItem != null) {
                         batch.add(bulkItem)
+                        serverItemBatch.add(serverItem)
                         synced++
+
+                        // 🔥 STONE MAPPING SAFE ZONE
+                        serverItem.stones
+                            ?.filter { !it.StoneName.isNullOrBlank() }
+                            ?.forEach {
+
+                                stoneBatch.add(
+                                    Stone(
+                                        bulkItemId = it.bulkItemId,
+                                        StoneName = it.StoneName,
+                                        StoneWeight = it.StoneWeight?.toString() ?: "0.0",
+                                        StonePieces = it.StonePieces?.toString(),
+                                        StoneRate = it.StoneRate?.toString(),
+                                        StoneAmount = it.StoneAmount?.toString() ?: "0.0",
+
+                                        Description = it.Description?.toString(),
+                                        ClientCode = it.ClientCode?.toString(),
+
+                                        LabelledStockId = it.LabelledStockId ?: 0,
+                                        CompanyId = it.CompanyId ?: 0,
+                                        CounterId = it.CounterId ?: 0,
+                                        BranchId = it.BranchId ?: 0,
+                                        EmployeeId = it.EmployeeId ?: 0,
+
+                                        CreatedOn = it.CreatedOn?.toString(),
+                                        LastUpdated = it.LastUpdated?.toString(),
+
+                                        StoneLessPercent = it.StoneLessPercent?.toString(),
+                                        StoneCertificate = it.StoneCertificate?.toString(),
+                                        StoneSettingType = it.StoneSettingType?.toString(),
+                                        StoneRatePerPiece = it.StoneRatePerPiece?.toString(),
+                                        StoneRateKarate = it.StoneRateKarate?.toString(),
+                                        StoneStatusType = it.StoneStatusType?.toString()
+                                    )
+                                )
+                            }
+
                     }
 
-                    if (batch.size == BATCH_SIZE) {
+               /*     if (batch.size == BATCH_SIZE) {
                         bulkItemDao.insertBulkItem(batch)
                         batch.clear()
+                    }*/
+
+                 /*   if (batch.size == BATCH_SIZE) {
+
+                       // db.withTransaction {
+                            bulkItemDao.insertBulkItem(batch)
+                            if (stoneBatch.isNotEmpty()) {
+                                bulkItemDao.insertStones(stoneBatch)
+                            }
+                      //  }
+
+                        batch.clear()
+                        stoneBatch.clear()
+                    }*/
+                    if (batch.size == BATCH_SIZE) {
+
+                        val insertedIds = bulkItemDao.insertBulkItem(batch)
+
+                        val finalStoneBatch = mutableListOf<Stone>()
+
+                        insertedIds.forEachIndexed { index, newId ->
+
+                            val serverItem = serverItemBatch[index]
+
+                            serverItem.stones
+                                ?.filter { !it.StoneName.isNullOrBlank() }
+                                ?.forEach { stone ->
+
+                                    finalStoneBatch.add(
+                                        Stone(
+                                            bulkItemId = newId.toInt(),
+
+                                            StoneName = stone.StoneName,
+                                            StoneWeight = stone.StoneWeight?.toString() ?: "0.0",
+                                            StonePieces = stone.StonePieces?.toString(),
+                                            StoneRate = stone.StoneRate?.toString(),
+                                            StoneAmount = stone.StoneAmount?.toString() ?: "0.0",
+
+                                            Description = stone.Description,
+                                            ClientCode = stone.ClientCode,
+                                            LabelledStockId = stone.LabelledStockId,
+                                            CompanyId = stone.CompanyId,
+                                            CounterId = stone.CounterId,
+                                            BranchId = stone.BranchId,
+                                            EmployeeId = stone.EmployeeId,
+                                            CreatedOn = stone.CreatedOn,
+                                            LastUpdated = stone.LastUpdated,
+                                            StoneLessPercent = stone.StoneLessPercent,
+                                            StoneCertificate = stone.StoneCertificate,
+                                            StoneSettingType = stone.StoneSettingType,
+                                            StoneRatePerPiece = stone.StoneRatePerPiece,
+                                            StoneRateKarate = stone.StoneRateKarate,
+                                            StoneStatusType = stone.StoneStatusType
+                                        )
+                                    )
+                                }
+                        }
+
+                        if (finalStoneBatch.isNotEmpty()) {
+                            bulkItemDao.insertStones(finalStoneBatch)
+                        }
+
+                        batch.clear()
+                        serverItemBatch.clear()
                     }
+
+
+
 
                     val now = System.currentTimeMillis()
                     if (now - lastProgressTime >= PROGRESS_INTERVAL) {
@@ -495,10 +603,62 @@ class BulkRepositoryImpl @Inject constructor(
         }
 
         // 🔥 insert remaining items
-        if (batch.isNotEmpty()) {
+     /*   if (batch.isNotEmpty()) {
             bulkItemDao.insertBulkItem(batch)
             batch.clear()
+        }*/
+
+        // 🔥 FINAL REMAINING INSERT
+        if (batch.isNotEmpty()) {
+
+            val insertedIds = bulkItemDao.insertBulkItem(batch)
+
+            val finalStoneBatch = mutableListOf<Stone>()
+
+            insertedIds.forEachIndexed { index, newId ->
+
+                val serverItem = serverItemBatch[index]
+
+                serverItem.stones
+                    ?.filter { !it.StoneName.isNullOrBlank() }
+                    ?.forEach { stone ->
+
+                        finalStoneBatch.add(
+                            Stone(
+                                bulkItemId = newId.toInt(),
+                                StoneName = stone.StoneName,
+                                StoneWeight = stone.StoneWeight?.toString() ?: "0.0",
+                                StonePieces = stone.StonePieces?.toString(),
+                                StoneRate = stone.StoneRate?.toString(),
+                                StoneAmount = stone.StoneAmount?.toString() ?: "0.0",
+                                Description = stone.Description,
+                                ClientCode = stone.ClientCode,
+                                LabelledStockId = stone.LabelledStockId,
+                                CompanyId = stone.CompanyId,
+                                CounterId = stone.CounterId,
+                                BranchId = stone.BranchId,
+                                EmployeeId = stone.EmployeeId,
+                                CreatedOn = stone.CreatedOn,
+                                LastUpdated = stone.LastUpdated,
+                                StoneLessPercent = stone.StoneLessPercent,
+                                StoneCertificate = stone.StoneCertificate,
+                                StoneSettingType = stone.StoneSettingType,
+                                StoneRatePerPiece = stone.StoneRatePerPiece,
+                                StoneRateKarate = stone.StoneRateKarate,
+                                StoneStatusType = stone.StoneStatusType
+                            )
+                        )
+                    }
+            }
+
+            if (finalStoneBatch.isNotEmpty()) {
+                bulkItemDao.insertStones(finalStoneBatch)
+            }
+
+            batch.clear()
+            serverItemBatch.clear()
         }
+
 
         onProgress(processed, synced, totalCount)
     }

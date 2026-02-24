@@ -533,7 +533,8 @@ fun OrderScreenContent(
                     makingFixedAmt = coItem.MakingFixed,
                     makingFixedWastage = coItem.MakingFixedWastage,
                     makingPerGram = coItem.MakingPerGram.orEmpty(),
-                    CategoryWt = coItem.WeightCategories.toString()
+                    CategoryWt = coItem.WeightCategories.toString(),
+                    labelStockId = coItem.LabelledStockId!!.toInt()
                 )
 
                 if (!orderItem.itemCode.isNullOrBlank() && orderItem.itemCode != "null") {
@@ -833,7 +834,7 @@ fun OrderScreenContent(
 
     fun BulkItem.toItemCodeResponse(): ItemCodeResponse {
         return ItemCodeResponse(
-            Id = this.bulkItemId ?: 0,
+            Id = this.id ?: 0,
             ProductTitle = this.productName.orEmpty(),
             ItemCode = this.itemCode.orEmpty(),
             RFIDCode = this.rfid.orEmpty(),
@@ -1019,7 +1020,8 @@ fun OrderScreenContent(
                                 makingFixedAmt   = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
                                 makingPerGram    = selectedItem?.MakingPerGram?.toString() ?: "0",
-                                CategoryWt = selectedItem?.weightCategory.toString()
+                                CategoryWt = selectedItem?.weightCategory.toString(),
+                                labelStockId =  selectedItem?.bulkItemId!!.toInt()
                             )
                             Log.d(
                                 "Added to Product List",
@@ -1146,7 +1148,8 @@ fun OrderScreenContent(
                 makingFixedAmt = selectedItem?.MakingFixedAmt?.toString() ?: "0",
                 makingFixedWastage = selectedItem?.MakingFixedWastage?.toString() ?: "0",
                 makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
-                CategoryWt = selectedItem?.weightCategory?.toString()?:""
+                CategoryWt = selectedItem?.weightCategory?.toString()?:"",
+                labelStockId = selectedItem?.bulkItemId!!.toInt()
 
 
             )
@@ -1311,7 +1314,8 @@ fun OrderScreenContent(
                             makingFixedWastage = selectedItem?.MakingFixedWastage?.toString()
                                 ?: "0",
                             makingPerGram = selectedItem?.MakingPerGram?.toString() ?: "0",
-                            CategoryWt = selectedItem?.weightCategory?.toString() ?: ""
+                            CategoryWt = selectedItem?.weightCategory?.toString() ?: "",
+                            labelStockId = selectedItem?.bulkItemId!!.toInt()
 
 
                         )
@@ -2823,7 +2827,8 @@ fun mapItemCodeToOrderItem(
         makingFixedAmt = item.MakingFixedAmt ?: "",
         makingFixedWastage = item.MakingFixedWastage ?: "",
         makingPerGram = item.MakingPerGram ?: "",
-        CategoryWt = item.weightCategory.toString()?:""
+        CategoryWt = item.weightCategory.toString()?:"",
+        labelStockId = item.bulkItemId!!.toInt()
     )
 }
 
@@ -3247,14 +3252,14 @@ fun ItemCodeInputRow(
         if (showOrderDialog && selectedItem != null) {
             val branchList = singleProductViewModel.branches
 
-            OrderDetailsDialog(
+        /*    OrderDetailsDialog(
                 customerId,
                 selectedCustomer,
-                productList.get(0),
+                selectedItem,
                 branchList,
                 onDismiss = { showOrderDialog = false },
                 onSave = { showOrderDialog = false }
-            )
+            )*/
         }
     }
 }

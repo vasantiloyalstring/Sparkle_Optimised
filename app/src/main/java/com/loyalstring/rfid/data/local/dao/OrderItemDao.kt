@@ -12,6 +12,7 @@ import com.loyalstring.rfid.data.model.order.CustomOrderRequest
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.order.Stone
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -27,6 +28,10 @@ interface OrderItemDao {
 
     @Update
     suspend fun update(orderItem: OrderItem)
+
+
+    @Query("SELECT * FROM bulk_item_stones WHERE LabelledStockId = :labelStockId")
+    suspend fun getStonesByLabelId(labelStockId: String): List<Stone>
 
     // Helper method for upsert logic
    /* suspend fun insertOrUpdate(orderItem: OrderItem) {

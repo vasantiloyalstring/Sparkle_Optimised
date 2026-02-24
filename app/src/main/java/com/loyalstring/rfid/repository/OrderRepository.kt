@@ -5,6 +5,7 @@ import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeReques
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeResponse
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.loyalstring.rfid.data.local.dao.OrderItemDao
 import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.local.entity.OrderListCacheEntity
@@ -14,11 +15,14 @@ import com.loyalstring.rfid.data.model.order.CustomOrderResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.data.DeleteOrderRequest
 import com.loyalstring.rfid.data.remote.data.DeleteOrderResponse
 import kotlinx.coroutines.flow.Flow
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import javax.inject.Inject
 import kotlin.String
@@ -43,7 +47,12 @@ class OrderRepository @Inject constructor(
 
 
     suspend fun getAllItemCodeList(clientCodeRequest: ClientCodeRequest): Response<List<ItemCodeResponse>> {
-        return apiService.getAllItemCodeList(clientCodeRequest)
+        val requestBody = JsonObject().apply {
+            addProperty("ClientCode", clientCodeRequest.clientcode)
+            addProperty("Status","Active")
+        }.toString().toRequestBody("application/json".toMediaType())
+
+        return apiService.getAllItemCodeList(requestBody)
     }
 
 
@@ -64,6 +73,11 @@ class OrderRepository @Inject constructor(
 
     suspend fun insertOrderItems(items: OrderItem) {
         orderItemDao.insertOrderItem(items)
+    }
+
+    suspend fun getStonesByLabelId(labelStockId: String): List<Stone> {
+        Log.d("@@","labelStockId"+labelStockId)
+        return orderItemDao.getStonesByLabelId(labelStockId)
     }
 
     fun getAllOrderItems(): Flow<List<OrderItem>> {

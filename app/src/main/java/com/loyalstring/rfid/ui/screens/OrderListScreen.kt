@@ -396,7 +396,8 @@ fun OrderTableWithPagination(
                         ) {
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
-                                    generateTablePdfWithImages(context, row)
+                                   // generateTablePdfWithImages(context, row)
+                                    generateOrderPdf(context,row,orderViewModel)
                                 }
                             },
                                 modifier = Modifier.size(28.dp) ) {

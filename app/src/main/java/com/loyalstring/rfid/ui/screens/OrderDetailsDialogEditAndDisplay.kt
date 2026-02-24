@@ -871,7 +871,8 @@ fun OrderDetailsDialogEditAndDisplay(
                                 makingFixedAmt = stableItem?.makingFixedAmt.orEmpty(),
                                 makingFixedWastage = stableItem?.makingFixedWastage.orEmpty(),
                                 makingPerGram = stableItem?.makingPerGram.orEmpty(),
-                                CategoryWt = stableItem?.CategoryWt.toString()
+                                CategoryWt = stableItem?.CategoryWt.toString(),
+                                labelStockId = stableItem!!.labelStockId
                             )
 
                             orderViewModel.insertOrderItemToRoomORUpdate(orderItem)

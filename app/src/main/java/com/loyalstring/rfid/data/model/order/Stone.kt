@@ -19,7 +19,8 @@ import kotlinx.parcelize.Parcelize
 )
 @Parcelize
 data class Stone(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
 
     val bulkItemId: Int,
 

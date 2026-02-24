@@ -25,10 +25,12 @@ interface BulkItemDao {
 
     /*@Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBulkItem(items: List<BulkItem>)*/
-
+/*
     @Transaction
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertBulkItem(items: List<BulkItem>)
+    suspend fun insertBulkItem(items: List<BulkItem>)*/
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBulkItem(items: List<BulkItem>): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSingleItem(item: BulkItem): Long

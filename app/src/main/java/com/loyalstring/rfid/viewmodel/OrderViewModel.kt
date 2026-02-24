@@ -27,6 +27,7 @@ import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.Customer
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
+import com.loyalstring.rfid.data.model.order.Stone
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.OrderRepository
@@ -99,6 +100,9 @@ class OrderViewModel @Inject constructor(
     private val _getAllDailyRate = MutableStateFlow<List<DailyRateResponse>>(emptyList())
     val getAllDailyRate: StateFlow<List<DailyRateResponse>> = _getAllDailyRate
 
+    private val _stones = MutableStateFlow<List<Stone>>(emptyList())
+    val stones: StateFlow<List<Stone>> = _stones
+
   /*  private val _nextOrderNo = MutableStateFlow(0)
     val nextOrderNo: StateFlow<Int> = _nextOrderNo*/
 
@@ -134,6 +138,18 @@ class OrderViewModel @Inject constructor(
 //    fun resetOrderPlaced() {
 //        _orderPlaced.value = false
 //    }
+
+    fun getStonesByLabelId(labelStockId: String) {
+        viewModelScope.launch {
+            val result = repository.getStonesByLabelId(labelStockId)
+            _stones.value = result
+        }
+    }
+
+    suspend fun getStonesList(labelStockId: String): List<Stone> {
+        Log.d("@@","labelStockId"+labelStockId)
+        return repository.getStonesByLabelId(labelStockId)
+    }
 
     /*add employee*/
     fun addEmployee(request: AddEmployeeRequest) {
