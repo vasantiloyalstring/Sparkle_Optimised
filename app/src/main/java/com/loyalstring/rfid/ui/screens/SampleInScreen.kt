@@ -862,6 +862,10 @@ fun SampleInScreen(
             ScanBottomBar(
 
                 onSave = {
+
+                    val sampleOutNoFinal = itemCode.text.ifBlank {
+                        productList.firstOrNull()?.SampleOutNo.orEmpty()
+                    }
                     fun norm(v: String?) = v?.trim()?.uppercase()?.replace(" ", "") ?: ""
                     fun safeD(v: String?) = v?.toDoubleOrNull() ?: 0.0
                     fun safeI(v: Any?) = when (v) {
@@ -907,7 +911,7 @@ fun SampleInScreen(
                         ClientCode = employee?.clientCode.orEmpty(),
                         BranchId = employee?.branchNo?.toInt(),
                         CustomerId = customerId ?: 0,
-                        SampleOutNo = SampleOutNo.orEmpty(),
+                        SampleOutNo = sampleOutNoFinal,
 
                         ReturnDate = first?.ReturnDate ?: "",
                         Description = first?.Description ?: "",
@@ -1047,7 +1051,8 @@ fun SampleInScreen(
                 expanded = false,
                 onSaveCustomer = { request -> orderViewModel.addEmployee(request) },
                 employeeClientCode = employee?.clientCode,
-                employeeId = employee?.employeeId?.toString()
+                employeeId = employee?.employeeId?.toString(),
+                isEditMode = isEditMode
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(

@@ -1371,7 +1371,8 @@ fun SampleOutScreen(
                 expanded = false,
                 onSaveCustomer = { request -> orderViewModel.addEmployee(request) },
                 employeeClientCode = employee?.clientCode,
-                employeeId = employee?.employeeId?.toString()
+                employeeId = employee?.employeeId?.toString(),
+                isEditMode = isEditMode
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(

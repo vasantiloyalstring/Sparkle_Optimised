@@ -45,9 +45,6 @@ import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.loyalstring.rfid.data.model.login.Employee
@@ -71,7 +68,8 @@ fun CustomerNameInputData(
     expanded: Boolean,
     onSaveCustomer: (AddEmployeeRequest) -> Unit,
     employeeClientCode: String? = null,
-    employeeId: String? = null
+    employeeId: String? = null,
+    isEditMode: Boolean
 ) {
 
     var isExpanded by remember { mutableStateOf(false) }
@@ -112,7 +110,10 @@ fun CustomerNameInputData(
                 .fillMaxWidth()
                 .height(35.dp)
                 .border(1.dp, gradientBrush, RoundedCornerShape(10.dp))
-                .background(Color.White, RoundedCornerShape(10.dp))
+                .background(
+                    if (isEditMode) Color(0xFFF0F0F0) else Color.White,
+                    RoundedCornerShape(10.dp)
+                )
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -127,15 +128,17 @@ fun CustomerNameInputData(
             BasicTextField(
                 value = customerName,
                 onValueChange = {
-                    onCustomerNameChange(it)
-                    if (!isExpanded) isExpanded = true
-                    coroutineScope.launch { fetchSuggestions() }
+                    if (!isEditMode) {
+                        onCustomerNameChange(it)
+                        if (!isExpanded) isExpanded = true
+                        coroutineScope.launch { fetchSuggestions() }
+                    }
                 },
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 13.sp, color = Color.Black),
                 modifier = Modifier
                     .weight(1f)
-                    .clickable {
+                    .clickable(enabled = !isEditMode) {
                         isExpanded = true
                         coroutineScope.launch { fetchSuggestions() }
                         keyboardController?.show()
@@ -145,7 +148,7 @@ fun CustomerNameInputData(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (customerName.isBlank()) {
+                        if (!isEditMode && customerName.isBlank()) {
                             Text(
                                 text = localizedContext.getString(R.string.hint_enter_customer_name),
                                 fontSize = 13.sp,
@@ -159,7 +162,7 @@ fun CustomerNameInputData(
                 }
             )
 
-            if (customerName.isBlank()) {
+            if (!isEditMode && customerName.isBlank()) {
                 Box(
                     modifier = Modifier
                         .size(26.dp)
@@ -177,7 +180,7 @@ fun CustomerNameInputData(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-            } else {
+            }  else if (!isEditMode) {
                 IconButton(
                     onClick = {
                         onClear()
