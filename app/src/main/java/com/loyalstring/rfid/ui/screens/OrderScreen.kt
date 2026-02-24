@@ -534,7 +534,7 @@ fun OrderScreen(
             Log.d("ManualEntry", "Found: ${matchedItem.itemCode}")
 
             // Prevent duplicates by RFID
-            if (productList.any { it.rfidCode.equals(matchedItem.rfid, ignoreCase = true) }) {
+            if (productList.any { it.itemCode.equals(matchedItem.itemCode, ignoreCase = true) }) {
                 Log.d("ManualEntry", "⚠️ Already exists: ${matchedItem.itemCode}")
                 return@LaunchedEffect
             }
@@ -861,7 +861,6 @@ fun OrderScreen(
     /*scan bar code */
     LaunchedEffect(allItems, dailyRates) {
         viewModel.barcodeReader.openIfNeeded()
-
         fun normalize(value: String?): String =
             value
                 ?.trim()
@@ -870,8 +869,6 @@ fun OrderScreen(
                 ?.replace("\n", "")
                 ?.replace("\r", "")
                 ?: ""
-
-
         viewModel.barcodeReader.setOnBarcodeScanned { scannedRaw ->
             val scanned = normalize(scannedRaw)
             val currentItems = allItems
@@ -892,12 +889,12 @@ fun OrderScreen(
 
             // ✅ Match multiple fields: RFID + ItemCode + ProductCode + TID
             val matchedItem = currentItems.firstOrNull { item ->
-                val codeRfid     = normalize(item.rfid)
+                // val codeRfid     = normalize(item.rfid)
                 val codeItemCode = normalize(item.itemCode)
                 val codeProduct  = normalize(item.productCode)
                 val codeTid      = normalize(item.tid)
 
-                val candidates = listOf(codeRfid, codeItemCode, codeProduct, codeTid)
+                val candidates = listOf( codeItemCode, codeProduct, codeTid)
 
                 candidates.any { code ->
                     code == scanned ||           // exact match
@@ -912,8 +909,8 @@ fun OrderScreen(
             }
 
             // 2️⃣ Duplicate skip
-            if (productList.any { it.rfidCode.equals(matchedItem.rfid, ignoreCase = true) }) {
-                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.itemCode}")
+            if (productList.any { it.tid.equals(matchedItem.tid, ignoreCase = true) }) {
+                Log.d("RFID Scan", "⚠️ Already exists: ${matchedItem.tid}")
                 return@setOnBarcodeScanned
             }
 
@@ -953,6 +950,7 @@ fun OrderScreen(
             val imageString = matchedItem.imageUrl.orEmpty()
             val lastImagePath = imageString.split(",").lastOrNull()?.trim()
             val finalImageUrl = if (!lastImagePath.isNullOrBlank()) "$baseUrl$lastImagePath" else ""
+
             selectedItem = matchedItem.toItemCodeResponse()
             val newProduct = OrderItem(
 
