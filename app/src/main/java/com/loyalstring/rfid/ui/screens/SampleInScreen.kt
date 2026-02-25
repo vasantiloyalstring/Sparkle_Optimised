@@ -72,7 +72,6 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.collections.forEach
 
 @SuppressLint("UnrememberedMutableState")
 @Composable
@@ -109,7 +108,8 @@ fun SampleInScreen(
     var itemCode by remember { mutableStateOf(TextFieldValue("")) }
     var showDropdownItemcode by remember { mutableStateOf(false) }
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
-    var selectedItem by remember { mutableStateOf<ItemCodeResponse?>(null) }
+   // var selectedItem by remember { mutableStateOf<ItemCodeResponse?>(null) }
+    var selectedItem by remember { mutableStateOf<SampleOutListResponse?>(null) }
     val isLoading by orderViewModel.isItemCodeLoading.collectAsState()
 
     val branchList = singleProductViewModel.branches
@@ -206,7 +206,7 @@ fun SampleInScreen(
         viewModel.resetProductScanResults()
         kotlinx.coroutines.delay(500)
 
-        resetAllFields(   onResetCustomerName = { customerName = it },
+        resetAllFields1(   onResetCustomerName = { customerName = it },
             onResetCustomerId = { customerId = it },
             onResetSelectedCustomer = { selectedCustomer = it },
             onResetExpandedCustomer = { expandedCustomer = it },
@@ -310,6 +310,7 @@ fun SampleInScreen(
         val query = itemCode.text.trim()
         if (query.isEmpty()) return@LaunchedEffect
 
+
         // ✅ match only in challanList
         val challan = challanList.firstOrNull {
             it.SampleOutNo.equals(query, ignoreCase = true)
@@ -321,6 +322,7 @@ fun SampleInScreen(
             itemCode = TextFieldValue("")
             return@LaunchedEffect
         }
+        selectedItem = challan
 
         // ✅ add directly (challan already SampleOutDetails type)
         productList.add(challan)
@@ -390,7 +392,7 @@ fun SampleInScreen(
                 Log.d("RFIDScan", "⚠️ Duplicate challan skipped: ${challan.SampleOutNo}")
                 return@forEach
             }
-
+            selectedItem = challan
             // ✅ add challan once
             productList.add(challan)
             Log.d("RFIDScan", "✅ Added challan=${challan.SampleOutNo} for ItemCode=$scannedItemCode")
@@ -905,9 +907,9 @@ fun SampleInScreen(
                     val totalWt     = issuesToSend.sumOf { safeD(it.TotalWt ?: it.NetWt) }.toString()
 
                     val first = productList.firstOrNull()
-
+                    Log.d("@@", "selectedItem?.Id" + selectedItem?.Id)
                     val request = SampleOutUpdateRequest(
-                        Id = Id,
+                        Id = selectedItem?.Id ?: productList.firstOrNull()?.Id ?: 0,
                         ClientCode = employee?.clientCode.orEmpty(),
                         BranchId = employee?.branchNo?.toInt(),
                         CustomerId = customerId ?: 0,
@@ -963,10 +965,11 @@ fun SampleInScreen(
                                 PurityName = issue.PurityName ?: "",
                                 DesignName = issue.DesignName ?: "",
 
-                                Id = Id ?: 0,
+                                Id = selectedItem?.Id ?: 0,
                                 CustomerId = customerId ?: 0,
                                 VendorId = 0,
-                                BranchId = employee?.branchNo?.toInt(),
+                                BranchId = (employee?.branchNo as? String)?.toIntOrNull() ?: 1,
+                                //  val branchId = employee?.branchNo?.toIntOrNull() ?: 1
 
                                 LabelledStockId = issue.LabelledStockId ?: 0,
                                 CustomerName = customerName,
@@ -1004,7 +1007,7 @@ fun SampleInScreen(
                 onReset = {
                     firstPress = false
 
-                    resetAllFields(
+                    resetAllFields1(
                         onResetCustomerName = { customerName = it },
                         onResetCustomerId = { customerId = it },
                         onResetSelectedCustomer = { selectedCustomer = it },
@@ -1080,7 +1083,10 @@ fun SampleInScreen(
                         onClearClicked = { itemCode = TextFieldValue("") },
                         filteredList = challanList,
                         isLoading = isLoading,
-                        onItemSelected = { selectedItem = it }
+                        onItemSelected = { item ->
+                            selectedItem = item
+                            Log.d("SelectedSampleOut", "Selected Id = ${item.Id}")
+                        }
                     )
                 }
 
@@ -1158,4 +1164,44 @@ fun SampleInScreen(
             }
         )
     }
+
+
+}
+
+fun resetAllFields1(
+    onResetCustomerName: (String) -> Unit,
+    onResetCustomerId: (Int?) -> Unit,
+    onResetSelectedCustomer: (EmployeeList?) -> Unit,
+    onResetExpandedCustomer: (Boolean) -> Unit,
+    onResetItemCode: (TextFieldValue) -> Unit,
+    onResetSelectedItem: (SampleOutListResponse?) -> Unit,
+    onResetDropdownItemcode: (Boolean) -> Unit,
+    onResetProductList: () -> Unit,
+    onResetScanning: (Boolean) -> Unit,
+    viewModel: BulkViewModel,
+    deliveryChallanViewModel: DeliveryChallanViewModel
+) {
+    // Clear customer info
+    onResetCustomerName("")
+    onResetCustomerId(null)
+    onResetSelectedCustomer(null)
+    onResetExpandedCustomer(false)
+
+    // Clear item entry
+    onResetItemCode(TextFieldValue(""))
+    onResetSelectedItem(null)
+    onResetDropdownItemcode(false)
+
+    // Clear product list
+    onResetProductList()
+
+    // Stop scanning and clear scan data
+    onResetScanning(false)
+    viewModel.resetProductScanResults()
+    viewModel.stopBarcodeScanner()
+
+    // Reset challan-related data if needed
+    // deliveryChallanViewModel.resetChallanState()
+
+    Log.d("DeliveryChallan", "🧹 All fields reset")
 }

@@ -42,7 +42,7 @@ fun SampleOutInputRowData(
     onClearClicked: () -> Unit,
     filteredList: List<SampleOutListResponse>,
     isLoading: Boolean,
-    onItemSelected: (ItemCodeResponse) -> Unit // (kept for compatibility; optional to use)
+    onItemSelected: (SampleOutListResponse) -> Unit // (kept for compatibility; optional to use)
 ) {
     val gradient = Brush.horizontalGradient(
         listOf(Color(0xFF5231A7), Color(0xFFD32940))
