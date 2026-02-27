@@ -40,6 +40,8 @@ import com.loyalstring.rfid.data.model.quotation.QuotationListRequest
 import com.loyalstring.rfid.data.model.quotation.QuotationListResponse
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationResponse
+import com.loyalstring.rfid.data.model.report.StockVerificationReqReport
+import com.loyalstring.rfid.data.model.report.StockVerificationResponseReport
 import com.loyalstring.rfid.data.model.sampleIn.SampleInResponse
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddResponse
@@ -326,6 +328,10 @@ interface RetrofitInterface {
 /*
     @POST("api/Order/UpadateQuotation")
     suspend fun getDeliveryChallanById(clientCode: String, challanId: Int) :Response<UpdateQuotationResponse>*/
+
+
+    @POST("api/ProductMaster/GetConsolidationStockVerificationReport")
+    suspend fun stockVerificationReport(@Body req: StockVerificationReqReport): Response<StockVerificationResponseReport>
 
 
 

@@ -41,7 +41,8 @@ enum class Screens(val route: String) {
     SampleInScreen("sample_in"),
     SampleInListScreen("sample_in_list"),
     QuotationScreen("quotation_screen"),
-    QuotationListScreen("quotation_list")
+    QuotationListScreen("quotation_list"),
+    StockVerificationReport("stockverification_report")
 
 
 
@@ -93,7 +94,7 @@ val listOfNavItems = listOf<NavItems>(
         title = "Report",
         unselectedIcon= Icons.Outlined.FavoriteBorder,
         selectedIcon = ( R.drawable.report_gr_svg),
-        route = ""
+        route = Screens.StockVerificationReport.route
 
     ),NavItems(
         title = "Quotations",

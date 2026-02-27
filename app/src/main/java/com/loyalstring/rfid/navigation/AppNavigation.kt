@@ -405,6 +405,32 @@ fun AppNavigation(
                     QuotationNo = QuotationNo   // ✅ isko String? hi rakho
                 )
             }
+
+            composable(Screens.StockVerificationReport.route) {
+                StockVerificationReportScreen(
+                    onBack = { navController.popBackStack() },
+                    navController,
+                )
+            }
+
+            composable(
+                "detail_screen/{branchId}/{categoryId}/{productId}/{designId}/{type}/{date}"
+            ) { backStackEntry ->
+
+                DetailScreen(
+                    branchId = backStackEntry.arguments?.getString("branchId"),
+                    categoryId = backStackEntry.arguments?.getString("categoryId"),
+                    productId = backStackEntry.arguments?.getString("productId"),
+                    designId = backStackEntry.arguments?.getString("designId"),
+                    type = backStackEntry.arguments?.getString("type"),
+                    date = backStackEntry.arguments?.getString("date"),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+
+
         }
     }
 }
+

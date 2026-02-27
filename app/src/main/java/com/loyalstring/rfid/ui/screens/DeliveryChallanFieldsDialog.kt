@@ -201,6 +201,7 @@ fun InvoiceFieldsDialog(
                                 localizedContext = localizedContext
                             )
                         }
+                        is UiState.Idle -> {}
 
                         is UiState.Loading -> {
                             Row(
