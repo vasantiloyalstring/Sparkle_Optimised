@@ -1,5 +1,7 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,7 +28,6 @@ import com.loyalstring.rfid.viewmodel.UiState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -41,8 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.loyalstring.rfid.data.model.report.Design
 import com.loyalstring.rfid.navigation.GradientTopBar
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -55,11 +59,17 @@ fun StockVerificationReportScreen(
     val viewModel: StockVerificationViewModel = hiltViewModel()
     var selectedDate by remember { mutableStateOf(getTodayDate()) }
     val state by viewModel.reportState.collectAsState()
+    val context = LocalContext.current
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val employee =
+        remember { UserPreferences.getInstance(context).getEmployee(Employee::class.java) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchStockVerificationReport(
             StockVerificationReqReport(
-                ClientCode = "LS000403",
+                ClientCode = employee?.clientCode.toString(),
                 ReportDate = selectedDate
             )
         )
@@ -68,7 +78,7 @@ fun StockVerificationReportScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Stock Verification Report",
+                title = localizedContext.getString(R.string.stock_verification_report),
                 navigationIcon = {
                     IconButton(onClick = { onBack() }) {
                         Icon(
@@ -96,7 +106,7 @@ fun StockVerificationReportScreen(
 
                 is UiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Loading...")
+                        Text(localizedContext.getString(R.string.loading))
                     }
                 }
 
@@ -106,9 +116,10 @@ fun StockVerificationReportScreen(
                     Column {
                         DateSelector(
                             selectedDate = selectedDate,
-                            onClick = { showDatePicker = true }
+                            onClick = { showDatePicker = true },
+                            localizedContext=localizedContext
                         )
-                        ReportHeaderRow()
+                        ReportHeaderRow(localizedContext=localizedContext)
 
                         LazyColumn(
                             modifier = Modifier
@@ -149,7 +160,7 @@ fun StockVerificationReportScreen(
 
                             viewModel.fetchStockVerificationReport(
                                 StockVerificationReqReport(
-                                    ClientCode = "LS000403",
+                                    ClientCode = employee?.clientCode.toString(),
                                     ReportDate = date
                                 )
                             )
@@ -157,12 +168,12 @@ fun StockVerificationReportScreen(
                         showDatePicker = false
                     }
                 ) {
-                    Text("OK")
+                    Text(localizedContext.getString(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
+                    Text(localizedContext.getString(R.string.cancel))
                 }
             }
         ) {
@@ -174,7 +185,8 @@ fun StockVerificationReportScreen(
 @Composable
 fun DateSelector(
     selectedDate: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    localizedContext: Context
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -189,7 +201,7 @@ fun DateSelector(
             onValueChange = {},
             modifier = Modifier.fillMaxWidth(),
             readOnly = true,
-            label = { Text("Select Date") },
+            label = { Text(localizedContext.getString(R.string.select_date)) },
 
             trailingIcon = {
                 Icon(Icons.Default.DateRange, contentDescription = null)
@@ -210,7 +222,8 @@ fun DateSelector(
 @Composable
 fun MaterialDatePickerDialog(
     onDateSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    localizedContext:Context
 ) {
 
     val datePickerState = rememberDatePickerState()
@@ -224,7 +237,7 @@ fun MaterialDatePickerDialog(
                         onDateSelected(formatDate(millis))
                     }
                 }
-            ) { Text("OK") }
+            ) { Text(localizedContext.getString(R.string.ok)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
@@ -248,7 +261,7 @@ fun formatDate(millis: Long): String {
 
 
 @Composable
-fun ReportHeaderRow() {
+fun ReportHeaderRow(localizedContext: Context) {
 
     Row(
         modifier = Modifier
@@ -258,10 +271,10 @@ fun ReportHeaderRow() {
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        HeaderText("Branch", Modifier.weight(1.6f))
-        HeaderText("Total Inv", Modifier.weight(1f))
-        HeaderText("Matched", Modifier.weight(1f))
-        HeaderText("UnMatched", Modifier.weight(1f))
+        HeaderText(localizedContext.getString(R.string.branch), Modifier.weight(1.6f))
+        HeaderText(localizedContext.getString(R.string.total_inv), Modifier.weight(1f))
+        HeaderText(localizedContext.getString(R.string.matched), Modifier.weight(1f))
+        HeaderText(localizedContext.getString(R.string.unmatched), Modifier.weight(1f))
      //   HeaderText("Match", Modifier.weight(1f))
        // HeaderText("Unm", Modifier.weight(1f))
     }

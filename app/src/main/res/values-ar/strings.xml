@@ -381,6 +381,30 @@
     <string name="exhibition">المعرض</string>
     <string name="enter_sample_out">أدخل رقم إخراج العينة</string>
 
+    <!--report-->
+    <string name="stock_verification_report">تقرير التحقق من المخزون</string>
+    <string name="loading">جارٍ التحميل...</string>
+    <string name="error">خطأ:</string>
+    <string name="select_date">اختر التاريخ</string>
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+    <string name="branch">الفرع</string>
+    <string name="total_inv">إجمالي المخزون</string>
+    <string name="matched">متطابق</string>
+    <string name="unmatched">غير متطابق</string>
+
+
+    <string name="items">العناصر</string>
+    <string name="back">رجوع</string>
+    <string name="search_placeholder">ابحث عن عنصر / RFID / منتج</string>
+    <string name="search">بحث</string>
+    <string name="item">عنصر</string>
+    <string name="rfid">RFID</string>
+    <string name="category">الفئة</string>
+    <string name="gross_weight">الوزن الإجمالي</string>
+    <string name="net_weight">الوزن الصافي</string>
+    <string name="status">الحالة</string>
+
 
 
 

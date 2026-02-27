@@ -51,7 +51,8 @@ class StockVerificationViewModel @Inject constructor(
         date: String?,
         categoryId: String?,
         productId: String?,
-        designId: String?
+        designId: String?,
+        clientCode: String
     ) {
 
         viewModelScope.launch {
@@ -73,7 +74,7 @@ class StockVerificationViewModel @Inject constructor(
                 // 🔹 Fetch fresh report data
                 val response = repository.getStockVerificationReport(
                     StockVerificationReqReport(
-                        ClientCode = "LS000403",
+                        ClientCode = clientCode,
                         ReportDate = date
                     )
                 )

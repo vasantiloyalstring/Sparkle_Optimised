@@ -1,4 +1,6 @@
 package com.loyalstring.rfid.ui.screens
+import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -27,6 +29,11 @@ import com.loyalstring.rfid.viewmodel.StockVerificationViewModel
 import com.loyalstring.rfid.viewmodel.UiState
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.platform.LocalContext
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -41,7 +48,15 @@ fun DetailScreen(
 ){
 
     val viewModel: StockVerificationViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val employee =
+        remember { UserPreferences.getInstance(context).getEmployee(Employee::class.java) }
 
+
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     LaunchedEffect(branchId, type, date, categoryId, productId, designId) {
         viewModel.fetchDetailItems(
             branchId,
@@ -49,7 +64,8 @@ fun DetailScreen(
             date,
             categoryId,
             productId,
-            designId
+            designId,
+            employee?.clientCode.toString()
         )
     }
     var searchQuery by remember { mutableStateOf("") }
@@ -64,7 +80,7 @@ fun DetailScreen(
                     IconButton(onClick = { onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = localizedContext.getString(R.string.back),
                             tint = Color.White
                         )
                     }
@@ -93,12 +109,12 @@ fun DetailScreen(
                     .fillMaxWidth()
                     .padding(12.dp),
                 placeholder = {
-                    Text("Search Item / RFID / Product")
+                    Text(localizedContext.getString(R.string.search_placeholder))
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Search"
+                        contentDescription = localizedContext.getString(R.string.search)
                     )
                 },
                 trailingIcon = {
@@ -106,7 +122,7 @@ fun DetailScreen(
                         IconButton(onClick = { searchQuery = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Clear"
+                                contentDescription = localizedContext.getString(R.string.clear)
                             )
                         }
                     }
@@ -141,7 +157,7 @@ fun DetailScreen(
                                     .background(Color(0xFF212121))
                                     .horizontalScroll(horizontalScrollState)
                             ) {
-                                DetailHeaderRow()
+                                DetailHeaderRow(localizedContext=localizedContext)
                             }
                         }
 
@@ -169,7 +185,7 @@ fun DetailScreen(
                                 modifier = Modifier
                                     .horizontalScroll(horizontalScrollState)
                             ) {
-                                DetailHeaderRow()
+                                DetailHeaderRow(localizedContext)
                             }
                         }
 
@@ -189,7 +205,7 @@ fun DetailScreen(
                         Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Error loading data")
+                        Text(localizedContext.getString(R.string.error_loading_data))
                     }
                 }
 
@@ -200,7 +216,7 @@ fun DetailScreen(
 }
 
 @Composable
-fun DetailHeaderRow() {
+fun DetailHeaderRow(localizedContext: Context) {
 
     Row(
         modifier = Modifier
@@ -208,13 +224,13 @@ fun DetailHeaderRow() {
             .padding(vertical = 10.dp)
     ) {
 
-        HeaderCell("Item")
-        HeaderCell("RFID")
-        HeaderCell("Category")
-        HeaderCell("Product")
-        HeaderCell("Gr WT")
-        HeaderCell("Net WT")
-        HeaderCell("Status")
+        HeaderCell(localizedContext.getString(R.string.item))
+        HeaderCell(localizedContext.getString(R.string.rfid))
+        HeaderCell(localizedContext.getString(R.string.category))
+        HeaderCell(localizedContext.getString(R.string.product))
+        HeaderCell(localizedContext.getString(R.string.gross_weight))
+        HeaderCell(localizedContext.getString(R.string.net_weight))
+        HeaderCell(localizedContext.getString(R.string.status))
     }
 }
 

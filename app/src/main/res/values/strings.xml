@@ -393,6 +393,30 @@
     <string name="scan_branch">Scan Branch</string>
     <string name="exhibition">Exhibition</string>
 
+    <!--report-->
+    <string name="stock_verification_report">Stock Verification Report</string>
+    <string name="loading">Loading...</string>
+    <string name="error">Error:</string>
+    <string name="select_date">Select Date</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="branch">Branch</string>
+    <string name="total_inv">Total Inv</string>
+    <string name="matched">Matched</string>
+    <string name="unmatched">UnMatched</string>
+
+    <string name="items">Items</string>
+    <string name="back">Back</string>
+    <string name="search_placeholder">Search Item / RFID / Product</string>
+    <string name="search">Search</string>
+    <string name="item">Item</string>
+    <string name="rfid">RFID</string>
+    <string name="category">Category</string>
+    <string name="gross_weight">Gr WT</string>
+    <string name="net_weight">Net WT</string>
+    <string name="status">Status</string>
+
+
 
 
 

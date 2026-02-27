@@ -384,4 +384,28 @@
     <string name="exhibition">प्रदर्शनी</string>
     <string name="enter_sample_out">सैंपल आउट नंबर दर्ज करें</string>
 
+<!--report-->
+        <string name="stock_verification_report">स्टॉक सत्यापन रिपोर्ट</string>
+        <string name="loading">लोड हो रहा है...</string>
+        <string name="error">त्रुटि:</string>
+        <string name="select_date">तारीख चुनें</string>
+        <string name="ok">ठीक है</string>
+        <string name="cancel">रद्द करें</string>
+        <string name="branch">शाखा</string>
+        <string name="total_inv">कुल स्टॉक</string>
+        <string name="matched">मिलान</string>
+        <string name="unmatched">अमिलान</string>
+
+    <string name="items">आइटम</string>
+    <string name="back">वापस</string>
+    <string name="search_placeholder">आइटम / RFID / प्रोडक्ट खोजें</string>
+    <string name="search">खोज</string>
+    <string name="item">आइटम</string>
+    <string name="rfid">RFID</string>
+    <string name="category">श्रेणी</string>
+    <string name="gross_weight">सकल वजन</string>
+    <string name="net_weight">शुद्ध वजन</string>
+    <string name="status">स्थिति</string>
+
+
 </resources>
