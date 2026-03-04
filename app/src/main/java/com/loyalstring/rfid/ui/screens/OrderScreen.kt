@@ -2179,7 +2179,9 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
         Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
         Order No : ${item.OrderNo ?: "-"}
         Design   : ${item.DesignName ?: "-"}
+        RFID No  : ${item.RFIDCode ?: "-"}
     """.trimIndent()
+
 
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
@@ -2847,6 +2849,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
         Name     : ${order.Customer.FirstName} ${order.Customer.LastName}
         Order No : ${item.OrderNo ?: "-"}
         Design   : ${item.DesignName ?: "-"}
+        RFID No  : ${item.RFIDCode ?: "-"}
     """.trimIndent()
 
             rightText = """
