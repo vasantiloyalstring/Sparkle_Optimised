@@ -1564,9 +1564,9 @@ class BulkViewModel @Inject constructor(
         bulkRepository.getAllRFIDTags()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
+   /* suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
         return@withContext //Unnecessary
-        /*Log.d("SYNC_ITEM", "Server API Called")
+        *//*Log.d("SYNC_ITEM", "Server API Called")
         if (syncedRFIDMap != null) return@withContext
 
         val employee = userPreferences.getEmployee(Employee::class.java)
@@ -1582,8 +1582,26 @@ class BulkViewModel @Inject constructor(
             { it.BarcodeNumber.orEmpty().trim().uppercase() },
             { it.TidValue.orEmpty().trim().uppercase() }
         )
-        Log.d("SYNC_ITEM", "Server API Called Finished")*/
-    }
+        Log.d("SYNC_ITEM", "Server API Called Finished")*//*
+    }*/
+   suspend fun syncRFIDDataIfNeeded(context: Context) = withContext(Dispatchers.IO) {
+
+       if (syncedRFIDMap != null) return@withContext
+
+       val employee = userPreferences.getEmployee(Employee::class.java)
+       val clientCode = employee?.clientCode ?: return@withContext
+
+       val response = bulkRepository.syncRFIDItemsFromServer(ClientCodeRequest(clientCode))
+
+       bulkRepository.insertRFIDTags(response)
+
+       syncedRFIDMap = response.associateBy(
+           { it.BarcodeNumber.orEmpty().trim().uppercase() },
+           { it.TidValue.orEmpty().trim().uppercase() }
+       )
+
+       Log.d("SYNC_ITEM", "RFID mapping loaded size=${syncedRFIDMap?.size}")
+   }
 
 
 
