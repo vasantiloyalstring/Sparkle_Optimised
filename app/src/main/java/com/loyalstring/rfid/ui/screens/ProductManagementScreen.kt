@@ -371,7 +371,14 @@ fun ProductManagementScreen(
             ProductGridItem(localizedContext.getString(R.string.export_excel), R.drawable.export_excel, false, ""),
             ProductGridItem(localizedContext.getString(R.string.sync_data), R.drawable.ic_sync_data, false, ""),
             ProductGridItem(localizedContext.getString(R.string.scan_to_desktop), R.drawable.barcode_reader, false, "scan_web"),
-            ProductGridItem(localizedContext.getString(R.string.sync_sheet_data), R.drawable.ic_sync_sheet_data, false, ""),
+        //    ProductGridItem(localizedContext.getString(R.string.sync_sheet_data), R.drawable.ic_sync_sheet_data, false,  "sync_sheet_data"),
+          //  ProductGridItem("CLick to\nSync Sheet Data", R.drawable.ic_sync_sheet_data, false, ""),
+            ProductGridItem(
+                localizedContext.getString(R.string.sync_sheet_data),
+                R.drawable.ic_sync_sheet_data,
+                false,
+                "sync_sheet"
+            ),
             ProductGridItem(localizedContext.getString(R.string.upload_data_to_server), R.drawable.upload_data, false, "")
         )
 
@@ -422,7 +429,7 @@ fun ProductManagementScreen(
                                     }
                                 }
 
-                                "CLick to\nSync Sheet Data" -> {
+                                "Click to\nSync Sheet Data" -> {
                                     val sheetId =
                                         UserPreferences.getInstance(context).getSheetUrl()
                                     Log.d("@@", "sheetId" + sheetId)
