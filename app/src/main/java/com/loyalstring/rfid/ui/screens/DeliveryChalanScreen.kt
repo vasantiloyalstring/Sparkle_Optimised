@@ -889,6 +889,7 @@ fun DeliveryChalanScreen(
         val clientCode = employee?.clientCode ?: return@LaunchedEffect
         val branchId = UserPreferences.getInstance(context).getBranchID()!!.toInt()
 
+
         Log.d("DeliveryChallan", "➡️ Adding challan with No: $newChallanNo")
         if (customerName.isNullOrBlank()) {
             Toast
@@ -1174,7 +1175,7 @@ fun DeliveryChalanScreen(
     }
 */
     var pendingMatchedItem by remember { mutableStateOf<BulkItem?>(null) }
-    LaunchedEffect(itemCode.text) {
+  /*  LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
         if (query.isEmpty()) return@LaunchedEffect
 
@@ -1205,9 +1206,9 @@ fun DeliveryChalanScreen(
                 employee?.id?.toInt() ?: 0
             )
         }
-    }
+    }*/
 
-    LaunchedEffect(pendingMatchedItem, touchList) {
+  /*  LaunchedEffect(pendingMatchedItem, touchList) {
         val matchedItem = pendingMatchedItem ?: return@LaunchedEffect
 
         // 🔹 Try to find touch match (may be null)
@@ -1229,7 +1230,7 @@ fun DeliveryChalanScreen(
 
         productList.add(challanItem)
         pendingMatchedItem = null
-    }
+    }*/
 
 
 
@@ -1539,6 +1540,54 @@ fun DeliveryChalanScreen(
                 onBack()
             }
         }
+    }
+    fun addItemToList(code: String) {
+
+        val query = code.trim()
+
+        val matchedItem = allItems.firstOrNull { item ->
+            val itemCode = item.itemCode?.trim()
+            val rfid = item.rfid?.trim()
+
+            itemCode.equals(query, ignoreCase = true) ||
+                    rfid.equals(query, ignoreCase = true)
+        }
+
+        if (matchedItem == null) {
+            Log.d("DropdownSelect", "❌ No match in allItems for $query")
+            return
+        }
+
+        // duplicate check
+        if (productList.any { it.tid == matchedItem.tid }) {
+            Log.d("DropdownSelect", "⚠️ Duplicate item skipped ${matchedItem.itemCode}")
+            return
+        }
+
+        Log.d("DropdownSelect", "✅ Matched item ${matchedItem.itemCode}")
+
+        pendingMatchedItem = matchedItem
+    }
+    LaunchedEffect(pendingMatchedItem, touchList) {
+
+        val item = pendingMatchedItem ?: return@LaunchedEffect
+
+        val touchMatch = touchList.firstOrNull {
+            it.CustomerId == customerId &&
+                    it.StockKeepingUnit.equals(item.sku, ignoreCase = true)
+        }
+
+        val challanItem = buildChallanDetails(
+            matchedItem = item,
+            touchMatch = touchMatch,
+            dailyRates = dailyRates,
+            employee = employee,
+            context = context
+        )
+
+        productList.add(challanItem)
+
+        pendingMatchedItem = null
     }
 
     // ✅ This is your barcode scanner logic
@@ -2221,7 +2270,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                         .weight(1.1f)
                         .height(35.dp) // ✅ Adjusted height to align with button
                 ) {
-                    ItemCodeInputRowData(
+                    DeliverychallanItemCode(
                         itemCode = itemCode,
                         onItemCodeChange = { itemCode = it },
                         showDropdown = showDropdownItemcode,
@@ -2233,7 +2282,16 @@ MakingPerGram=${touchMatch.MakingPerGram}
                         onClearClicked = { itemCode = TextFieldValue("") },
                         filteredList = allItems,
                         isLoading = isLoading,
-                        onItemSelected = { selectedItem = it }
+                       // onItemSelected = { selectedItem = it }
+                        onItemSelected = { item ->
+                          //  Bu = item
+
+                            val code = item.itemCode ?: item.rfid ?: ""
+
+                            itemCode = TextFieldValue(code)
+
+                            addItemToList(code)
+                        }
                     )
                 }
 
@@ -2344,7 +2402,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
             salesmanList = salesmanList
         )*/
 
-    if (showInvoiceDialog) {
+    if (showInvoiceDialog && productList.size!=0) {
         InvoiceFieldsDialog(
             selectedItem= productList.get(0),
             onDismiss = { showInvoiceDialog = false },

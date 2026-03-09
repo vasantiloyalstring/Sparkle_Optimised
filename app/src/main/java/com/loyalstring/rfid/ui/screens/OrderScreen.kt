@@ -71,6 +71,8 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
+import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
+import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchResponse
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.CustomOrderItem
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
@@ -101,6 +103,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import kotlin.text.orEmpty
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -175,6 +178,8 @@ fun OrderScreen(
     var baseTotal by remember { mutableStateOf(0.0) }
     var gstAmount by remember { mutableStateOf(0.0) }
     var totalWithGst by remember { mutableStateOf(0.0) }
+
+    var pendingMatchedItem by remember { mutableStateOf<BulkItem?>(null) }
 
 
     val activity = LocalContext.current as MainActivity
@@ -520,7 +525,7 @@ fun OrderScreen(
     }
 
     /*itemcode*/
-    LaunchedEffect(itemCode.text) {
+  /*  LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
         if (query.isEmpty()) return@LaunchedEffect
 
@@ -690,7 +695,152 @@ fun OrderScreen(
             // clear input
             itemCode = TextFieldValue("")
         }
+    }*/
+    LaunchedEffect(pendingMatchedItem) {
+
+        val matchedItem = pendingMatchedItem ?: return@LaunchedEffect
+
+       /* val touchMatch = touchList.firstOrNull {
+            it.CustomerId == customerId &&
+                    it.StockKeepingUnit.equals(matchedItem.sku, ignoreCase = true)
+        }*/
+
+    /*    val challanItem = buildChallanDetailsdata(
+            matchedItem = item,
+            touchMatch = touchMatch,
+            dailyRates = dailyRates,
+            employee = employee,
+            context = context
+        )
+*/
+    fun safeDouble(v: String?) = v?.toDoubleOrNull() ?: 0.0
+        fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
+        // 🔹 Touch overrides (default from item)
+        var makingPercent = matchedItem.makingPercent ?: "0.0"
+        var makingFixedWastage = matchedItem.fixWastage ?: "0.0"
+        var makingFixedAmt = matchedItem.fixMaking ?: "0.0"
+        var makingPerGram = matchedItem.makingPerGram ?: "0.0"
+
+
+
+      /*  if (touchMatch != null) {
+            makingPercent = touchMatch.MakingPercentage ?: makingPercent
+            makingFixedWastage = touchMatch.MakingFixedWastage ?: makingFixedWastage
+            makingFixedAmt = touchMatch.MakingFixedAmt ?: makingFixedAmt
+            makingPerGram = touchMatch.MakingPerGram ?: makingPerGram
+
+        }*/
+
+        // 🔹 Rate by purity
+        val rate = dailyRates
+            ?.firstOrNull { it.PurityName.equals(matchedItem.purity, ignoreCase = true) }
+            ?.Rate?.toDoubleOrNull() ?: 0.0
+
+        val netWt = safeDouble(matchedItem.netWeight)
+        val stoneAmt = safeDouble(matchedItem.stoneAmount)
+        val diamondAmt = safeDouble(matchedItem.diamondAmount)
+
+        val makingAmt =
+            safeDouble(makingPerGram) +
+                    safeDouble(makingFixedAmt) +
+                    (safeDouble(makingPercent) / 100.0 * netWt) +
+                    safeDouble(makingFixedWastage)
+
+        val metalAmt = netWt * rate
+        val itemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
+
+        val percent = (makingPercent?.toDoubleOrNull() ?: 0.0)
+        val fixedWastage = (makingFixedWastage?.toDoubleOrNull() ?: 0.0)
+        val net = netWt?.toDouble() ?: 0.0
+
+        val finePlusWt = fmt3(
+            (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
+        )
+
+        val challanItem= OrderItem(
+            branchId = (matchedItem.branchId ?: 0).toString(),
+            branchName = "",
+
+            exhibition = "",
+            remark = "",
+
+            purity = matchedItem.purity.orEmpty(),
+            size = "1",
+            length = "",
+            typeOfColor = "",
+            screwType = "",
+            polishType = "",
+
+            finePer = "0.0",
+            wastage = matchedItem.makingPercent ?: "0.0",
+
+            orderDate = pickOrderDate(lastOrderDetails),
+            deliverDate = pickDeliverDate(lastOrderDetails),
+
+            productName = matchedItem.productName.orEmpty(),
+            itemCode = matchedItem.itemCode.orEmpty(),
+
+            rfidCode = matchedItem.rfid.orEmpty(),
+
+            grWt = matchedItem.grossWeight ?: "0.0",
+            nWt = matchedItem.netWeight ?: "0.0",
+
+            stoneAmt = matchedItem.stoneAmount ?: "0.0",
+            finePlusWt = "0.0",
+
+            itemAmt = itemAmt.toString(),   // ✅ tumhare calc se
+            packingWt = "0.0",
+
+            totalWt = matchedItem.totalWt?.toString() ?: "0.0",
+            stoneWt = matchedItem.totalStoneWt?.toString() ?: "0.0",
+            dimondWt = matchedItem.diamondWeight ?: "0.0",
+
+            sku = matchedItem.sku.orEmpty(),
+            qty = qtyOrOne("0"),
+
+            hallmarkAmt = "" ?: "0.0",
+            mrp = matchedItem.mrp?.toString() ?: "0.0",
+
+            image = matchedItem.imageUrl.orEmpty(),
+            netAmt = "0.0",
+
+            diamondAmt = matchedItem.diamondAmount ?: "0.0",
+
+            categoryId = matchedItem.categoryId,
+            categoryName = matchedItem.category.orEmpty(),
+
+            productId = matchedItem.productId ?: 0,
+            productCode = matchedItem.productCode.orEmpty(),
+
+            skuId = matchedItem.SKUId?:0,
+
+            designid = matchedItem.designId ?: 0,
+            designName = matchedItem.design.orEmpty(),
+
+            purityid = 0,
+
+            counterId = matchedItem.counterId ?: 0,
+            counterName = "",
+
+            companyId = 0,
+
+            epc = matchedItem.epc.orEmpty(),     // agar epc field hai matchedItem me
+            tid = matchedItem.tid.orEmpty(),
+
+            todaysRate = rate.toString(),
+            makingPercentage = makingPercent,
+            makingFixedAmt = makingFixedAmt,
+            makingFixedWastage = makingFixedWastage,
+            makingPerGram = makingPerGram,
+            CategoryWt = matchedItem.CategoryWt.toString(),
+
+            )
+        productList.add(challanItem)
+
+        pendingMatchedItem = null
     }
+
+
 
     /*scan the rfid*/
     LaunchedEffect(tags, allItems, dailyRates) {
@@ -1124,7 +1274,8 @@ fun OrderScreen(
             TotalFineMetal = "0",
             CourierCharge = null,
             SaleType = null,
-            OrderDate = (orderDate),
+            OrderDate   = toIsoLocalDate(productList.get(0).orderDate) ?: nowDateOnly(),
+           // DeliverDate = toIsoLocalDate(productList.get(0).deliverDate) ?: nowDateOnly(),
             OrderCount = productList.size.toString(),
             AdditionTaxApplied = "false",
             CategoryId = categoryId,
@@ -1190,7 +1341,7 @@ fun OrderScreen(
 
                     RFIDCode = item.rfidCode ?: "",
 
-                    OrderDate   = toIsoOffsetDateTime(item.orderDate) ?: nowIsoDateTime(),
+                    OrderDate   = toIsoLocalDate(item.orderDate) ?: nowDateOnly(),
                     DeliverDate = toIsoLocalDate(item.deliverDate) ?: nowDateOnly()    ,    // your field
 
                     SKUId = item.skuId ?: 0,
@@ -1888,7 +2039,7 @@ fun OrderScreen(
                         .weight(1.1f)
                         .height(35.dp) // ✅ Adjusted height to align with button
                 ) {
-                    ItemCodeInputRowData(
+                    DeliverychallanItemCode(
                         itemCode = itemCode,
                         onItemCodeChange = { itemCode = it },
                         showDropdown = showDropdownItemcode,
@@ -1900,7 +2051,21 @@ fun OrderScreen(
                         onClearClicked = { itemCode = TextFieldValue("") },
                         filteredList = allItems,
                         isLoading = isLoading,
-                        onItemSelected = { selectedItem = it }
+                        // onItemSelected = { selectedItem = it }
+                        onItemSelected = { item ->
+
+                            val code = item.itemCode ?: item.rfid ?: ""
+
+                            itemCode = TextFieldValue(code)
+
+                            addItemToList(
+                                code,
+                                allItems,
+                                productList
+                            ) { matched ->
+                                pendingMatchedItem = matched
+                            }
+                        }
                     )
                 }
 
@@ -1914,15 +2079,15 @@ fun OrderScreen(
                         .gradientBorderBox()
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
-                            if (selectedItem == null) {
+                           /* if (productList.size>0) {
                                 Toast.makeText(
                                     context,
                                     "Please select Item first",
                                     Toast.LENGTH_SHORT
                                 ).show()
-                            } else {
+                            } else {*/
                                 showOrderDetailsDialog = true
-                            }
+                          //  }
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1978,7 +2143,7 @@ fun OrderScreen(
         }
     }
 
-    if (showOrderDetailsDialog && selectedItem != null) {
+    if (showOrderDetailsDialog && productList.size!=0) {
         OrderDetailsDialog(
             selectedCustomerId = customerId,
             selectedCustomer = selectedCustomer,
@@ -2049,8 +2214,10 @@ fun OrderScreen(
                         val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
                         val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-                        val order: Date? = inputFormat.parse(details.orderDate)
+                        val order: Date? = outputFormat.parse(details.orderDate)
                         val delivery: Date? = inputFormat.parse(details.deliverDate)
+                        Log.d("@@","data"+order+" "+delivery+""+details.polishType)
+
 
                         productList[i] = old.copy(
 
@@ -2071,8 +2238,8 @@ fun OrderScreen(
                             makingPercentage = details.wastage,
 
                             // normalized dates apply to all
-                            orderDate = outputFormat.format(order),
-                            deliverDate = outputFormat.format(delivery),
+                            orderDate = (order.toString()),
+                            deliverDate =(delivery.toString()),
 
                             // update rate + amounts
                             todaysRate = rate.toString(),
@@ -2096,6 +2263,38 @@ fun OrderScreen(
     }
 
 
+}
+
+fun addItemToList(
+    code: String,
+    allItems: List<BulkItem>,
+    productList: SnapshotStateList<OrderItem>,
+    onMatched: (BulkItem) -> Unit
+) {
+
+    val query = code.trim()
+
+    val matchedItem = allItems.firstOrNull { item ->
+        val itemCode = item.itemCode?.trim()
+        val rfid = item.rfid?.trim()
+
+        itemCode.equals(query, ignoreCase = true) ||
+                rfid.equals(query, ignoreCase = true)
+    }
+
+    if (matchedItem == null) {
+        Log.d("DropdownSelect", "❌ No match in allItems for $query")
+        return
+    }
+
+    if (productList.any { it.tid == matchedItem.tid }) {
+        Log.d("DropdownSelect", "⚠️ Duplicate item skipped ${matchedItem.itemCode}")
+        return
+    }
+
+    Log.d("DropdownSelect", "✅ Matched item ${matchedItem.itemCode}")
+
+    onMatched(matchedItem)
 }
 
 fun CustomOrderItem.toItemCodeResponse(): ItemCodeResponse {

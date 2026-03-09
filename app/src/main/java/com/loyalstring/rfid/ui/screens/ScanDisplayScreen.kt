@@ -107,12 +107,12 @@ val colQtyWidth = 44.dp
 val colWeightWidth = 62.dp
 val colMatchedQtyWidth = 44.dp
 val colMatchedWtWidth = 62.dp
-val colStatusWidth = 54.dp
-val colDesignNameWidth = 80.dp
-val colRfidWidth = 100.dp
-val colItemCodeWidth = 90.dp
+val colStatusWidth = 50.dp
+val colDesignNameWidth = 100.dp
+val colRfidWidth = 90.dp
+val colItemCodeWidth = 100.dp
 val colGWtWidth = 50.dp
-val colStatusIconWidth = 54.dp
+val colStatusIconWidth = 50.dp
 
 private const val MENU_ALL = "ALL"
 private const val MENU_MATCHED = "MATCHED"
@@ -2294,8 +2294,9 @@ fun TableHeaderCell(text: String, width: Dp) {
     Box(
         modifier = Modifier
             .width(width)
-            .padding(horizontal = 2.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center
+           // .padding(horizontal = 2.dp, vertical = 3.dp),
+            .padding(start = 10.dp, top = 3.dp, bottom = 3.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Text(
             text = text,
@@ -2387,8 +2388,8 @@ fun TableCell(text: String, width: Dp) {
     Box(
         modifier = Modifier
             .width(width)
-            .padding(horizontal = 2.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center
+            .padding(start = 10.dp, top = 3.dp, bottom = 3.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Text(text, fontSize = 11.sp, color = Color.DarkGray, fontFamily = poppins)
     }

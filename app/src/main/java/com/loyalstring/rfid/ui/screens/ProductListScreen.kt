@@ -133,8 +133,8 @@ fun ProductListScreen(
         allItems.filter { item ->
             val query = searchQuery.value.trim().lowercase()
             item.itemCode!!.lowercase().contains(query) ||
-                    item.productName!!.lowercase().contains(query) ||
-                    item.rfid!!.lowercase().contains(query)
+                    item.productName!!.lowercase().contains(query) /*||
+                    item.rfid?.lowercase()?.contains(query)*/
         }
     }
 

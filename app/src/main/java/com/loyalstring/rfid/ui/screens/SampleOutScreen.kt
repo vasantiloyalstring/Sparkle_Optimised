@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,10 +48,12 @@ import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
+import com.loyalstring.rfid.data.model.quotation.QuotationItem
 import com.loyalstring.rfid.data.model.sampleOut.IssueItemDto
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
@@ -73,6 +76,7 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.text.orEmpty
 
 @SuppressLint("UnrememberedMutableState")
@@ -120,7 +124,7 @@ fun SampleOutScreen(
     var baseTotal by remember { mutableStateOf(0.0) }
     var gstAmount by remember { mutableStateOf(0.0) }
     var totalWithGst by remember { mutableStateOf(0.0) }
-
+    var pendingMatchedItem by remember { mutableStateOf<BulkItem?>(null) }
 
     val errorMsg by sampleOutViewModel.error.collectAsState()
     val loading by sampleOutViewModel.loading.collectAsState()
@@ -225,7 +229,7 @@ fun SampleOutScreen(
         }
     }
 /*itemcode*/
-    LaunchedEffect(itemCode.text) {
+  /*  LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
         if (query.isEmpty()) return@LaunchedEffect
 
@@ -398,7 +402,183 @@ fun SampleOutScreen(
             itemCode = TextFieldValue("")
         }
     }
+*/
 
+    LaunchedEffect(pendingMatchedItem) {
+
+        val matchedItem = pendingMatchedItem ?: return@LaunchedEffect
+
+        /*  val touchMatch = touchList.firstOrNull {
+              it.CustomerId == customerId &&
+                      it.StockKeepingUnit.equals(matchedItem.sku, ignoreCase = true)
+          }*/
+
+        /*    val challanItem = buildChallanDetailsdata(
+                matchedItem = item,
+                touchMatch = touchMatch,
+                dailyRates = dailyRates,
+                employee = employee,
+                context = context
+            )
+    */
+        fun safeDouble(v: String?) = v?.toDoubleOrNull() ?: 0.0
+        fun fmt3(v: Double): String = String.format(Locale.getDefault(), "%.3f", v)
+        // 🔹 Touch overrides (default from item)
+        var makingPercent = matchedItem.makingPercent ?: "0.0"
+        var makingFixedWastage = matchedItem.fixWastage ?: "0.0"
+        var makingFixedAmt = matchedItem.fixMaking ?: "0.0"
+        var makingPerGram = matchedItem.makingPerGram ?: "0.0"
+
+
+
+        /* if (touchMatch != null) {
+             makingPercent = touchMatch.MakingPercentage ?: makingPercent
+             makingFixedWastage = touchMatch.MakingFixedWastage ?: makingFixedWastage
+             makingFixedAmt = touchMatch.MakingFixedAmt ?: makingFixedAmt
+             makingPerGram = touchMatch.MakingPerGram ?: makingPerGram
+
+         }*/
+
+        // 🔹 Rate by purity
+        val rate = dailyRates
+            ?.firstOrNull { it.PurityName.equals(matchedItem.purity, ignoreCase = true) }
+            ?.Rate?.toDoubleOrNull() ?: 0.0
+
+        val netWt = safeDouble(matchedItem.netWeight)
+        val stoneAmt = safeDouble(matchedItem.stoneAmount)
+        val diamondAmt = safeDouble(matchedItem.diamondAmount)
+
+        val makingAmt =
+            safeDouble(makingPerGram) +
+                    safeDouble(makingFixedAmt) +
+                    (safeDouble(makingPercent) / 100.0 * netWt) +
+                    safeDouble(makingFixedWastage)
+
+        val metalAmt = netWt * rate
+        val itemAmt = stoneAmt + diamondAmt + metalAmt + makingAmt
+
+        val percent = (makingPercent?.toDoubleOrNull() ?: 0.0)
+        val fixedWastage = (makingFixedWastage?.toDoubleOrNull() ?: 0.0)
+        val net = netWt?.toDouble() ?: 0.0
+
+        val finePlusWt = fmt3(
+            (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
+        )
+
+
+        val productDetail = SampleOutDetails(
+            Id = 0,
+            MRP = matchedItem.mrp?.toString() ?: "0.0",
+            CategoryName = matchedItem.category.orEmpty(),
+            ChallanStatus = "Pending",
+            ProductName = matchedItem.productName.orEmpty(),
+            Quantity = (matchedItem.totalQty ?: matchedItem.pcs ?: 1).toString(),
+            HSNCode = "",
+            ItemCode = matchedItem.itemCode.orEmpty(),
+            GrossWt = matchedItem.grossWeight ?: "0.0",
+            NetWt = matchedItem.netWeight ?: "0.0",
+            ProductId = matchedItem.productId ?: 0,
+            CustomerId = 0,
+            MetalRate = rate.toString(),
+            MakingCharg = makingAmt.toString(),
+            Price = matchedItem.mrp?.toString() ?: "0.0",
+            HUIDCode = "",
+            ProductCode = matchedItem.productCode.orEmpty(),
+            ProductNo = "",
+            Size = "1",
+            StoneAmount = matchedItem.stoneAmount ?: "0.0",
+            TotalWt = matchedItem.totalGwt?.toString() ?: "0.0",
+            PackingWeight = "0.0",
+            MetalAmount = metalAmt.toString(),
+            OldGoldPurchase = false,
+            RatePerGram = rate.toString(),
+            Amount = itemAmt.toString(),
+            ChallanType = "Delivery",
+            FinePercentage = "0.0",
+            PurchaseInvoiceNo = "",
+            HallmarkAmount = "0.0",
+            HallmarkNo = "",
+            MakingFixedAmt = makingFixedAmt,
+            MakingFixedWastage = makingFixedWastage,
+            MakingPerGram = makingPerGram,
+            MakingPercentage = makingPercent,
+            Description = "",
+            CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
+            CuttingNetWt = matchedItem.netWeight ?: "0.0",
+            BaseCurrency = "INR",
+            CategoryId = matchedItem.categoryId ?: 0,
+            PurityId = 0,
+            TotalStoneWeight = matchedItem.totalStoneWt?.toString() ?: "0.0",
+            TotalStoneAmount = matchedItem.stoneAmount ?: "0.0",
+            TotalStonePieces = "0",
+            TotalDiamondWeight = matchedItem.diamondWeight ?: "0.0",
+            TotalDiamondPieces = "0",
+            TotalDiamondAmount = matchedItem.diamondAmount ?: "0.0",
+            SKUId = 0,
+            SKU = matchedItem.sku.orEmpty(),
+            FineWastageWt = matchedItem.fixWastage ?: "0.0",
+            TotalItemAmount = itemAmt.toString(),
+            ItemAmount = itemAmt.toString(),
+            ItemGSTAmount = "0.0",
+            ClientCode = "",
+            DiamondSize = "",
+            DiamondWeight = "0.0",
+            DiamondPurchaseRate = "0.0",
+            DiamondSellRate = "0.0",
+            DiamondClarity = "",
+            DiamondColour = "",
+            DiamondShape = "",
+            DiamondCut = "",
+            DiamondName = "",
+            DiamondSettingType = "",
+            DiamondCertificate = "",
+            DiamondPieces = "0",
+            DiamondPurchaseAmount = "0.0",
+            DiamondSellAmount = "0.0",
+            DiamondDescription = "",
+            MetalName = "",
+            NetAmount = "0.0",
+            GSTAmount = "0.0",
+            TotalAmount = itemAmt.toString(),
+
+            Purity = matchedItem.purity ?: "",
+            DesignName = matchedItem.design ?: "",
+            CompanyId = 0,
+            BranchId = matchedItem.branchId ?: 0,
+            CounterId = matchedItem.counterId ?: 0,
+            EmployeeId = 0,
+            LabelledStockId = matchedItem.bulkItemId,
+            FineSilver = "0.0",
+            FineGold = "0.0",
+            DebitSilver = "0.0",
+            DebitGold = "0.0",
+            BalanceSilver = "0.0",
+            BalanceGold = "0.0",
+            ConvertAmt = "0.0",
+            Pieces = matchedItem.pcs?.toString() ?: "1",
+            StoneLessPercent = "0.0",
+            DesignId = matchedItem.designId ?: 0,
+            PacketId = matchedItem.packetId ?: 0,
+            RFIDCode = matchedItem.rfid.orEmpty(),
+            Image = matchedItem.imageUrl.orEmpty(),
+            DiamondWt = matchedItem.diamondWeight ?: "0.0",
+            StoneAmt = matchedItem.stoneAmount ?: "0.0",
+            DiamondAmt = matchedItem.diamondAmount ?: "0.0",
+            FinePer = "0.0",
+            FineWt = "0.0",
+            qty = (matchedItem.pcs ?: 1),
+            tid = matchedItem.tid ?: "",
+            totayRate = rate.toString(),
+            makingPercent = makingPercent,
+            fixMaking = makingFixedAmt,
+            fixWastage = makingFixedWastage
+        )
+
+        productList.add(productDetail)
+        Log.d("ManualEntry", "✅ Added ${matchedItem.itemCode}")
+
+        pendingMatchedItem = null
+    }
 /*scan the rfid*/
     LaunchedEffect(tags, allItems, dailyRates) {
 
@@ -508,23 +688,22 @@ fun SampleOutScreen(
                 NetWt = matchedItem.netWeight ?: "0.0",
                 ProductId = matchedItem.productId ?: 0,
                 CustomerId = 0,
-
                 MetalRate = rate.toString(),
                 MakingCharg = makingAmt.toString(),
                 Price = matchedItem.mrp?.toString() ?: "0.0",
                 HUIDCode = "",
                 ProductCode = matchedItem.productCode.orEmpty(),
                 ProductNo = "",
-                Size = "",
+                Size = "1",
                 StoneAmount = matchedItem.stoneAmount ?: "0.0",
                 TotalWt = matchedItem.totalGwt?.toString() ?: "0.0",
-                PackingWeight = matchedItem.netWeight ?: "0.0",
+                PackingWeight = "0.0",
                 MetalAmount = metalAmt.toString(),
                 OldGoldPurchase = false,
                 RatePerGram = rate.toString(),
                 Amount = itemAmt.toString(),
                 ChallanType = "Delivery",
-                FinePercentage = finePercent.toString(),
+                FinePercentage = "0.0",
                 PurchaseInvoiceNo = "",
                 HallmarkAmount = "0.0",
                 HallmarkNo = "",
@@ -533,7 +712,6 @@ fun SampleOutScreen(
                 MakingPerGram = makingPerGram,
                 MakingPercentage = makingPercent,
                 Description = "",
-
                 CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
                 CuttingNetWt = matchedItem.netWeight ?: "0.0",
                 BaseCurrency = "INR",
@@ -545,17 +723,15 @@ fun SampleOutScreen(
                 TotalDiamondWeight = matchedItem.diamondWeight ?: "0.0",
                 TotalDiamondPieces = "0",
                 TotalDiamondAmount = matchedItem.diamondAmount ?: "0.0",
-
                 SKUId = 0,
                 SKU = matchedItem.sku.orEmpty(),
                 FineWastageWt = matchedItem.fixWastage ?: "0.0",
                 TotalItemAmount = itemAmt.toString(),
                 ItemAmount = itemAmt.toString(),
                 ItemGSTAmount = "0.0",
-                ClientCode = employee?.clientCode.orEmpty(),
-
+                ClientCode = "",
                 DiamondSize = "",
-                DiamondWeight = matchedItem.diamondWeight ?: "0.0",
+                DiamondWeight = "0.0",
                 DiamondPurchaseRate = "0.0",
                 DiamondSellRate = "0.0",
                 DiamondClarity = "",
@@ -567,11 +743,10 @@ fun SampleOutScreen(
                 DiamondCertificate = "",
                 DiamondPieces = "0",
                 DiamondPurchaseAmount = "0.0",
-                DiamondSellAmount = diamondAmt.toString(),
+                DiamondSellAmount = "0.0",
                 DiamondDescription = "",
-
                 MetalName = "",
-                NetAmount = itemAmt.toString(),
+                NetAmount = "0.0",
                 GSTAmount = "0.0",
                 TotalAmount = itemAmt.toString(),
 
@@ -581,15 +756,15 @@ fun SampleOutScreen(
                 BranchId = matchedItem.branchId ?: 0,
                 CounterId = matchedItem.counterId ?: 0,
                 EmployeeId = 0,
-                LabelledStockId = matchedItem.bulkItemId ?: 0,
+                LabelledStockId = matchedItem.bulkItemId,
                 FineSilver = "0.0",
-                FineGold = fineWt.toString(),
+                FineGold = "0.0",
                 DebitSilver = "0.0",
                 DebitGold = "0.0",
                 BalanceSilver = "0.0",
                 BalanceGold = "0.0",
                 ConvertAmt = "0.0",
-                Pieces = (matchedItem.pcs ?: 1).toString(),
+                Pieces = matchedItem.pcs?.toString() ?: "1",
                 StoneLessPercent = "0.0",
                 DesignId = matchedItem.designId ?: 0,
                 PacketId = matchedItem.packetId ?: 0,
@@ -598,16 +773,14 @@ fun SampleOutScreen(
                 DiamondWt = matchedItem.diamondWeight ?: "0.0",
                 StoneAmt = matchedItem.stoneAmount ?: "0.0",
                 DiamondAmt = matchedItem.diamondAmount ?: "0.0",
-                FinePer = finePercent.toString(),
-                FineWt = fineWt.toString(),
-                qty = matchedItem.pcs ?: 1,
+                FinePer = "0.0",
+                FineWt = "0.0",
+                qty = (matchedItem.pcs ?: 1),
                 tid = matchedItem.tid ?: "",
                 totayRate = rate.toString(),
                 makingPercent = makingPercent,
                 fixMaking = makingFixedAmt,
-                fixWastage = makingFixedWastage,
-                TIDNumber = matchedItem.tid ?: "",
-                CustomerName = ""
+                fixWastage = makingFixedWastage
             )
 
             if (productList.none { it.ItemCode == productDetail.ItemCode }) {
@@ -1387,7 +1560,7 @@ fun SampleOutScreen(
                         .weight(1.1f)
                         .height(35.dp) // ✅ Adjusted height to align with button
                 ) {
-                    ItemCodeInputRowData(
+                    DeliverychallanItemCode(
                         itemCode = itemCode,
                         onItemCodeChange = { itemCode = it },
                         showDropdown = showDropdownItemcode,
@@ -1399,7 +1572,21 @@ fun SampleOutScreen(
                         onClearClicked = { itemCode = TextFieldValue("") },
                         filteredList = allItems,
                         isLoading = isLoading,
-                        onItemSelected = { selectedItem = it }
+                        // onItemSelected = { selectedItem = it }
+                        onItemSelected = { item ->
+
+                            val code = item.itemCode ?: item.rfid ?: ""
+
+                            itemCode = TextFieldValue(code)
+
+                            addItemToList(
+                                code,
+                                allItems,
+                                productList
+                            ) { matched ->
+                                pendingMatchedItem = matched
+                            }
+                        }
                     )
                 }
 
@@ -1458,6 +1645,8 @@ fun SampleOutScreen(
         }
     }
 
+
+
     if (showInvoiceDialog) {
         SampleOutFieldsDialog (
             onDismiss = { showInvoiceDialog = false },
@@ -1494,3 +1683,36 @@ fun SampleOutScreen(
 
 
 }
+
+fun addItemToList(
+    code: String,
+    allItems: List<BulkItem>,
+    productList: SnapshotStateList<SampleOutDetails>,
+    onMatched: (BulkItem) -> Unit
+) {
+
+    val query = code.trim()
+
+    val matchedItem = allItems.firstOrNull { item ->
+        val itemCode = item.itemCode?.trim()
+        val rfid = item.rfid?.trim()
+
+        itemCode.equals(query, ignoreCase = true) ||
+                rfid.equals(query, ignoreCase = true)
+    }
+
+    if (matchedItem == null) {
+        Log.d("DropdownSelect", "❌ No match in allItems for $query")
+        return
+    }
+
+    if (productList.any { it.tid == matchedItem.tid }) {
+        Log.d("DropdownSelect", "⚠️ Duplicate item skipped ${matchedItem.itemCode}")
+        return
+    }
+
+    Log.d("DropdownSelect", "✅ Matched item ${matchedItem.itemCode}")
+
+    onMatched(matchedItem)
+}
+

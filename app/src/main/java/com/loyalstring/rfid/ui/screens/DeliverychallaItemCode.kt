@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ItemCodeInputRowData(
+fun DeliverychallanItemCode(
     itemCode: TextFieldValue,
     onItemCodeChange: (TextFieldValue) -> Unit,
     showDropdown: Boolean,
@@ -52,7 +52,7 @@ fun ItemCodeInputRowData(
     onClearClicked: () -> Unit,
     filteredList: List<BulkItem>,
     isLoading: Boolean,
-    onItemSelected: (ItemCodeResponse) -> Unit
+    onItemSelected: (BulkItem) -> Unit
 ) {
     val gradient = Brush.horizontalGradient(
         listOf(Color(0xFF5231A7), Color(0xFFD32940))
@@ -67,50 +67,50 @@ fun ItemCodeInputRowData(
     val query = itemCode.text.trim()
 
     // ✅ Same filtering logic
-   /* val filteredResults = remember(query, filteredList) {
-        if (query.isEmpty()) emptyList()
-        else {
-            when {
-                query.any { it.isDigit() } -> {
-                    filteredList.filter { it.rfid?.contains(query, ignoreCase = true) == true }
-                }
+    /* val filteredResults = remember(query, filteredList) {
+         if (query.isEmpty()) emptyList()
+         else {
+             when {
+                 query.any { it.isDigit() } -> {
+                     filteredList.filter { it.rfid?.contains(query, ignoreCase = true) == true }
+                 }
 
-                query.length >= 2 -> {
-                    filteredList.filter {
-                        it.rfid?.contains(query, ignoreCase = true) == true ||
-                                it.itemCode?.contains(query, ignoreCase = true) == true
-                    }
-                }
+                 query.length >= 2 -> {
+                     filteredList.filter {
+                         it.rfid?.contains(query, ignoreCase = true) == true ||
+                                 it.itemCode?.contains(query, ignoreCase = true) == true
+                     }
+                 }
 
-                else -> {
-                    filteredList.filter { it.itemCode?.contains(query, ignoreCase = true) == true }
-                }
-            }
-        }
-    }*/
+                 else -> {
+                     filteredList.filter { it.itemCode?.contains(query, ignoreCase = true) == true }
+                 }
+             }
+         }
+     }*/
 
-/*    var debouncedQuery by remember { mutableStateOf("") }
+    /*    var debouncedQuery by remember { mutableStateOf("") }
 
-    LaunchedEffect(query) {
-        delay(300)
-        debouncedQuery = query
-    }*/
+        LaunchedEffect(query) {
+            delay(300)
+            debouncedQuery = query
+        }*/
     val debouncedQuery = query
-/*
+    /*
 
-    val filteredResults = remember(debouncedQuery, filteredList) {
-      //  if (debouncedQuery.length < 2) emptyList()
-        if (debouncedQuery.isEmpty()) emptyList()
-        else {
-            filteredList
-                .asSequence()
-              */
-/*  .filter {
-                    it.rfid?.contains(debouncedQuery, true) == true ||
-                            it.itemCode?.contains(debouncedQuery, true) == true
-                }
-                .take(50)
-                .toList()*//*
+        val filteredResults = remember(debouncedQuery, filteredList) {
+          //  if (debouncedQuery.length < 2) emptyList()
+            if (debouncedQuery.isEmpty()) emptyList()
+            else {
+                filteredList
+                    .asSequence()
+                  */
+    /*  .filter {
+                        it.rfid?.contains(debouncedQuery, true) == true ||
+                                it.itemCode?.contains(debouncedQuery, true) == true
+                    }
+                    .take(50)
+                    .toList()*//*
 
                 .filter {
                     it.rfid?.contains(debouncedQuery, true) == true ||
@@ -130,32 +130,32 @@ fun ItemCodeInputRowData(
     }
 */
 
-   /* val filteredResults = remember(debouncedQuery, filteredList) {
-        if (debouncedQuery.isEmpty()) emptyList()
-        else {
-            filteredList
-                .asSequence()
-                .filter { item ->
-                    val code = item.itemCode?.trim()?.lowercase() ?: ""
-                    val rfid = item.rfid?.trim()?.lowercase() ?: ""
-                    val query = debouncedQuery.trim().lowercase()
+    /* val filteredResults = remember(debouncedQuery, filteredList) {
+         if (debouncedQuery.isEmpty()) emptyList()
+         else {
+             filteredList
+                 .asSequence()
+                 .filter { item ->
+                     val code = item.itemCode?.trim()?.lowercase() ?: ""
+                     val rfid = item.rfid?.trim()?.lowercase() ?: ""
+                     val query = debouncedQuery.trim().lowercase()
 
-                    code.contains(query) || rfid.contains(query)
-                }
-                .sortedBy {
-                    when {
-                        it.itemCode?.equals(debouncedQuery, true) == true -> 0
-                        it.itemCode?.startsWith(debouncedQuery, true) == true -> 1
-                        it.itemCode?.contains(debouncedQuery, true) == true -> 2
-                        it.rfid?.contains(debouncedQuery, true) == true -> 3
-                        else -> 4
-                    }
-                }
-                .take(100)
-                .toList()
-        }
-    }
-*/
+                     code.contains(query) || rfid.contains(query)
+                 }
+                 .sortedBy {
+                     when {
+                         it.itemCode?.equals(debouncedQuery, true) == true -> 0
+                         it.itemCode?.startsWith(debouncedQuery, true) == true -> 1
+                         it.itemCode?.contains(debouncedQuery, true) == true -> 2
+                         it.rfid?.contains(debouncedQuery, true) == true -> 3
+                         else -> 4
+                     }
+                 }
+                 .take(100)
+                 .toList()
+         }
+     }
+ */
     val filteredResults = remember(debouncedQuery, filteredList) {
 
         val query = debouncedQuery.trim().lowercase()
@@ -183,19 +183,19 @@ fun ItemCodeInputRowData(
     val localizedContext = LocaleHelper.applyLocale(ctx, currentLang ?: "en")
 
     Column(modifier = Modifier.fillMaxWidth()) {
-     //   val shouldExpand = showDropdown && query.isNotEmpty() && (isLoading || filteredResults.isNotEmpty())
-     /*   val shouldExpand =
-            showDropdown &&
-                    debouncedQuery.isNotEmpty() &&
-                    (isLoading || filteredResults.isNotEmpty())*/
-        val shouldExpand =
+        //   val shouldExpand = showDropdown && query.isNotEmpty() && (isLoading || filteredResults.isNotEmpty())
+          val shouldExpand =
+               showDropdown &&
+                       debouncedQuery.isNotEmpty() &&
+                       (isLoading || filteredResults.isNotEmpty())
+       /* val shouldExpand =
             debouncedQuery.isNotEmpty() &&
-                    (isLoading || filteredResults.isNotEmpty())
+                    (isLoading || filteredResults.isNotEmpty())*/
         ExposedDropdownMenuBox(
             expanded = shouldExpand,
-          /*  onExpandedChange = { expanded ->
-                if (query.isNotEmpty()) setShowDropdown(expanded) else setShowDropdown(false)
-            }*/
+            /*  onExpandedChange = { expanded ->
+                  if (query.isNotEmpty()) setShowDropdown(expanded) else setShowDropdown(false)
+              }*/
             onExpandedChange = { expanded ->
                 if (debouncedQuery.isNotEmpty()) {
                     setShowDropdown(expanded)
@@ -220,16 +220,16 @@ fun ItemCodeInputRowData(
 
                 BasicTextField(
                     value = itemCode,
-                  /*  onValueChange = {
-                        onItemCodeChange(it)
+                    /*  onValueChange = {
+                          onItemCodeChange(it)
 
-                        // ✅ IME switching (text<->number) should NOT kill dropdown
-                        scope.launch {
-                           // delay(60)
-                           // setShowDropdown(it.text.isNotEmpty())
-                            setShowDropdown(true)
-                        }
-                    },*/
+                          // ✅ IME switching (text<->number) should NOT kill dropdown
+                          scope.launch {
+                             // delay(60)
+                             // setShowDropdown(it.text.isNotEmpty())
+                              setShowDropdown(true)
+                          }
+                      },*/
                     onValueChange = {
                         onItemCodeChange(it)
                         setShowDropdown(it.text.isNotEmpty())
@@ -327,7 +327,7 @@ fun ItemCodeInputRowData(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                   text="",
+                                    text="",
                                     fontSize = 12.sp,
                                     color = Color.Gray
                                 )
@@ -342,29 +342,29 @@ fun ItemCodeInputRowData(
                                 text = {
                                     Text(
                                         text = item.itemCode ?: item.rfid ?: "",
-                                      /*  text = when {
-                                            item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
-                                            item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
-                                            else -> item.itemCode ?: ""
-                                        },*/
+                                        /*  text = when {
+                                              item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
+                                              item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
+                                              else -> item.itemCode ?: ""
+                                          },*/
                                         fontSize = 13.sp,
                                         color = Color.Black
                                     )
                                 },
                                 onClick = {
-                                   /* val selectedText = when {
-                                        item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
-                                        item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
-                                        else -> item.itemCode ?: ""
-                                    }
-
-
-*/
                                     val selectedText = item.itemCode ?: item.rfid ?: ""
+
                                     onItemCodeChange(TextFieldValue(selectedText))
+
+                                    val response = item.copy(
+                                        itemCode = item.itemCode,
+                                        rfid = item.rfid
+                                    )
+
+                                    onItemSelected(response)
+
                                     setShowDropdown(false)
 
-                                    // ✅ keyboard ONLY after selection
                                     scope.launch {
                                         focusManager.clearFocus(force = true)
                                         delay(50)

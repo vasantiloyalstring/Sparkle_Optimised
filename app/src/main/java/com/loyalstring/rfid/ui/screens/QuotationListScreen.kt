@@ -107,8 +107,8 @@ fun QuotationListScreen(
     )
 
     val columnWidths = listOf(
-        45.dp, 60.dp, 100.dp, 80.dp, 90.dp, 90.dp, 120.dp,
-        70.dp, 70.dp, 70.dp, 70.dp, 50.dp, 90.dp
+        45.dp, 60.dp, 100.dp, 100.dp, 90.dp, 90.dp, 100.dp,
+        70.dp, 70.dp, 70.dp, 70.dp, 50.dp, 170.dp
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
