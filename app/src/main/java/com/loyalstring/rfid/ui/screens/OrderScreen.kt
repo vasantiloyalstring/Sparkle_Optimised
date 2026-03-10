@@ -757,6 +757,8 @@ fun OrderScreen(
             (net * ((0 + fixedWastage) / 100.0)).coerceAtLeast(0.0)
         )
 
+        Log.d("@@"," matchedItem.purity.orEmpty()"+ matchedItem.purity.orEmpty())
+
         val challanItem= OrderItem(
             branchId = (matchedItem.branchId ?: 0).toString(),
             branchName = "",
@@ -2277,7 +2279,7 @@ fun addItemToList(
     val matchedItem = allItems.firstOrNull { item ->
         val itemCode = item.itemCode?.trim()
         val rfid = item.rfid?.trim()
-
+        Log.d("@@", "❌ purity${item.purity}")
         itemCode.equals(query, ignoreCase = true) ||
                 rfid.equals(query, ignoreCase = true)
     }
@@ -3053,8 +3055,9 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
 
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
-        Remark  : ${item.Remark ?: "-"}
         Category Wt : ${item.WeightCategories ?: "-"}
+        Purity : ${item.PurityName ?: "-"}
+        Remark  : ${item.Remark ?: "-"}
     """.trimIndent()
 
         } else

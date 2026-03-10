@@ -258,7 +258,7 @@ fun OrderDetailsDialogEditAndDisplay(
         NetWt = stableItem.nWt.orEmpty()
 
         exhibition = stableItem.exhibition.orEmpty()
-        purity = stableItem.purity.orEmpty()
+        purity = stableItem.purity?.takeIf { !it.equals("null", true) } ?: ""
         size = stableItem.size?.takeIf { !it.equals("null", true) } ?: ""
         length = stableItem.length.orEmpty()
         stoneAmt = stableItem.stoneAmt.orEmpty()
@@ -319,6 +319,19 @@ fun OrderDetailsDialogEditAndDisplay(
        Dropdown data
        ============================ */
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
+    Log.d("@@ purity","purity"+purity)
+    LaunchedEffect(purityList) {
+        if (purity.isNotBlank()) {
+
+            Log.d("@@ purity","purity"+purity)
+            val match = purityList.firstOrNull {
+                it.PurityName.equals(purity, ignoreCase = true)
+            }
+            if (match != null) {
+                purity = match.PurityName
+            }
+        }
+    }
     val skuList by singleProductViewModel.skuResponse1.collectAsState()
 
     val colorsList = listOf(
