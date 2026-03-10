@@ -40,6 +40,8 @@ import com.loyalstring.rfid.data.model.quotation.QuotationListRequest
 import com.loyalstring.rfid.data.model.quotation.QuotationListResponse
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationResponse
+import com.loyalstring.rfid.data.model.report.SessionItem
+import com.loyalstring.rfid.data.model.report.SessionListResponse
 import com.loyalstring.rfid.data.model.report.StockVerificationReqReport
 import com.loyalstring.rfid.data.model.report.StockVerificationResponseReport
 import com.loyalstring.rfid.data.model.sampleIn.SampleInResponse
@@ -333,6 +335,9 @@ interface RetrofitInterface {
     @POST("api/ProductMaster/GetConsolidationStockVerificationReport")
     suspend fun stockVerificationReport(@Body req: StockVerificationReqReport): Response<StockVerificationResponseReport>
 
+
+    @POST("api/ProductMaster/GetAllStockVerificationBySession")
+    suspend fun stockVerificationBatchwise(@Body req: ClientCodeRequest): Response<SessionListResponse>
 
 
 }
