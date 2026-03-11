@@ -5,47 +5,75 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
-import com.loyalstring.rfid.data.model.report.Branch
-import com.loyalstring.rfid.data.model.report.Category
-import com.loyalstring.rfid.data.model.report.Product
-import com.loyalstring.rfid.data.model.report.StockVerificationReqReport
-import com.loyalstring.rfid.viewmodel.StockVerificationViewModel
-import com.loyalstring.rfid.viewmodel.UiState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import com.loyalstring.rfid.data.model.report.Design
-import com.loyalstring.rfid.navigation.GradientTopBar
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.model.report.BatchDetailsResponse
+import com.loyalstring.rfid.data.model.report.BatchItem
+import com.loyalstring.rfid.data.model.report.Branch
+import com.loyalstring.rfid.data.model.report.Category
+import com.loyalstring.rfid.data.model.report.Design
+import com.loyalstring.rfid.data.model.report.Product
+import com.loyalstring.rfid.data.model.report.SessionItem
+import com.loyalstring.rfid.data.model.report.StockVerificationReqReport
+import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.viewmodel.StockVerificationViewModel
+import com.loyalstring.rfid.viewmodel.UiState
 import com.loyalstring.rfid.worker.LocaleHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +83,21 @@ fun StockVerificationReportScreen(
     onBack: () -> Unit,
     navController: NavHostController
 ) {
+
+    val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     var showDatePicker by remember { mutableStateOf(false) }
     val viewModel: StockVerificationViewModel = hiltViewModel()
     var selectedDate by remember { mutableStateOf(getTodayDate()) }
+    var selectedReportType by remember { mutableStateOf("INVENTORY") }
+
+    val branchList = singleProductViewModel.branches
+
+    var showBatchFilter by remember { mutableStateOf(false) }
+
+    var fromDate by remember { mutableStateOf(getTodayDate()) }
+    var toDate by remember { mutableStateOf(getTodayDate()) }
+
+    var selectedBranchId by remember { mutableStateOf<Int?>(null) }
     val state by viewModel.reportState.collectAsState()
     val context = LocalContext.current
     val currentLocales = AppCompatDelegate.getApplicationLocales()
@@ -66,13 +106,38 @@ fun StockVerificationReportScreen(
     val employee =
         remember { UserPreferences.getInstance(context).getEmployee(Employee::class.java) }
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchStockVerificationReport(
-            StockVerificationReqReport(
-                ClientCode = employee?.clientCode.toString(),
-                ReportDate = selectedDate
+    val state0 by viewModel.sessionState.collectAsState()
+
+    singleProductViewModel.getAllBranches(ClientCodeRequest(employee?.clientCode.toString()))
+
+
+
+    LaunchedEffect(selectedReportType, selectedDate) {
+        /*  viewModel.fetchStockVerificationReport(
+              StockVerificationReqReport(
+                  ClientCode = employee?.clientCode.toString(),
+                  ReportDate = selectedDate
+              )
+          )*/
+        if (selectedReportType == "SCAN") {
+
+            viewModel.fetchStockVerificationReport(
+                StockVerificationReqReport(
+                    ClientCode = employee?.clientCode.toString(),
+                    ReportDate = selectedDate
+                )
             )
-        )
+
+        } else {
+
+            viewModel.fetchSessions(
+
+                employee?.clientCode.toString(
+
+                )
+            )
+
+        }
     }
 
     Scaffold(
@@ -102,46 +167,120 @@ fun StockVerificationReportScreen(
                 .padding(padding)
         ) {
 
-            when (state) {
+            Column {
 
-                is UiState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(localizedContext.getString(R.string.loading))
+                ReportRadioButtons(
+                    selectedReportType = selectedReportType,
+                    onSelectionChange = { selectedReportType = it }
+                )
+
+                if (selectedReportType == "SCAN") {
+
+                    DateSelector(
+                        selectedDate = selectedDate,
+                        onClick = { showDatePicker = true },
+                        localizedContext = localizedContext
+                    )
+
+                } else {
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+
+                        Text(
+                            text = "Filter",
+                            modifier = Modifier
+                                .background(Color.Black, RoundedCornerShape(6.dp))
+                                .clickable { showBatchFilter = true }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = Color.White
+                        )
                     }
+
                 }
 
-                is UiState.Success -> {
-                    val data = (state as UiState.Success).data
+                if (selectedReportType == "SCAN") {
 
-                    Column {
-                        DateSelector(
-                            selectedDate = selectedDate,
-                            onClick = { showDatePicker = true },
-                            localizedContext=localizedContext
-                        )
-                        ReportHeaderRow(localizedContext=localizedContext)
+                    ReportHeaderRow(localizedContext)
 
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp)
-                        ) {
-                            items(data.Branches ?: emptyList()) { branch ->
-                                BranchItem(branch, navController,selectedDate)
+                    when (state) {
+
+                        is UiState.Loading -> {
+                            Box(
+                                Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) { Text("Loading...") }
+                        }
+
+                        is UiState.Success -> {
+
+                            val data = (state as UiState.Success).data
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp)
+                            ) {
+
+                                items(data.Branches ?: emptyList()) { branch ->
+                                    BranchItem(branch, navController, selectedDate)
+                                }
                             }
                         }
+
+                        is UiState.Error -> {
+                            Text((state as UiState.Error).message)
+                        }
+
+                        else -> {}
+                    }
+
+                } else {
+
+                    BatchHeaderRow()
+
+                    when (state0) {
+
+                        is UiState.Loading -> {
+                            Text("Loading...")
+                        }
+
+                        is UiState.Success -> {
+
+                            val sessions =
+                                (state0 as UiState.Success).data.Sessions ?: emptyList()
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp)
+                            ) {
+
+                                items(sessions) { session ->
+
+                                    SessionItem(session) {
+
+                                        navController.navigate(
+                                            "batch_details_screen/${session.ScanBatchId}"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        is UiState.Error -> {
+                            Text((state0 as UiState.Error).message)
+                        }
+
+                        else -> {}
                     }
                 }
-
-                is UiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Error: ${(state as UiState.Error).message}")
-                    }
-                }
-
-                else -> {}
             }
-
 
         }
     }
@@ -181,7 +320,656 @@ fun StockVerificationReportScreen(
         }
     }
 
+    if (showBatchFilter) {
+
+        BatchFilterDialog(
+            fromDate = fromDate,
+            toDate = toDate,
+            selectedBranchId = selectedBranchId,
+            branchList = branchList,
+            onDismiss = { showBatchFilter = false },
+            onApply = { branchId, from, to ->
+
+                selectedBranchId = branchId
+                fromDate = from
+                toDate = to
+
+                showBatchFilter = false
+
+                viewModel.filterSessions(
+                    //   clientCode = employee?.clientCode.toString(),
+                    branchId = branchId,
+                    fromDate = from,
+                    toDate = to
+                )
+            }
+        )
+    }
+
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BatchFilterDialog(
+    fromDate: String,
+    toDate: String,
+    selectedBranchId: Int?,
+    branchList: List<BranchModel>,
+    onDismiss: () -> Unit,
+    onApply: (Int?, String, String) -> Unit
+) {
+
+    var from by remember { mutableStateOf(fromDate) }
+    var to by remember { mutableStateOf(toDate) }
+    var branchId by remember { mutableStateOf(selectedBranchId) }
+
+    var showFromDatePicker by remember { mutableStateOf(false) }
+    var showToDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filter") },
+
+        text = {
+
+            Column {
+
+                Text("Branch")
+
+                Spacer(Modifier.height(6.dp))
+
+                var expanded by remember { mutableStateOf(false) }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+
+                    OutlinedTextField(
+                        value = branchList.find { it.Id == branchId }?.BranchName ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Branch") },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { expanded = true }
+                    )
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+
+                        branchList.forEach { branch ->
+
+                            DropdownMenuItem(
+                                text = { Text(branch.BranchName ?: "") },
+                                onClick = {
+                                    branchId = branch.Id
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+              /*  val fromInteraction = remember { MutableInteractionSource() }
+
+                OutlinedTextField(
+                    value = from,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("From Date") },
+                    trailingIcon = {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                    },
+                    interactionSource = fromInteraction
+                )
+
+                LaunchedEffect(fromInteraction) {
+                    fromInteraction.interactions.collect {
+                        showFromDatePicker = true
+                    }
+                }*/
+                Box {
+
+                    OutlinedTextField(
+                        value = from,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("From Date") },
+                        trailingIcon = {
+                            Icon(Icons.Default.DateRange, contentDescription = null)
+                        }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable {
+                                showFromDatePicker = true
+                            }
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+
+                Box {
+
+                    OutlinedTextField(
+                        value = to,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("To Date") },
+                        trailingIcon = {
+                            Icon(Icons.Default.DateRange, contentDescription = null)
+                        }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable {
+                                showToDatePicker = true
+                            }
+                    )
+                }
+
+            /*    val toInteraction = remember { MutableInteractionSource() }
+
+                OutlinedTextField(
+                    value = to,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("To Date") },
+                    trailingIcon = {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                    },
+                    interactionSource = toInteraction
+                )
+
+                LaunchedEffect(toInteraction) {
+                    toInteraction.interactions.collect {
+                        showToDatePicker = true
+                    }
+                }*/
+            }
+        },
+
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onApply(branchId, from, to)
+                }
+            ) {
+                Text("Apply")
+            }
+        },
+
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+
+    // FROM DATE PICKER
+    if (showFromDatePicker) {
+
+        val datePickerState = rememberDatePickerState()
+
+        DatePickerDialog(
+            onDismissRequest = { showFromDatePicker = false },
+            confirmButton = {
+
+                TextButton(onClick = {
+
+                    datePickerState.selectedDateMillis?.let {
+
+                        from = formatDate(it)
+
+                    }
+
+                    showFromDatePicker = false
+
+                }) {
+                    Text("OK")
+                }
+
+            },
+            dismissButton = {
+                TextButton(onClick = { showFromDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // TO DATE PICKER
+    if (showToDatePicker) {
+
+        val datePickerState = rememberDatePickerState()
+
+        DatePickerDialog(
+            onDismissRequest = { showToDatePicker = false },
+            confirmButton = {
+
+                TextButton(onClick = {
+
+                    datePickerState.selectedDateMillis?.let {
+
+                        to = formatDate(it)
+
+                    }
+
+                    showToDatePicker = false
+
+                }) {
+                    Text("OK")
+                }
+
+            },
+            dismissButton = {
+                TextButton(onClick = { showToDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+fun BatchDetailsScreen(
+    scanBatchId: String,
+    navController: NavHostController,
+    viewModel: StockVerificationViewModel = hiltViewModel()
+) {
+
+    val context = LocalContext.current
+    val employee =
+        UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+
+    val state by viewModel.batchDetailsState.collectAsState()
+
+    LaunchedEffect(scanBatchId) {
+        viewModel.fetchBatchDetails(
+            clientCode = employee?.clientCode.toString(),
+            scanBatchId = scanBatchId
+        )
+    }
+
+    Scaffold(
+
+        topBar = {
+            GradientTopBar(
+                title = "Batch Details",
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                showCounter = false,
+                selectedCount = 0,
+                onCountSelected = {},
+                titleTextSize = 20.sp
+            )
+        }
+
+    ) { padding ->
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(12.dp)
+        ) {
+
+            when (state) {
+
+                is UiState.Loading -> {
+                    Text("Loading...", modifier = Modifier.align(Alignment.Center))
+                }
+
+                is UiState.Success -> {
+
+                    val data = (state as UiState.Success<BatchDetailsResponse>).data
+
+                    LazyColumn {
+
+                        item {
+                            BatchTableSection(
+                                title = "Matched Items",
+                                count = data.MatchedList?.size ?: 0,
+                                color = Color(0xFF2E7D32),
+                                items = data.MatchedList ?: emptyList()
+                            )
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        item {
+                            BatchTableSection(
+                                title = "Unmatched Items",
+                                count = data.UnmatchedList?.size ?: 0,
+                                color = Color(0xFFC62828),
+                                items = data.UnmatchedList ?: emptyList()
+                            )
+                        }
+
+                    }
+                }
+
+                is UiState.Error -> {
+                    Text((state as UiState.Error).message)
+                }
+
+                else -> {
+                    Text("No Data")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BatchTableSection(
+    title: String,
+    count: Int,
+    color: Color,
+    items: List<BatchItem>   // your model
+) {
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+
+        Column {
+
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(color.copy(alpha = 0.1f))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    "$count items",
+                    color = color,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Table Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE0E0E0))
+                    .padding(vertical = 8.dp)
+            ) {
+
+                TableHeader("Item Code", 1.2f)
+                TableHeader("Product", 1.3f)
+                TableHeader("Branch", 1f)
+                TableHeader("Category", 1.1f)
+                TableHeader("RFID", 1f)
+               /* TableHeader("Gross", 0.8f)
+                TableHeader("Net", 0.8f)*/
+            }
+
+            if (items.isEmpty()) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No matched items")
+                }
+
+            } else {
+
+                items.forEach { item ->
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+
+                        TableCell(item.ItemCode ?: "", 1.2f)
+                        TableCell(item.ProductName ?: "N/A", 1.3f)
+                        TableCell(item.BranchName ?: "N/A", 1f)
+                        TableCell(item.CategoryName ?: "N/A", 1.1f)
+                        TableCell(item.RFIDCode ?: "-", 1f)
+                      /*  TableCell("${item.GrossWeight ?: 0} g", 0.8f)
+                        TableCell("${item.NetWeight ?: 0} g", 0.8f)*/
+
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.TableHeader(text: String, weight: Float) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .weight(weight)
+            .padding(horizontal = 6.dp),
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp
+    )
+}
+
+@Composable
+fun RowScope.TableCell(text: String, weight: Float) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .weight(weight)
+            .padding(horizontal = 6.dp),
+        fontSize = 12.sp
+    )
+}
+
+@Composable
+fun SessionItem(
+    session: SessionItem,
+    onClick: (SessionItem) -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .background(Color(0xFFF5F5F5))
+            .clickable { onClick(session) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        TableText(session.BranchName ?: "_", Modifier.weight(1.2f))
+
+        TableText(
+            formatDateTime(session.StartedOn),
+            Modifier.weight(1.4f)
+        )
+
+        TableText(
+            formatDateTime(session.EndedOn),
+            Modifier.weight(1.4f)
+        )
+
+        QtyBadge(session.TotalQty, Color(0xFFBBDEFB), Modifier.weight(1f))
+
+        QtyBadge(session.MatchQty, Color(0xFFC8E6C9), Modifier.weight(1f))
+
+        QtyBadge(session.UnmatchQty, Color(0xFFFFCDD2), Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun BatchHeaderRow() {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFE0E0E0))
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        HeaderCell("Branch", Modifier.weight(1.4f))
+        HeaderCell("Start", Modifier.weight(1.4f))
+        HeaderCell("End", Modifier.weight(1.4f))
+        HeaderCell("TotQty", Modifier.weight(1f))
+        HeaderCell("Match", Modifier.weight(1f))
+        HeaderCell("Unmatch", Modifier.weight(1.2f))
+    }
+}
+
+@Composable
+fun HeaderCell(text: String, modifier: Modifier) {
+
+    Text(
+        text = text,
+        modifier = modifier,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+fun TableText(text: String, modifier: Modifier) {
+
+    Text(
+        text = text,
+        modifier = modifier.padding(horizontal = 4.dp),
+        fontSize = 12.sp,
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+fun QtyBadge(value: Int, color: Color, modifier: Modifier) {
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+
+        Box(
+            modifier = Modifier
+                .background(color, RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                value.toString(),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun ReportRadioButtons(
+    selectedReportType: String,
+    onSelectionChange: (String) -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            RadioButton(
+                selected = selectedReportType == "INVENTORY",
+                onClick = { onSelectionChange("INVENTORY") }
+            )
+
+            Text("BatchWise")
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            RadioButton(
+                selected = selectedReportType == "SCAN",
+                onClick = { onSelectionChange("SCAN") }
+            )
+
+            Text("Consolidated")
+        }
+    }
+}
+
+fun formatDateTime(dateTime: String?): String {
+
+    if (dateTime.isNullOrEmpty()) return "-"
+
+    return try {
+
+        val inputFormat =
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+
+        val outputFormat =
+            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+
+        val date = inputFormat.parse(dateTime)
+
+        outputFormat.format(date!!)
+
+    } catch (e: Exception) {
+
+        dateTime
+
+    }
+}
+
 @Composable
 fun DateSelector(
     selectedDate: String,
@@ -457,7 +1245,10 @@ fun CategoryItem(
                 Box(
                     Modifier
                         .size(6.dp)
-                        .background(Color.Gray, shape = androidx.compose.foundation.shape.CircleShape)
+                        .background(
+                            Color.Gray,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))

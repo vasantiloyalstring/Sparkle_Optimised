@@ -1,0 +1,32 @@
+package com.loyalstring.rfid.data.model.report
+
+data class BatchItem(
+    val ItemCode: String?,
+    val ClientCode: String?,
+    val Status: String?,
+    val CounterId: Int?,
+    val CategoryId: Int?,
+    val ProductId: Int?,
+    val DesignId: Int?,
+    val PurityId: Int?,
+    val CompanyId: Int?,
+    val BranchId: Int?,
+    val CounterName: String?,
+    val CategoryName: String?,
+    val ProductName: String?,
+    val DesignName: String?,
+    val PurityName: String?,
+    val CompanyName: String?,
+    val BranchName: String?,
+    val GrossWeight: Double?,
+    val NetWeight: Double?,
+    val Quantity: Int?,
+    val TIDNumber: String?,
+    val RFIDCode: String?,
+    val BoxName: String?,
+    val CreatedOn: String?,
+    val LastUpdated: String?,
+    val ScanBatchId: String?,
+    val Id: Int?,
+    val StatusType: Boolean?
+)

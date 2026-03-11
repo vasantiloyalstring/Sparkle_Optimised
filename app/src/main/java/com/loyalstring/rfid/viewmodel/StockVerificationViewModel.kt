@@ -3,7 +3,12 @@ package com.loyalstring.rfid.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.model.report.BatchDetailsResponse
 import com.loyalstring.rfid.data.model.report.Item
+import com.loyalstring.rfid.data.model.report.ScanBatchRequest
+import com.loyalstring.rfid.data.model.report.SessionItem
+import com.loyalstring.rfid.data.model.report.SessionListResponse
 import com.loyalstring.rfid.data.model.report.StockVerificationReqReport
 import com.loyalstring.rfid.data.model.report.StockVerificationResponseReport
 import com.loyalstring.rfid.repository.StockVerificationRepository
@@ -28,6 +33,20 @@ class StockVerificationViewModel @Inject constructor(
     private val _detailState = MutableStateFlow<UiState<List<Item>>>(UiState.Idle)
     val detailState: StateFlow<UiState<List<Item>>> = _detailState
 
+    private val _sessionState =
+        MutableStateFlow<UiState<SessionListResponse>>(UiState.Idle)
+
+    val sessionState: StateFlow<UiState<SessionListResponse>> =
+        _sessionState
+
+    private val _batchDetailsState =
+        MutableStateFlow<UiState<BatchDetailsResponse>>(UiState.Idle)
+
+    val batchDetailsState: StateFlow<UiState<BatchDetailsResponse>> =
+        _batchDetailsState
+
+    private var originalSessions: List<SessionItem> = emptyList()
+
     fun fetchStockVerificationReport(request: StockVerificationReqReport) {
         viewModelScope.launch {
 
@@ -44,6 +63,8 @@ class StockVerificationViewModel @Inject constructor(
             }
         }
     }
+
+
 
     fun fetchDetailItems(
         branchId: String?,
@@ -159,5 +180,143 @@ class StockVerificationViewModel @Inject constructor(
 
     fun resetState() {
         _reportState.value = UiState.Idle
+    }
+
+    fun fetchBatchDetails(
+        clientCode: String,
+        scanBatchId: String
+    ) {
+
+        viewModelScope.launch {
+
+            _batchDetailsState.value = UiState.Loading
+
+            try {
+
+                val result = repository.getBatchDetails(
+                    ScanBatchRequest(
+                        ClientCode = clientCode,
+                        ScanBatchId = scanBatchId
+                    )
+                )
+
+                _batchDetailsState.value = UiState.Success(result)
+
+            } catch (e: Exception) {
+
+                _batchDetailsState.value =
+                    UiState.Error(e.message ?: "Unknown error")
+
+            }
+
+        }
+    }
+
+
+/*
+    fun fetchSessionsFiltered(
+        clientCode: String,
+        branchId: Int?,
+        fromDate: String,
+        toDate: String
+    ) {
+
+        viewModelScope.launch {
+
+            _sessionState.value = UiState.Loading
+
+            try {
+
+                val response = repository.getFilteredSessions(
+                    clientCode,
+                    branchId,
+                    fromDate,
+                    toDate
+                )
+
+                _sessionState.value = UiState.Success(response)
+
+            } catch (e: Exception) {
+
+                _sessionState.value =
+                    UiState.Error(e.message ?: "Error")
+            }
+        }
+    }*/
+fun filterSessions(
+    branchId: Int?,
+    fromDate: String,
+    toDate: String
+) {
+
+    println("========== FILTER START ==========")
+    println("BranchId Filter = $branchId")
+    println("FromDate = $fromDate")
+    println("ToDate = $toDate")
+
+    println("Original Sessions Count = ${originalSessions.size}")
+
+    originalSessions.forEach { session ->
+        println("Session -> BranchId=${session.BranchId}, Date=${session.StartedOn}")
+    }
+
+    val filtered = originalSessions.filter { session ->
+
+        val branchMatch =
+            branchId == null || session.BranchId == branchId
+
+        val date = session.StartedOn?.substring(0, 10)
+
+        val dateMatch =
+            date != null && date >= fromDate && date <= toDate
+
+        println(
+            "Checking Session -> BranchId=${session.BranchId}, Date=$date | " +
+                    "BranchMatch=$branchMatch | DateMatch=$dateMatch"
+        )
+
+        branchMatch && dateMatch
+    }
+
+    println("Filtered Count = ${filtered.size}")
+
+    filtered.forEach {
+        println("Filtered Session -> BranchId=${it.BranchId}, Date=${it.StartedOn}")
+    }
+
+    val current = (_sessionState.value as? UiState.Success)?.data ?: return
+
+    _sessionState.value =
+        UiState.Success(
+            current.copy(Sessions = filtered)
+        )
+
+    println("========== FILTER END ==========")
+}
+
+    fun fetchSessions(clientCode: String) {
+
+        viewModelScope.launch {
+
+            _sessionState.value = UiState.Loading
+
+            try {
+
+                val result = repository.getSessionList(
+                    ClientCodeRequest(clientCode)
+                )
+
+                // ⭐ SAVE ORIGINAL DATA HERE
+                originalSessions = result.Sessions ?: emptyList()
+
+                _sessionState.value = UiState.Success(result)
+
+            } catch (e: Exception) {
+
+                _sessionState.value =
+                    UiState.Error(e.message ?: "Unknown error")
+
+            }
+        }
     }
 }

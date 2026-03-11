@@ -42,7 +42,8 @@ enum class Screens(val route: String) {
     SampleInListScreen("sample_in_list"),
     QuotationScreen("quotation_screen"),
     QuotationListScreen("quotation_list"),
-    StockVerificationReport("stockverification_report")
+    StockVerificationReport("stockverification_report"),
+    BatchDetailsScreen("batch_details_screen")
 
 
 

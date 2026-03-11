@@ -428,6 +428,19 @@ fun AppNavigation(
                 )
             }
 
+            composable(
+                route = "batch_details_screen/{scanBatchId}"
+            ) { backStackEntry ->
+
+                val scanBatchId =
+                    backStackEntry.arguments?.getString("scanBatchId") ?: ""
+
+                BatchDetailsScreen(
+                    scanBatchId = scanBatchId,
+                    navController = navController
+                )
+            }
+
 
 
         }
