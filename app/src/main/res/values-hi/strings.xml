@@ -441,6 +441,23 @@
     <string name="unmatched_items">अमिलान आइटम</string>
     <string name="items_count">%1$d आइटम</string>
 
+    <string name="home">होम</string>
+    <string name="coming_soon">जल्द आ रहा है...</string>
+    <string name="sparkle_rfid_logo">स्पार्कल RFID लोगो</string>
+
+    <string name="inventory">इन्वेंटरी</string>
+    <string name="order">ऑर्डर</string>
+   
+    <string name="stock_transfer">स्टॉक\nट्रांसफर</string>
+    <string name="report">रिपोर्ट</string>
+    <string name="quotations">कोटेशन</string>
+    <string name="delivery_challan">डिलीवरी चालान</string>
+    <string name="invoice">इनवॉइस</string>
+    <string name="sample_in">सैंपल इन</string>
+    <string name="sample_out">सैंपल आउट</string>
+    <string name="settings">सेटिंग्स</string>
+    <string name="logout">लॉगआउट</string>
+
 
 
 

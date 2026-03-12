@@ -34,6 +34,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -259,7 +260,7 @@ private fun SetupNavigation(
                                     modifier = Modifier.fillMaxWidth(0.7f),
                                     label = {
                                         Text(
-                                            text = navigationItem.title,
+                                            text = stringResource(navigationItem.titleResId),
                                             fontSize = 16.sp,
                                             fontFamily = poppins,
                                             color = Color.DarkGray
@@ -320,7 +321,7 @@ private fun SetupNavigation(
                                             modifier = Modifier.size(24.dp),
                                             painter = painterResource(navigationItem.selectedIcon),
                                             tint = Color.DarkGray,
-                                            contentDescription = navigationItem.title
+                                            contentDescription = context.getString(navigationItem.titleResId)
                                         )
                                     },
                                     colors = NavigationDrawerItemDefaults.colors(

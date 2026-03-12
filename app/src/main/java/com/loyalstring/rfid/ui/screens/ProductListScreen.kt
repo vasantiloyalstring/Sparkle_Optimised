@@ -132,9 +132,10 @@ fun ProductListScreen(
     val filteredItems = remember(searchQuery.value, allItems) {
         allItems.filter { item ->
             val query = searchQuery.value.trim().lowercase()
-            item.itemCode!!.lowercase().contains(query) ||
-                    item.productName!!.lowercase().contains(query) /*||
-                    item.rfid?.lowercase()?.contains(query)*/
+
+            item.itemCode?.lowercase()?.contains(query) == true ||
+                    item.productName?.lowercase()?.contains(query) == true ||
+                    item.rfid?.lowercase()?.contains(query) == true
         }
     }
 

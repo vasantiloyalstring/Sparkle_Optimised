@@ -116,6 +116,7 @@ fun BulkProductScreen(
             }
 
             override fun onRfidKeyPressed() {
+                viewModel.setBulkMode(true)
                 if (isScanning) {
                     viewModel.stopScanning()
                     isScanning = false
@@ -251,9 +252,17 @@ fun BulkProductScreen(
                 },
 
                 onReset = {
-                    viewModel.resetProductScanResults()
-                    viewModel.stopBarcodeScanner()
-                    itemCodeList.clear()
+                    try {
+
+                        viewModel.stopBarcodeScanner()
+
+                        viewModel.resetProductScanResults()
+
+                        itemCodeList.clear()
+
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 },
 
                 isScanning = isScanning,

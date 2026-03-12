@@ -436,6 +436,23 @@
     <string name="unmatched_items">العناصر غير المطابقة</string>
     <string name="items_count">%1$d عنصر</string>
 
+    <string name="home">الرئيسية</string>
+    <string name="coming_soon">قريباً...</string>
+    <string name="sparkle_rfid_logo">شعار Sparkle RFID</string>
+
+    <string name="inventory">المخزون</string>
+    <string name="order">الطلب</string>
+
+    <string name="stock_transfer">نقل\nالمخزون</string>
+    <string name="report">التقرير</string>
+    <string name="quotations">عروض الأسعار</string>
+    <string name="delivery_challan">إيصال التسليم</string>
+    <string name="invoice">الفاتورة</string>
+    <string name="sample_in">إدخال العينة</string>
+    <string name="sample_out">إخراج العينة</string>
+    <string name="settings">الإعدادات</string>
+    <string name="logout">تسجيل الخروج</string>
+
 
 
 

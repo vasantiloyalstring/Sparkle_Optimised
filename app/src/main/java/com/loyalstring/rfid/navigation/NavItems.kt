@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.loyalstring.rfid.R
 
 enum class Screens(val route: String) {
-    //SplashScreen("splash"),
     LoginScreen("login"),
     HomeScreen("home"),
     ProductManagementScreen("products"),
@@ -44,102 +43,98 @@ enum class Screens(val route: String) {
     QuotationListScreen("quotation_list"),
     StockVerificationReport("stockverification_report"),
     BatchDetailsScreen("batch_details_screen")
-
-
-
 }
-data class NavItems (
-    val title:String,
+
+data class NavItems(
+    val titleResId: Int,
     val unselectedIcon: ImageVector,
     val selectedIcon: Int,
-    val route:String
+    val route: String
 )
-val listOfNavItems = listOf<NavItems>(
+
+val listOfNavItems = listOf(
     NavItems(
-        title = "Home",
-        unselectedIcon= Icons.Outlined.Home,
-        selectedIcon = ( R.drawable.home_svg),
+        titleResId = R.string.home,
+        unselectedIcon = Icons.Outlined.Home,
+        selectedIcon = R.drawable.home_svg,
         route = Screens.HomeScreen.route
     ),
     NavItems(
-        title = "Product",
-        unselectedIcon= Icons.Outlined.MailOutline,
-        selectedIcon = ( R.drawable.product_gr_svg),
+        titleResId = R.string.product,
+        unselectedIcon = Icons.Outlined.MailOutline,
+        selectedIcon = R.drawable.product_gr_svg,
         route = Screens.ProductManagementScreen.route
     ),
     NavItems(
-        title = "Inventory",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.inventory_gr_svg),
+        titleResId = R.string.inventory,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.inventory_gr_svg,
         route = "inventory"
     ),
     NavItems(
-        title = "Order",
-        unselectedIcon= Icons.Outlined.Settings,
-        selectedIcon = ( R.drawable.order_gr_svg),
+        titleResId = R.string.order,
+        unselectedIcon = Icons.Outlined.Settings,
+        selectedIcon = R.drawable.order_gr_svg,
         route = Screens.OrderScreen.route
     ),
     NavItems(
-        title = "Search",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon =(R.drawable.search_gr_svg),
+        titleResId = R.string.search,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.search_gr_svg,
         route = Screens.SearchScreen.route
-
-    ), NavItems(
-        title = "Stock\nTransfer",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.stock_tr_gr_svg),
-        route = "stock_transfer"
-
-    ), NavItems(
-        title = "Report",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.report_gr_svg),
-        route = Screens.StockVerificationReport.route
-
-    ),NavItems(
-        title = "Quotations",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.quotation_gr_svg),
-        route = Screens.QuotationScreen.route
-
-    ),NavItems(
-        title = "Delivery Challan",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.delivery_challan_icon),
-        route = Screens.DeliveryChalan.route
-
-    ),NavItems(
-        title = "Invoice",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.invoice_gr_svg),
-        route = ""
-
-    ),NavItems(
-        title = "Sample In",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon =( R.drawable.sample_in_gr_svg),
-        route = "sample_in"
-
-    ),NavItems(
-        title = "Sample Out",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.sample_out_gr_svg),
-        route = "sample_out"
-
-    ),NavItems(
-        title = "Settings",
-        unselectedIcon= Icons.Outlined.FavoriteBorder,
-        selectedIcon = ( R.drawable.setting_gr_svg),
-        route = "settings"
-
     ),
     NavItems(
-        title = "Logout",
-        unselectedIcon = Icons.AutoMirrored.Default.Logout,
-        selectedIcon = (R.drawable.logout),
-        route = "login"
-
+        titleResId = R.string.stock_transfer,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.stock_tr_gr_svg,
+        route = "stock_transfer"
     ),
-
+    NavItems(
+        titleResId = R.string.report,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.report_gr_svg,
+        route = Screens.StockVerificationReport.route
+    ),
+    NavItems(
+        titleResId = R.string.quotations,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.quotation_gr_svg,
+        route = Screens.QuotationScreen.route
+    ),
+    NavItems(
+        titleResId = R.string.delivery_challan,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.delivery_challan_icon,
+        route = Screens.DeliveryChalan.route
+    ),
+    NavItems(
+        titleResId = R.string.invoice,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.invoice_gr_svg,
+        route = ""
+    ),
+    NavItems(
+        titleResId = R.string.sample_in,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.sample_in_gr_svg,
+        route = "sample_in"
+    ),
+    NavItems(
+        titleResId = R.string.sample_out,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.sample_out_gr_svg,
+        route = "sample_out"
+    ),
+    NavItems(
+        titleResId = R.string.settings,
+        unselectedIcon = Icons.Outlined.FavoriteBorder,
+        selectedIcon = R.drawable.setting_gr_svg,
+        route = "settings"
+    ),
+    NavItems(
+        titleResId = R.string.logout,
+        unselectedIcon = Icons.AutoMirrored.Default.Logout,
+        selectedIcon = R.drawable.logout,
+        route = "login"
+    )
 )

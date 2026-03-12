@@ -94,7 +94,7 @@ fun SearchScreen(
     }
 
     // ✅ For unmatched — start search immediately
-    LaunchedEffect(isUnmatchedList, inputItems) {
+ /*   LaunchedEffect(isUnmatchedList, inputItems) {
         if (isUnmatchedList && inputItems.isNotEmpty()) {
             delay(300)
             searchViewModel.startSearch(inputItems, selectedPower)
@@ -103,6 +103,71 @@ fun SearchScreen(
         } else {
             searchViewModel.clearSearchItems()
             isScanning = false
+        }
+    }*/
+
+    DisposableEffect(lifecycleOwner, activity) {
+
+        val listener = object : ScanKeyListener {
+            override fun onBarcodeKeyPressed() {}
+
+            override fun onRfidKeyPressed() {
+                if (isScanning) {
+                    searchViewModel.stopSearch()
+                    isScanning = false
+                } else {
+
+                    val itemsToSearch = when {
+                        isUnmatchedList && inputItems.isNotEmpty() -> inputItems
+                        !isUnmatchedList && filteredDbItems.isNotEmpty() -> filteredDbItems
+                        else -> emptyList()
+                    }
+
+                    if (itemsToSearch.isNotEmpty()) {
+                        searchViewModel.startSearch(itemsToSearch, selectedPower)
+                        isScanning = true
+                    }
+                }
+            }
+        }
+
+        val observer = LifecycleEventObserver { _, event ->
+
+            when (event) {
+
+                Lifecycle.Event.ON_RESUME -> {
+
+                    activity?.registerScanKeyListener(listener)
+
+                    // ⭐ AUTO START SCAN HERE
+                    if (isUnmatchedList && inputItems.isNotEmpty()) {
+
+                        searchViewModel.startSearch(inputItems, selectedPower)
+                        isScanning = true
+
+                        Log.d("AUTO_SCAN", "RFID auto started on resume")
+                    }
+                }
+
+                Lifecycle.Event.ON_PAUSE -> {
+
+                    activity?.unregisterScanKeyListener()
+
+                    if (isScanning) {
+                        searchViewModel.stopSearch()
+                        isScanning = false
+                    }
+                }
+
+                else -> {}
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            activity?.unregisterScanKeyListener()
         }
     }
 

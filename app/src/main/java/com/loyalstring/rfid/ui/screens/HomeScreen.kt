@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +59,7 @@ import com.loyalstring.rfid.navigation.NavItems
 import com.loyalstring.rfid.navigation.listOfNavItems
 import com.loyalstring.rfid.ui.utils.ToastUtils
 import com.loyalstring.rfid.ui.utils.poppins
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -74,8 +77,17 @@ fun HomeScreen(
 
     val t0 = System.nanoTime()
     Log.d("StartupTrace", "HomeScreen compose start")
-    val items = remember { listOfNavItems.filter { it.title != "Home" && it.title != "Logout" } }
+    val items = remember {
+        listOfNavItems.filter {
+            it.titleResId != R.string.home && it.titleResId != R.string.logout
+        }
+    }
+   // val items = remember { listOfNavItems.filter { it.title != "Home" && it.title != "Logout" } }
     val context: Context = LocalContext.current
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     val topBarBrush = remember {
         Brush.horizontalGradient(
             colors = listOf(Color(0xFF5231A7), Color(0xFFD32940))
@@ -84,7 +96,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Home", color = Color.White, fontFamily = poppins) },
+                title = { Text( localizedContext.getString(R.string.home), color = Color.White, fontFamily = poppins) },
                 navigationIcon = {
                     IconButton(onClick = { scope.launch { drawerState.open() } }) {
                         Icon(Icons.Default.Menu, contentDescription = null, tint = Color.White)
@@ -139,7 +151,8 @@ fun HomeScreen(
                             size = cardSize,
                             context = context,
                             iconResId = iconResId,
-                            index = index
+                            index = index,
+                            localizedContext=localizedContext
                         )
                     }
                 }
@@ -194,7 +207,8 @@ fun HomeGridCard(
     size: Dp,
     context: Context,
     iconResId: Int,
-    index: Int
+    index: Int,
+    localizedContext:Context
 ) {
     Card(
         onClick = {
@@ -204,7 +218,7 @@ fun HomeGridCard(
                         launchSingleTop = true
                     }
                 } else {
-                    ToastUtils.showToast(context, "Coming Soon...")
+                    ToastUtils.showToast(context,  localizedContext.getString(R.string.coming_soon))
                 }
             }
         },
@@ -221,13 +235,13 @@ fun HomeGridCard(
         ) {
             Icon(
                 painter = painterResource(id = iconResId),
-                contentDescription = item.title,
+                contentDescription = stringResource(item.titleResId),
                 tint = Color.Unspecified,
                 modifier = Modifier.size(size * 0.4f) // Scale icon size with card
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = item.title,
+                text =  stringResource(item.titleResId),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 fontFamily = poppins,
