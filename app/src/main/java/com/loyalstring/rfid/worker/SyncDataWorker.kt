@@ -34,12 +34,14 @@ class SyncDataWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        Log.d("WORKER_TEST", "Worker Started")
         val taskType = inputData.getString("task_type") ?: return Result.failure()
-
+        Log.d("WORKER_TEST", "TaskType: $taskType")
         return try {
             when (taskType) {
                 LOCATION_SYNC_DATA_WORKER -> {
                     try {
+                        Log.d("@@","Location called")
                         // 1️⃣ Add location sync call
                         val addLocationResponse = settingRepository.addLocation(
                             LocationSyncRequest(
@@ -53,6 +55,7 @@ class SyncDataWorker @AssistedInject constructor(
                         )
 
                         if (addLocationResponse.isSuccessful) {
+                            Log.d("@@","Location success")
                             // 2️⃣ Call getLocation API after success
                             val clientCode = userPreferences.getEmployee(Employee::class.java)?.clientCode ?: return Result.failure()
                             val getLocationResponse = settingRepository.getLocation(LocationGetRequest(

@@ -11,6 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -150,6 +155,7 @@ fun LocationListScreen(
     onBack: () -> Unit,
     navController: NavHostController, )
 {
+    val context = LocalContext.current
     val viewModel: SettingsViewModel = hiltViewModel()
     val scope = rememberCoroutineScope()
     val locations by viewModel.localLocations.collectAsState()
@@ -208,7 +214,7 @@ fun LocationListScreen(
                         Divider(color = Color.Gray)
 
                         // Data Rows
-                        LazyColumn {
+                       /* LazyColumn {
                             itemsIndexed(locations) { index, item ->
                                 Row(
                                     modifier = Modifier
@@ -226,6 +232,65 @@ fun LocationListScreen(
                                     Text(item.UserId.toString(), modifier = Modifier.weight(1f), fontSize = 12.sp, textAlign = TextAlign.Center)
                                     Text(item.Address ?: "-", modifier = Modifier.weight(1.5f), fontSize = 12.sp)
                                 }
+                                Divider()
+                            }
+                        }*/
+
+                        LazyColumn {
+                            itemsIndexed(locations) { index, item ->
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+
+                                    Text("${index + 1}", modifier = Modifier.weight(0.3f), fontSize = 12.sp)
+
+                                    val date = try {
+                                        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS", Locale.getDefault())
+                                        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                        formatter.format(parser.parse(item.CreatedOn) ?: Date())
+                                    } catch (e: Exception) { item.CreatedOn }
+
+                                    Text(date.toString(), modifier = Modifier.weight(1f), fontSize = 12.sp)
+
+                                    Text(
+                                        item.UserId.toString(),
+                                        modifier = Modifier.weight(1f),
+                                        fontSize = 12.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Text(
+                                        item.Address ?: "-",
+                                        modifier = Modifier.weight(1.5f),
+                                        fontSize = 12.sp
+                                    )
+
+                                    IconButton(
+                                        onClick = {
+
+                                            val latitude = item.Latitude
+                                            val longitude = item.Longitude
+
+                                            val gmmIntentUri = Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude")
+
+                                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                            mapIntent.setPackage("com.google.android.apps.maps")
+
+                                            context.startActivity(mapIntent)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.LocationOn,
+                                            contentDescription = "Open Map",
+                                            tint = Color.Red
+                                        )
+                                    }
+                                }
+
                                 Divider()
                             }
                         }

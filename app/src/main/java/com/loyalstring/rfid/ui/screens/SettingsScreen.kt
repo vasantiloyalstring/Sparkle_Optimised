@@ -1,9 +1,42 @@
 package com.loyalstring.rfid.ui.screens
 
-import android.app.Activity
-import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 
+
+
+import android.os.Looper
+
+
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.Priority
+
+import android.content.IntentSender
+
+
+import com.google.android.gms.common.api.ResolvableApiException
+
+import com.google.android.gms.location.LocationSettingsRequest
+
+import com.google.android.gms.location.SettingsClient
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.database.sqlite.SQLiteDatabase
+import android.location.Geocoder
+
+import android.os.Build
+import android.os.Environment
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,11 +46,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-
 import androidx.compose.foundation.layout.padding
-
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,9 +62,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,20 +83,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-
-import com.loyalstring.rfid.worker.LocaleHelper
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.work.Data
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.google.android.gms.location.LocationServices
+
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.local.db.AppDatabase
 import com.loyalstring.rfid.data.model.ClientCodeRequest
-
 import com.loyalstring.rfid.data.model.login.Employee
-
-
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.AutoSyncSetting
@@ -71,45 +116,17 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.utils.BackupUtils
 import com.loyalstring.rfid.viewmodel.SettingsViewModel
 import com.loyalstring.rfid.viewmodel.UiState1
-import kotlinx.coroutines.launch
-
-import android.os.Environment
-import android.util.Log
-import androidx.compose.material3.*
-import kotlinx.coroutines.CoroutineScope
-import java.io.File
-
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Intent
-
-import android.content.pm.PackageManager
-import android.location.Geocoder
-import android.os.Build
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.DpOffset
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.os.LocaleListCompat
-import androidx.work.Data
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.loyalstring.rfid.worker.EmailSender
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.loyalstring.rfid.worker.SyncDataWorker
 import com.loyalstring.rfid.worker.cancelPeriodicSync
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.Locale
-import com.google.android.gms.location.LocationServices
-import com.loyalstring.rfid.data.local.db.AppDatabase
 import kotlinx.coroutines.delay
-
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
@@ -242,38 +259,83 @@ fun SettingsScreen(
     Log.d("EMPLOYEE", employee.toString())
     employee?.empEmail?.let { Log.d("EMAIL ", it) }
 
-    if (locationAutoSyncEnabled) {
-        getCurrentLocation(context) { latitude, longitude, address ->
-            val locationData = Data.Builder()
-                .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
-                .putString("latitude", latitude)
-                .putString("longitude", longitude)
-                .putString("address", address)
-                .build()
+    LaunchedEffect(locationAutoSyncEnabled) {
 
-            /*  schedulePeriodicSync(
+        Log.d("WORKER_TEST", "Scheduling worker1")
+
+        if (locationAutoSyncEnabled) {
+
+            Log.d("WORKER_TEST", "Scheduling worker2")
+            val activity = context as Activity
+            checkLocationSettings(activity)
+
+            getCurrentLocation(context) { latitude, longitude, address ->
+
+                val locationData = Data.Builder()
+                    .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
+                    .putString("latitude", latitude)
+                    .putString("longitude", longitude)
+                    .putString("address", address)
+                    .build()
+
+                Log.d("WORKER_TEST", "Scheduling worker3")
+
+                val periodicRequest =
+                    PeriodicWorkRequestBuilder<SyncDataWorker>(
+                        15, TimeUnit.MINUTES
+                    )
+                        .setInputData(locationData)
+                        .addTag(SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
+                        .build()
+
+                WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                    SyncDataWorker.LOCATION_SYNC_DATA_WORKER,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    periodicRequest
+                )
+            }
+
+        } else {
+            cancelPeriodicSync(context, LOCATION_SYNC_DATA_WORKER)
+        }
+    }
+   /* LaunchedEffect(locationAutoSyncEnabled) {
+        Log.d("WORKER_TEST", "Scheduling worker1")
+        if (locationAutoSyncEnabled) {
+            Log.d("WORKER_TEST", "Scheduling worker2")
+            getCurrentLocation(context) { latitude, longitude, address ->
+                val locationData = Data.Builder()
+                    .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
+                    .putString("latitude", latitude)
+                    .putString("longitude", longitude)
+                    .putString("address", address)
+                    .build()
+
+                *//*  schedulePeriodicSync(
                   context,
                   SyncDataWorker.LOCATION_SYNC_DATA_WORKER,
                   2,
                   locationData
-              )*/
+              )*//*
+                Log.d("WORKER_TEST", "Scheduling worker3")
 
-            val request = OneTimeWorkRequestBuilder<SyncDataWorker>()
-                .setInputData(locationData)
-                .setInitialDelay(1, TimeUnit.MINUTES) // repeat every 1 minute
-                .addTag(SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
-                .build()
+                val request = OneTimeWorkRequestBuilder<SyncDataWorker>()
+                    .setInputData(locationData)
+                    // .setInitialDelay(1, TimeUnit.MINUTES) // repeat every 1 minute
+                    .addTag(SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
+                    .build()
 
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(
-                    SyncDataWorker.LOCATION_SYNC_DATA_WORKER,
-                    ExistingWorkPolicy.REPLACE,
-                    request
-                )
+                WorkManager.getInstance(context)
+                    .enqueueUniqueWork(
+                        SyncDataWorker.LOCATION_SYNC_DATA_WORKER,
+                        ExistingWorkPolicy.REPLACE,
+                        request
+                    )
+            }
+        } else {
+            cancelPeriodicSync(context, LOCATION_SYNC_DATA_WORKER)
         }
-    } else {
-        cancelPeriodicSync(context,LOCATION_SYNC_DATA_WORKER)
-    }
+    }*/
 
 
     val currentLocales = AppCompatDelegate.getApplicationLocales()
@@ -692,6 +754,36 @@ fun SettingsScreen(
 
 }
 
+fun checkLocationSettings(activity: Activity) {
+
+    val locationRequest = LocationRequest.Builder(
+        Priority.PRIORITY_HIGH_ACCURACY,
+        1000
+    ).build()
+
+    val builder = LocationSettingsRequest.Builder()
+        .addLocationRequest(locationRequest)
+        .setAlwaysShow(true)
+
+    val client: SettingsClient = LocationServices.getSettingsClient(activity)
+
+    val task = client.checkLocationSettings(builder.build())
+
+    task.addOnSuccessListener {
+        Log.d("LOCATION_SETTINGS", "Location accuracy already enabled")
+    }
+
+    task.addOnFailureListener { exception ->
+        if (exception is ResolvableApiException) {
+            try {
+                exception.startResolutionForResult(activity, 1001)
+            } catch (sendEx: IntentSender.SendIntentException) {
+                sendEx.printStackTrace()
+            }
+        }
+    }
+}
+
 fun restartApp(context: Context) {
 
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -714,6 +806,126 @@ fun LanguageOption(label: String, selected: Boolean, onSelect: () -> Unit) {
         Text(text = label, fontFamily = poppins, fontSize = 15.sp)
     }
 }
+
+
+/*
+@SuppressLint("MissingPermission")
+fun getCurrentLocation(activity: Context, onLocationFetched: (String, String, String) -> Unit) {
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity)
+
+    if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) !=
+        PackageManager.PERMISSION_GRANTED &&
+        ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) !=
+        PackageManager.PERMISSION_GRANTED
+    ) {
+        // Request permissions directly
+        ActivityCompat.requestPermissions(
+            activity as Activity,
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            100
+        )
+        return
+    }
+
+    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+        try {
+            if (location != null) {
+                val latitude = location.latitude.toString()
+                val longitude = location.longitude.toString()
+
+                val geocoder = Geocoder(activity, Locale.getDefault())
+                val addressInfo = geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()
+
+                val area = addressInfo?.subLocality ?: "" // Area or neighborhood
+                val city = addressInfo?.locality
+                    ?: addressInfo?.subAdminArea           // fallback (district/taluka level)
+                    ?: addressInfo?.featureName            // sometimes contains village or town name
+                    ?: ""
+                val state = addressInfo?.adminArea ?: ""   // State
+                val pinCode = addressInfo?.postalCode ?: "" // Pincode
+
+                // Combine only non-empty parts
+                val address = listOf(area, city, state, pinCode)
+                    .filter { it.isNotEmpty() }
+                    .joinToString(", ")
+
+                onLocationFetched(latitude, longitude, address)
+            } else {
+                Toast.makeText(activity, "Failed to get location", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(activity, "⚠️ Error while fetching address: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+}*/
+
+/*@SuppressLint("MissingPermission")
+fun getCurrentLocation(
+    context: Context,
+    onLocationFetched: (String, String, String) -> Unit
+) {
+
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    val finePermission = ActivityCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+
+    val coarsePermission = ActivityCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    )
+
+    Log.d("LOCATION_DEBUG", "Fine permission = $finePermission")
+    Log.d("LOCATION_DEBUG", "Coarse permission = $coarsePermission")
+
+    if (finePermission != PackageManager.PERMISSION_GRANTED &&
+        coarsePermission != PackageManager.PERMISSION_GRANTED
+    ) {
+        Log.d("LOCATION_DEBUG", "Location permission NOT granted")
+        return
+    }
+
+    fusedLocationClient.getCurrentLocation(
+        Priority.PRIORITY_HIGH_ACCURACY,
+        null
+    ).addOnSuccessListener { location ->
+
+        Log.d("LOCATION_DEBUG", "Location result = $location")
+
+        if (location != null) {
+
+            val latitude = location.latitude
+            val longitude = location.longitude
+
+            Log.d("LOCATION_DEBUG", "Lat = $latitude , Lng = $longitude")
+
+            val geocoder = Geocoder(context, Locale.getDefault())
+            val addressInfo =
+                geocoder.getFromLocation(latitude, longitude, 1)?.firstOrNull()
+
+            val address = listOf(
+                addressInfo?.subLocality,
+                addressInfo?.locality,
+                addressInfo?.adminArea,
+                addressInfo?.postalCode
+            ).filterNotNull().joinToString(", ")
+
+            Log.d("LOCATION_DEBUG", "Address = $address")
+
+            onLocationFetched(latitude.toString(), longitude.toString(), address)
+
+        } else {
+            Log.d("LOCATION_DEBUG", "Location returned NULL")
+        }
+    }
+}*/
 
 
 @SuppressLint("MissingPermission")
@@ -770,6 +982,7 @@ fun getCurrentLocation(activity: Context, onLocationFetched: (String, String, St
     }
 
 }
+
 
 @Composable
 fun BackupDialogExample(
@@ -1192,9 +1405,9 @@ fun MenuItemRow(
                     "autosync" -> onAutoSyncClick()
                     "sheet_url" -> onSheetUrlClick()
                     "clear_data" -> onClearDataClick()
-                    "apis"->onCustomApiClick()
-                    "rates"->onRatesClick()
-                    "backup"->onBackupClick()
+                    "apis" -> onCustomApiClick()
+                    "rates" -> onRatesClick()
+                    "backup" -> onBackupClick()
                     "language" -> onLanguageClick()
                     else -> item.onClick?.invoke()
                 }
