@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatten
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -109,6 +111,31 @@ class StockTransferViewModel @Inject constructor(
     private val _cancelResponse =
         MutableStateFlow<Result<CancelStockTransferResponse>?>(null)
     val cancelResponse: StateFlow<Result<CancelStockTransferResponse>?> = _cancelResponse
+
+    suspend fun loadAllLabelledStock() {
+
+        val labelledItems =
+            allBulkItems.first().filter {
+                !it.itemCode.isNullOrBlank()
+            }
+
+        _filteredBulkItems.value = labelledItems
+    }
+
+/*    suspend fun loadAllLabelledStock() {
+
+        val labelledItems = mutableListOf<BulkItem>()
+
+        allBulkItems.collect { list ->
+            list.forEach { item ->
+                if (!item.itemCode.isNullOrBlank()) {
+                    labelledItems.add(item)
+                }
+            }
+        }
+
+        _filteredBulkItems.value = labelledItems
+    }*/
 
 
     /** -------------------- Load Transfer Types -------------------- **/

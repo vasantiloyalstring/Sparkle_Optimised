@@ -406,6 +406,42 @@
     <string name="status">الحالة</string>
 
 
+    <string name="batch_details">تفاصيل الدفعة</string>
+
+    <string name="batchwise">حسب الدفعة</string>
+    <string name="consolidated">مجمّع</string>
+
+
+    <string name="total_inventory">إجمالي المخزون</string>
+
+
+    <string name="start">البداية</string>
+    <string name="end">النهاية</string>
+    <string name="total_qty">الكمية الإجمالية</string>
+    <string name="match">مطابقة</string>
+    <string name="unmatch">غير مطابق</string>
+
+    <string name="item_code">رمز الصنف</string>
+
+    <string name="no_data">لا توجد بيانات</string>
+    <string name="no_matched_items">لا توجد عناصر مطابقة</string>
+
+    <string name="filter">تصفية</string>
+    <string name="from_date">من تاريخ</string>
+    <string name="to_date">إلى تاريخ</string>
+    <string name="apply">تطبيق</string>
+
+
+    <string name="matched_items">العناصر المطابقة</string>
+    <string name="unmatched_items">العناصر غير المطابقة</string>
+    <string name="items_count">%1$d عنصر</string>
+
+
+
+
+
+
+
 
 
 

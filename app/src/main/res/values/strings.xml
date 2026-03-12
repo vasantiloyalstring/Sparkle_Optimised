@@ -417,6 +417,51 @@
     <string name="status">Status</string>
 
 
+    <!-- Stock Verification -->
+
+    <string name="batch_details">Batch Details</string>
+
+    <!-- Report Type -->
+    <string name="batchwise">BatchWise</string>
+    <string name="consolidated">Consolidated</string>
+
+    <!-- Table Headers -->
+
+    <string name="total_inventory">Total Inventory</string>
+
+
+    <!-- Batch Screen -->
+    <string name="start">Start</string>
+    <string name="end">End</string>
+    <string name="total_qty">Total Qty</string>
+    <string name="match">Match</string>
+    <string name="unmatch">Unmatch</string>
+
+    <!-- Item Table -->
+    <string name="item_code">Item Code</string>
+
+
+    <!-- Empty States -->
+
+    <string name="no_data">No Data</string>
+    <string name="no_matched_items">No matched items</string>
+    <string name="from_date">From Date</string>
+    <!-- Filter -->
+    <string name="filter">Filter</string>
+
+    <string name="to_date">To Date</string>
+    <string name="apply">Apply</string>
+
+    <string name="matched_items">Matched Items</string>
+    <string name="unmatched_items">Unmatched Items</string>
+
+    <string name="items_count">%1$d items</string>
+
+
+
+
+
+
 
 
 

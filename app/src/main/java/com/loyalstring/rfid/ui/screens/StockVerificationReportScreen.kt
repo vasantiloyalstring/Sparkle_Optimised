@@ -172,7 +172,8 @@ fun StockVerificationReportScreen(
 
                 ReportRadioButtons(
                     selectedReportType = selectedReportType,
-                    onSelectionChange = { selectedReportType = it }
+                    onSelectionChange = { selectedReportType = it },
+                    localizedContext=localizedContext
                 )
 
                 if (selectedReportType == "SCAN") {
@@ -193,7 +194,7 @@ fun StockVerificationReportScreen(
                     ) {
 
                         Text(
-                            text = "Filter",
+                            text = localizedContext.getString(R.string.filter),
                             modifier = Modifier
                                 .background(Color.Black, RoundedCornerShape(6.dp))
                                 .clickable { showBatchFilter = true }
@@ -214,7 +215,7 @@ fun StockVerificationReportScreen(
                             Box(
                                 Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
-                            ) { Text("Loading...") }
+                            ) { Text(localizedContext.getString(R.string.loading))}
                         }
 
                         is UiState.Success -> {
@@ -243,7 +244,7 @@ fun StockVerificationReportScreen(
 
                 } else {
 
-                    BatchHeaderRow()
+                    BatchHeaderRow(localizedContext=localizedContext)
 
                     when (state0) {
 
@@ -329,6 +330,7 @@ fun StockVerificationReportScreen(
             selectedBranchId = selectedBranchId,
             branchList = branchList,
             onDismiss = { showBatchFilter = false },
+            localizedContext=localizedContext,
             onApply = { branchId, from, to ->
 
                 selectedBranchId = branchId
@@ -357,6 +359,7 @@ fun BatchFilterDialog(
     selectedBranchId: Int?,
     branchList: List<BranchModel>,
     onDismiss: () -> Unit,
+    localizedContext: Context,
     onApply: (Int?, String, String) -> Unit
 ) {
 
@@ -369,13 +372,13 @@ fun BatchFilterDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Filter") },
+        title = { Text(localizedContext.getString(R.string.filter))},
 
         text = {
 
             Column {
 
-                Text("Branch")
+                Text(localizedContext.getString(R.string.branch))
 
                 Spacer(Modifier.height(6.dp))
 
@@ -387,7 +390,7 @@ fun BatchFilterDialog(
                         value = branchList.find { it.Id == branchId }?.BranchName ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Branch") },
+                        label =  { Text(localizedContext.getString(R.string.branch)) },
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -446,7 +449,7 @@ fun BatchFilterDialog(
                         onValueChange = {},
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("From Date") },
+                        label = { Text(localizedContext.getString(R.string.from_date)) },
                         trailingIcon = {
                             Icon(Icons.Default.DateRange, contentDescription = null)
                         }
@@ -469,7 +472,7 @@ fun BatchFilterDialog(
                         onValueChange = {},
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("To Date") },
+                        label = { Text(localizedContext.getString(R.string.to_date)) },
                         trailingIcon = {
                             Icon(Icons.Default.DateRange, contentDescription = null)
                         }
@@ -512,13 +515,13 @@ fun BatchFilterDialog(
                     onApply(branchId, from, to)
                 }
             ) {
-                Text("Apply")
+                Text(localizedContext.getString(R.string.apply))
             }
         },
 
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(localizedContext.getString(R.string.cancel))
             }
         }
     )
@@ -543,13 +546,13 @@ fun BatchFilterDialog(
                     showFromDatePicker = false
 
                 }) {
-                    Text("OK")
+                    Text(localizedContext.getString(R.string.ok))
                 }
 
             },
             dismissButton = {
                 TextButton(onClick = { showFromDatePicker = false }) {
-                    Text("Cancel")
+                    Text(localizedContext.getString(R.string.cancel))
                 }
             }
 
@@ -598,8 +601,8 @@ fun BatchFilterDialog(
 fun BatchDetailsScreen(
     scanBatchId: String,
     navController: NavHostController,
-    viewModel: StockVerificationViewModel = hiltViewModel()
-) {
+    viewModel: StockVerificationViewModel = hiltViewModel(),
+    ) {
 
     val context = LocalContext.current
     val employee =
@@ -614,11 +617,16 @@ fun BatchDetailsScreen(
         )
     }
 
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
     Scaffold(
 
         topBar = {
             GradientTopBar(
-                title = "Batch Details",
+                title = localizedContext.getString(R.string.batch_details),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -658,10 +666,11 @@ fun BatchDetailsScreen(
 
                         item {
                             BatchTableSection(
-                                title = "Matched Items",
+                                title = localizedContext.getString(R.string.matched_items),
                                 count = data.MatchedList?.size ?: 0,
                                 color = Color(0xFF2E7D32),
-                                items = data.MatchedList ?: emptyList()
+                                items = data.MatchedList ?: emptyList(),
+                                localizedContext=localizedContext
                             )
                         }
 
@@ -671,10 +680,11 @@ fun BatchDetailsScreen(
 
                         item {
                             BatchTableSection(
-                                title = "Unmatched Items",
+                                title = localizedContext.getString(R.string.unmatched_items),
                                 count = data.UnmatchedList?.size ?: 0,
                                 color = Color(0xFFC62828),
-                                items = data.UnmatchedList ?: emptyList()
+                                items = data.UnmatchedList ?: emptyList(),
+                                localizedContext=localizedContext
                             )
                         }
 
@@ -686,7 +696,7 @@ fun BatchDetailsScreen(
                 }
 
                 else -> {
-                    Text("No Data")
+                    Text(localizedContext.getString(R.string.no_data))
                 }
             }
         }
@@ -698,7 +708,8 @@ fun BatchTableSection(
     title: String,
     count: Int,
     color: Color,
-    items: List<BatchItem>   // your model
+    items: List<BatchItem>,
+    localizedContext: Context// your model
 ) {
 
     Card(
@@ -725,7 +736,7 @@ fun BatchTableSection(
                 )
 
                 Text(
-                    "$count items",
+                    localizedContext.getString(R.string.items_count, count),
                     color = color,
                     fontWeight = FontWeight.Bold
                 )
@@ -739,11 +750,11 @@ fun BatchTableSection(
                     .padding(vertical = 8.dp)
             ) {
 
-                TableHeader("Item Code", 1.2f)
-                TableHeader("Product", 1.3f)
-                TableHeader("Branch", 1f)
-                TableHeader("Category", 1.1f)
-                TableHeader("RFID", 1f)
+                TableHeader(localizedContext.getString(R.string.item_code), 1.2f)
+                TableHeader(localizedContext.getString(R.string.product), 1.3f)
+                TableHeader(localizedContext.getString(R.string.branch), 1f)
+                TableHeader(localizedContext.getString(R.string.category), 1.1f)
+                TableHeader(localizedContext.getString(R.string.rfid), 1f)
                /* TableHeader("Gross", 0.8f)
                 TableHeader("Net", 0.8f)*/
             }
@@ -756,7 +767,7 @@ fun BatchTableSection(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No matched items")
+                    Text(localizedContext.getString(R.string.no_matched_items))
                 }
 
             } else {
@@ -844,7 +855,7 @@ fun SessionItem(
 }
 
 @Composable
-fun BatchHeaderRow() {
+fun BatchHeaderRow(localizedContext: Context) {
 
     Row(
         modifier = Modifier
@@ -854,12 +865,12 @@ fun BatchHeaderRow() {
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        HeaderCell("Branch", Modifier.weight(1.4f))
-        HeaderCell("Start", Modifier.weight(1.4f))
-        HeaderCell("End", Modifier.weight(1.4f))
-        HeaderCell("TotQty", Modifier.weight(1f))
-        HeaderCell("Match", Modifier.weight(1f))
-        HeaderCell("Unmatch", Modifier.weight(1.2f))
+        HeaderCell(localizedContext.getString(R.string.branch), Modifier.weight(1.4f))
+        HeaderCell(localizedContext.getString(R.string.start), Modifier.weight(1.4f))
+        HeaderCell(localizedContext.getString(R.string.end), Modifier.weight(1.4f))
+        HeaderCell(localizedContext.getString(R.string.total_qty), Modifier.weight(1f))
+        HeaderCell(localizedContext.getString(R.string.match), Modifier.weight(1f))
+        HeaderCell(localizedContext.getString(R.string.unmatch), Modifier.weight(1.2f))
     }
 }
 
@@ -911,7 +922,8 @@ fun QtyBadge(value: Int, color: Color, modifier: Modifier) {
 @Composable
 fun ReportRadioButtons(
     selectedReportType: String,
-    onSelectionChange: (String) -> Unit
+    onSelectionChange: (String) -> Unit,
+    localizedContext: Context
 ) {
 
     Row(
@@ -931,7 +943,7 @@ fun ReportRadioButtons(
                 onClick = { onSelectionChange("INVENTORY") }
             )
 
-            Text("BatchWise")
+            Text(localizedContext.getString(R.string.batchwise))
         }
 
         Row(
@@ -942,8 +954,7 @@ fun ReportRadioButtons(
                 selected = selectedReportType == "SCAN",
                 onClick = { onSelectionChange("SCAN") }
             )
-
-            Text("Consolidated")
+            Text(localizedContext.getString(R.string.consolidated))
         }
     }
 }

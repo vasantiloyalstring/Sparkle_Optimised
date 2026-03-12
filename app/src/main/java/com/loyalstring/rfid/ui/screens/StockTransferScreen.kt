@@ -211,6 +211,9 @@ fun StockTransferScreen(
     LaunchedEffect(Unit) {
         employee?.clientCode?.let {
             singleProductViewModel.fetchAllStockTransferData(ClientCodeRequest(it))
+
+            // ✅ Load all labelled stock by default
+            viewModel.loadAllLabelledStock()
         }
     }
 

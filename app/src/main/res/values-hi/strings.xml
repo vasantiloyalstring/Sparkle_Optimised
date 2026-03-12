@@ -385,7 +385,7 @@
     <string name="enter_sample_out">सैंपल आउट नंबर दर्ज करें</string>
 
 <!--report-->
-        <string name="stock_verification_report">स्टॉक सत्यापन रिपोर्ट</string>
+
         <string name="loading">लोड हो रहा है...</string>
         <string name="error">त्रुटि:</string>
         <string name="select_date">तारीख चुनें</string>
@@ -406,6 +406,43 @@
     <string name="gross_weight">सकल वजन</string>
     <string name="net_weight">शुद्ध वजन</string>
     <string name="status">स्थिति</string>
+
+
+    <string name="stock_verification_report">स्टॉक वेरिफिकेशन रिपोर्ट</string>
+    <string name="batch_details">बैच विवरण</string>
+
+    <string name="batchwise">बैच अनुसार</string>
+    <string name="consolidated">समेकित</string>
+
+
+    <string name="total_inventory">कुल स्टॉक</string>
+
+
+    <string name="start">शुरुआत</string>
+    <string name="end">समाप्त</string>
+    <string name="total_qty">कुल मात्रा</string>
+    <string name="match">मिलान</string>
+    <string name="unmatch">अमिलान</string>
+
+    <string name="item_code">आइटम कोड</string>
+
+
+    <string name="no_data">कोई डेटा नहीं</string>
+    <string name="no_matched_items">कोई मिलान आइटम नहीं</string>
+
+    <string name="filter">फ़िल्टर</string>
+    <string name="from_date">से दिनांक</string>
+
+    <string name="to_date">तक दिनांक</string>
+    <string name="apply">लागू करें</string>
+
+
+    <string name="matched_items">मिलान किए गए आइटम</string>
+    <string name="unmatched_items">अमिलान आइटम</string>
+    <string name="items_count">%1$d आइटम</string>
+
+
+
 
 
 </resources>
