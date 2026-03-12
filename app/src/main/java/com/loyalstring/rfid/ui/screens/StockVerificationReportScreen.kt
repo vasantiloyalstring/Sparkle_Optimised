@@ -46,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,7 +89,7 @@ fun StockVerificationReportScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val viewModel: StockVerificationViewModel = hiltViewModel()
     var selectedDate by remember { mutableStateOf(getTodayDate()) }
-    var selectedReportType by remember { mutableStateOf("INVENTORY") }
+    var selectedReportType by rememberSaveable { mutableStateOf("INVENTORY") }
 
     val branchList = singleProductViewModel.branches
 
