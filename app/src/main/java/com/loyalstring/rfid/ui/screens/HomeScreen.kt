@@ -241,7 +241,7 @@ fun HomeGridCard(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text =  stringResource(item.titleResId),
+                text = localizedContext.getString(item.titleResId),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 fontFamily = poppins,
