@@ -338,30 +338,28 @@ fun DeliverychallanItemCode(
 
                     else -> {
                         filteredResults.forEach { item ->
+
+                            val displayText = when {
+                                item.rfid?.startsWith(query, true) == true -> item.rfid
+                                item.itemCode?.startsWith(query, true) == true -> item.itemCode
+                                else -> item.itemCode ?: item.rfid
+                            }
+
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = item.itemCode ?: item.rfid ?: "",
-                                        /*  text = when {
-                                              item.rfid?.contains(debouncedQuery, ignoreCase = true) == true -> item.rfid ?: ""
-                                              item.itemCode?.contains(debouncedQuery, ignoreCase = true) == true -> item.itemCode ?: ""
-                                              else -> item.itemCode ?: ""
-                                          },*/
+                                        text = displayText ?: "",
                                         fontSize = 13.sp,
                                         color = Color.Black
                                     )
                                 },
                                 onClick = {
-                                    val selectedText = item.itemCode ?: item.rfid ?: ""
+
+                                    val selectedText = displayText ?: ""
 
                                     onItemCodeChange(TextFieldValue(selectedText))
 
-                                    val response = item.copy(
-                                        itemCode = item.itemCode,
-                                        rfid = item.rfid
-                                    )
-
-                                    onItemSelected(response)
+                                    onItemSelected(item)
 
                                     setShowDropdown(false)
 

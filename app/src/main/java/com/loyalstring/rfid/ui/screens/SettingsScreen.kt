@@ -101,6 +101,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.tasks.CancellationTokenSource
 
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.db.AppDatabase
@@ -929,17 +930,15 @@ fun getCurrentLocation(
 
 
 @SuppressLint("MissingPermission")
-fun getCurrentLocation(activity: Context, onLocationFetched: (String, String, String) -> Unit) {
-    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity)
+fun getCurrentLocation(context: Context, onLocationFetched: (String, String, String) -> Unit) {
 
-    if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) !=
-        PackageManager.PERMISSION_GRANTED &&
-        ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-        PackageManager.PERMISSION_GRANTED
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+        ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
     ) {
-        // Request permissions directly
         ActivityCompat.requestPermissions(
-            activity as Activity,
+            context as Activity,
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
@@ -949,38 +948,70 @@ fun getCurrentLocation(activity: Context, onLocationFetched: (String, String, St
         return
     }
 
-    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-        try {
-            if (location != null) {
-                val latitude = location.latitude.toString()
-                val longitude = location.longitude.toString()
+    val cancellationTokenSource = CancellationTokenSource()
 
-                val geocoder = Geocoder(activity, Locale.getDefault())
-                val addressInfo = geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()
+    fusedLocationClient.getCurrentLocation(
+        Priority.PRIORITY_HIGH_ACCURACY,
+        cancellationTokenSource.token
+    ).addOnSuccessListener { location ->
 
-                val area = addressInfo?.subLocality ?: "" // Area or neighborhood
-                val city = addressInfo?.locality
-                    ?: addressInfo?.subAdminArea           // fallback (district/taluka level)
-                    ?: addressInfo?.featureName            // sometimes contains village or town name
-                    ?: ""
-                val state = addressInfo?.adminArea ?: ""   // State
-                val pinCode = addressInfo?.postalCode ?: "" // Pincode
+        if (location != null) {
 
-                // Combine only non-empty parts
-                val address = listOf(area, city, state, pinCode)
-                    .filter { it.isNotEmpty() }
-                    .joinToString(", ")
+            val latitude = location.latitude.toString()
+            val longitude = location.longitude.toString()
 
-                onLocationFetched(latitude, longitude, address)
-            } else {
-                Toast.makeText(activity, "Failed to get location", Toast.LENGTH_SHORT).show()
+            val geocoder = Geocoder(context, Locale.getDefault())
+
+         /*   val addressInfo =
+                geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()
+
+            val area = addressInfo?.subLocality ?: ""
+            val city = addressInfo?.locality
+                ?: addressInfo?.subAdminArea
+                ?: addressInfo?.featureName
+                ?: ""
+            val state = addressInfo?.adminArea ?: ""
+            val pinCode = addressInfo?.postalCode ?: ""
+
+            val address = listOf(area, city, state, pinCode)
+                .filter { it.isNotEmpty() }
+                .joinToString(", ")*/
+            CoroutineScope(Dispatchers.IO).launch {
+
+                try {
+
+                    val geocoder = Geocoder(context, Locale.getDefault())
+
+                    val addressList = geocoder.getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1
+                    )
+
+                    val addressInfo = addressList?.firstOrNull()
+
+                    val address = addressInfo?.getAddressLine(0) ?: "Unknown location"
+
+                    withContext(Dispatchers.Main) {
+                        onLocationFetched(latitude, longitude, address)
+                    }
+
+                } catch (e: Exception) {
+
+                    Log.e("LOCATION", "Geocoder error: ${e.message}")
+
+                    withContext(Dispatchers.Main) {
+                        onLocationFetched(latitude, longitude, "Address unavailable")
+                    }
+                }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(activity, "⚠️ Error while fetching address: ${e.message}", Toast.LENGTH_SHORT).show()
+
+           // onLocationFetched(latitude, longitude, address)
+
+        } else {
+            Toast.makeText(context, "Failed to get location", Toast.LENGTH_SHORT).show()
         }
     }
-
 }
 
 

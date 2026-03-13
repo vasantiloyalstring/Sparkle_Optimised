@@ -322,6 +322,7 @@ class BulkViewModel @Inject constructor(
             Log.d("FILTER_DEBUG", "Counters=$counters")
             Log.d("FILTER_DEBUG", "Branches=$branches")
             Log.d("FILTER_DEBUG", "Boxes=$boxes")
+            Log.d("FILTER_DEBUG", "exhibitions=$exhibitions")
 
 
             // Update StateFlows on main thread

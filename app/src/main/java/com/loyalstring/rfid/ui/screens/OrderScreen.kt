@@ -683,7 +683,7 @@ fun OrderScreen(
                 makingFixedAmt = makingFixedAmt,
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
-                CategoryWt = matchedItem.CategoryWt.toString(),
+                CategoryWt = matchedItem.CategoryWt?.toString()?.takeIf { it != "null" } ?: "",
 
 
 
@@ -834,7 +834,7 @@ fun OrderScreen(
             makingFixedAmt = makingFixedAmt,
             makingFixedWastage = makingFixedWastage,
             makingPerGram = makingPerGram,
-            CategoryWt = matchedItem.CategoryWt.toString(),
+            CategoryWt = matchedItem.CategoryWt?.toString()?.takeIf { it != "null" } ?: "",
 
             )
         productList.add(challanItem)
@@ -995,7 +995,7 @@ fun OrderScreen(
                 makingFixedAmt = makingFixedAmt,
                 makingFixedWastage = makingFixedWastage,
                 makingPerGram = makingPerGram,
-                CategoryWt = matchedItem.CategoryWt.toString(),
+                CategoryWt = matchedItem.CategoryWt?.toString()?.takeIf { it != "null" } ?: "",
 
 
             )
@@ -1170,7 +1170,7 @@ fun OrderScreen(
                 makingFixedAmt = fixMakingFinal.toString(),
                 makingFixedWastage = fixWastageFinal.toString(),
                 makingPerGram = makingPerGramFinal.toString(),
-                CategoryWt = matchedItem.CategoryWt.toString(),
+                CategoryWt = matchedItem.CategoryWt?.toString()?.takeIf { it != "null" } ?: "",
 
 
             )
@@ -1462,7 +1462,7 @@ fun OrderScreen(
 
                     Stones = emptyList(),
                     Diamond = emptyList(),
-                    WeightCategories = "0"
+                    WeightCategories = item.CategoryWt?.takeIf { it.isNotBlank() && it != "null" }
                 )
             },
 
@@ -1811,7 +1811,7 @@ fun OrderScreen(
                                    Status = "",
                                    URDNo = "",
                                    HallmarkAmount =product.hallmarkAmt,
-                                   WeightCategories = "0",
+                                   WeightCategories = product.CategoryWt,
                                    Stones = emptyList(),
                                    Diamond = emptyList()
                                )
@@ -2387,7 +2387,7 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
         Remark  : ${item.Remark ?: "-"}
-        Category Wt : ${item.WeightCategories ?: "-"}
+        Category Wt : ${item.WeightCategories?.takeIf { it.isNotBlank() && it != "null" } ?: "-"}
     """.trimIndent()
 
         } else
@@ -2752,7 +2752,7 @@ fun buildOrderRequest(
                 Status = null,
                 URDNo = null,
                 HallmarkAmount = item.hallmarkAmt,
-                WeightCategories = item.CategoryWt,
+                WeightCategories = item.CategoryWt?.takeIf { it.isNotBlank() && it != "null" },
 
                 Stones = emptyList(),
                 Diamond = emptyList()
@@ -3055,7 +3055,7 @@ suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderRespo
 
             rightText = """
         Quantity : ${item.Quantity ?: "-"}
-        Category Wt : ${item.WeightCategories ?: "-"}
+        Category Wt : ${item.WeightCategories?.takeIf { it.isNotBlank() && it != "null" } ?: "-"}
         Purity : ${item.PurityName ?: "-"}
         Remark  : ${item.Remark ?: "-"}
     """.trimIndent()
