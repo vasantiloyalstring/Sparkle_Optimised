@@ -2028,7 +2028,8 @@ fun OrderScreenContent(
                     },
                     isScanning = isScanning,
                     isEditMode = isEditMode,
-                    isScreen=false
+                    isScreen=false,
+                    isBulkScanning = false
                 )
             }
         }

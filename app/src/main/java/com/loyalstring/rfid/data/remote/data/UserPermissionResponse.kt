@@ -9,7 +9,9 @@ data class UserPermissionResponse(
     @SerializedName("RoleName") val roleName: String,
     @SerializedName("ClientCode") val clientCode: String,
     @SerializedName("Modules") val modules: List<Module>,
-    @SerializedName("BranchSelectionJson") val branchSelectionJson: String
+    @SerializedName("BranchSelectionJson") val branchSelectionJson: String,
+    @SerializedName("CompanySelectionJson") val companySelectionJson: String,
+    @SerializedName("EmployeeId") val employeeId: Int
 )
 
 data class Module(

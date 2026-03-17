@@ -71,8 +71,6 @@ import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.addSingleItem.BranchModel
-import com.loyalstring.rfid.data.model.deliveryChallan.ChallanDetails
-import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchResponse
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.CustomOrderItem
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
@@ -1994,7 +1992,8 @@ fun OrderScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = isEditMode,
-                isScreen=false
+                isScreen=false,
+                isBulkScanning = false
 
             )
         }

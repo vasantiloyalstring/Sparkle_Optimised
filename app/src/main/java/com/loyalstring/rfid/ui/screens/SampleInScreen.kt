@@ -49,7 +49,6 @@ import com.google.gson.Gson
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
-import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.sampleOut.IssueItemDto
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutIssueItem
@@ -1026,7 +1025,8 @@ fun SampleInScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = isEditMode,
-                isScreen=false
+                isScreen=false,
+                isBulkScanning = false
 
             )
         }

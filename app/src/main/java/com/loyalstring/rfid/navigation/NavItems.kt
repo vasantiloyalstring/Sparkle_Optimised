@@ -24,7 +24,7 @@ enum class Screens(val route: String) {
     EditProductScreen("edit_screen"),
     OrderScreen("order"),
     InvoiceScreen("invoiceScreen"),
-    StockTransferScreen("stock_transfer"),
+    StockTransferScreenNew("stock_transfer"),
     OrderListScreen("order_list"),
     DailyRatesEditorScreen("daily_rates_editor"),
     LocationListScreen("location_list"),
@@ -42,7 +42,8 @@ enum class Screens(val route: String) {
     QuotationScreen("quotation_screen"),
     QuotationListScreen("quotation_list"),
     StockVerificationReport("stockverification_report"),
-    BatchDetailsScreen("batch_details_screen")
+    BatchDetailsScreen("batch_details_screen"),
+    StockTransferPreviewScreen("stock_transfer_preview")
 }
 
 data class NavItems(

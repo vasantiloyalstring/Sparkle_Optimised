@@ -202,7 +202,8 @@ fun ProductListScreen(
                 onReset = { /* Reset logic */ },
                 isScanning = isScanning,
                 isEditMode=isEditMode,
-                isScreen=false
+                isScreen=false,
+                isBulkScanning = false
             )
         }
     ) { innerPadding ->

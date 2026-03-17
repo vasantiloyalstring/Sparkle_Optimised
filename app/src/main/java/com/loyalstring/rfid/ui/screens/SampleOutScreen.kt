@@ -53,7 +53,6 @@ import com.loyalstring.rfid.data.model.ClientCodeRequest
 
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
-import com.loyalstring.rfid.data.model.quotation.QuotationItem
 import com.loyalstring.rfid.data.model.sampleOut.IssueItemDto
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutAddRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutDetails
@@ -1516,7 +1515,8 @@ fun SampleOutScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = isEditMode,
-                isScreen=false
+                isScreen=false,
+                isBulkScanning = false
 
             )
         }

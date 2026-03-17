@@ -38,9 +38,7 @@ import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SearchViewModel
-import com.rscja.deviceapi.RFIDWithUHFUART
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 @Composable
 fun SearchScreen(
@@ -59,9 +57,12 @@ fun SearchScreen(
     var allDbItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
     var filteredDbItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
 
-    var selectedPower by remember {
-        mutableIntStateOf(UserPreferences.getInstance(context).getInt(
-            UserPreferences.KEY_SEARCH_COUNT))
+    var selectedPower by remember { mutableIntStateOf(10) }
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_SEARCH_COUNT,
+            10
+        )
     }
 
     // ✅ Explicit unmatched flag
@@ -414,7 +415,8 @@ fun SearchScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = false,
-                isScreen=true
+                isScreen=true,
+                isBulkScanning = false
             )
         }
     ) { innerPadding ->

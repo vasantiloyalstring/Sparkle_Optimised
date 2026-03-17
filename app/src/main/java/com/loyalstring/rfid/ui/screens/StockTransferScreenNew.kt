@@ -1,0 +1,1321 @@
+package com.loyalstring.rfid.ui.screens
+
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.remote.resource.Resource
+import com.loyalstring.rfid.navigation.GradientTopBar
+import com.loyalstring.rfid.navigation.Screens
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.viewmodel.OrderViewModel
+import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.viewmodel.StockTransferViewModel
+import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import kotlin.text.isNotBlank
+
+private const val COL_SR = 1f
+private const val COL_PNAME = 2.4f
+private const val COL_LABEL = 1.5f
+private const val COL_GWT = 1.2f
+private const val COL_NWT = 1.2f
+private const val COL_ACTION = 1.2f
+
+@Composable
+fun StockTransferScreenNew(
+    onBack: () -> Unit,
+    navController: NavHostController
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val bulkViewModel: BulkViewModel = hiltViewModel()
+    val orderViewModel: OrderViewModel = hiltViewModel()
+    var isScanning by remember { mutableStateOf(false) }
+    var isBulkScanning by remember { mutableStateOf(false) }
+
+
+    var selectedPower by remember { mutableIntStateOf(10) }
+    LaunchedEffect(Unit) {
+        selectedPower = UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_STOCK_TRANSFER_COUNT,
+            10
+        )
+    }
+    val parentEntry = remember(navController) {
+        navController.getBackStackEntry("main_graph")
+    }
+    val scannedTags by bulkViewModel.scannedTags.collectAsState()
+
+    var itemCode by remember { mutableStateOf(TextFieldValue("")) }
+    val isLoading by orderViewModel.isItemCodeLoading.collectAsState()
+    var showDropdownItemcode by remember { mutableStateOf(false) }
+    val viewModel: StockTransferViewModel = hiltViewModel(parentEntry)
+    val singleProductViewModel: SingleProductViewModel = hiltViewModel()
+    val userPermissionViewModel: UserPermissionViewModel = hiltViewModel()
+
+    val transferTypes by viewModel.transferTypes.collectAsState()
+    val filteredStockItems by viewModel.filteredBulkItems.collectAsState()
+
+    val counters by remember { derivedStateOf { singleProductViewModel.counters } }
+    val boxes by remember { derivedStateOf { singleProductViewModel.boxes } }
+    val packets by remember { derivedStateOf { singleProductViewModel.packets } }
+    val branches by remember { derivedStateOf { singleProductViewModel.branches } }
+
+    var selectedTransferType by remember { mutableStateOf("Transfer Type") }
+    var selectedFrom by remember { mutableStateOf("From") }
+    var selectedTo by remember { mutableStateOf("To") }
+
+    var showTransferDialog by remember { mutableStateOf(false) }
+    var showFromDialog by remember { mutableStateOf(false) }
+    var showToDialog by remember { mutableStateOf(false) }
+
+    val checkedKeys = remember { mutableStateListOf<String>() }
+    val accessibleBranches = remember { mutableStateListOf<String>() }
+
+    val employee = remember {
+        UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+    }
+
+    var showRequestPopup by remember { mutableStateOf(false) }
+
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
+    var showProductDialog by remember { mutableStateOf(false) }
+    var showDesignDialog by remember { mutableStateOf(false) }
+
+// draft values shown inside popup
+    var draftCategory by remember { mutableStateOf("Category") }
+    var draftProduct by remember { mutableStateOf("Product") }
+    var draftDesign by remember { mutableStateOf("Design") }
+
+// applied values used for list filtering
+    var appliedCategory by remember { mutableStateOf<String?>(null) }
+    var appliedProduct by remember { mutableStateOf<String?>(null) }
+    var appliedDesign by remember { mutableStateOf<String?>(null) }
+
+    val categoryResponse by singleProductViewModel.categoryResponse.observeAsState()
+    val productResponse by singleProductViewModel.productResponse.observeAsState()
+    val designResponse by singleProductViewModel.designResponse.observeAsState()
+
+    val categoryList = when (val result = categoryResponse) {
+        is Resource.Success -> result.data ?: emptyList()
+        is Resource.Loading -> emptyList()
+        is Resource.Error -> emptyList()
+        null -> emptyList()
+    }
+
+    val productList = when (val result = productResponse) {
+        is Resource.Success -> result.data ?: emptyList()
+        is Resource.Loading -> emptyList()
+        is Resource.Error -> emptyList()
+        null -> emptyList()
+    }
+
+    val designList = when (val result = designResponse) {
+        is Resource.Success -> result.data ?: emptyList()
+        is Resource.Loading -> emptyList()
+        is Resource.Error -> emptyList()
+        null -> emptyList()
+    }
+
+
+
+    LaunchedEffect(Unit) {
+        employee?.clientCode?.let { clientCode ->
+            viewModel.loadTransferTypes(ClientCodeRequest(clientCode))
+            viewModel.fetchCounterNames()
+            viewModel.fetchBoxNames()
+            viewModel.fetchBranchNames()
+
+            singleProductViewModel.fetchAllStockTransferData(ClientCodeRequest(clientCode))
+            viewModel.loadAllLabelledStock()
+
+            singleProductViewModel.getAllCategory(ClientCodeRequest(clientCode))
+            singleProductViewModel.getAllProduct(ClientCodeRequest(clientCode))
+            singleProductViewModel.getAllDesign(ClientCodeRequest(clientCode))
+        }
+    }
+
+    LaunchedEffect(branches) {
+        val branchId = UserPreferences.getInstance(context)
+            .getBranchID()
+            ?.toInt()
+
+        if (branchId != null && branches.isNotEmpty()) {
+            val matchedBranch = branches.firstOrNull { it.Id == branchId }
+            matchedBranch?.let {
+                selectedFrom = it.BranchName
+            }
+        }
+    }
+
+    LaunchedEffect(selectedTransferType) {
+        if (viewModel.getTransferTypeId(selectedTransferType) == 15) {
+            val branchNames = userPermissionViewModel.getAccessibleBranches()
+            accessibleBranches.clear()
+            accessibleBranches.addAll(branchNames)
+            Log.d("BRANCH_DEBUG", "accessibleBranches = $accessibleBranches")
+        }
+    }
+
+    LaunchedEffect(scannedTags) {
+
+        scannedTags.forEach { scannedTid ->
+
+            val matchedItem = filteredStockItems.firstOrNull {
+                it.rfid.equals(scannedTid.toString(), ignoreCase = true)
+            }
+
+            matchedItem?.let { item ->
+
+                val key = item.itemCode ?: item.rfid ?: ""
+
+                if (key.isNotEmpty() && !checkedKeys.contains(key)) {
+                    checkedKeys.add(key)
+                }
+            }
+        }
+    }
+
+    val (fromType, toType) = remember(selectedTransferType) {
+        selectedTransferType
+            .split(" to ", ignoreCase = true)
+            .map { it.trim().lowercase() }
+            .let { it.getOrNull(0) to it.getOrNull(1) }
+    }
+
+    val transferTypeId = viewModel.getTransferTypeId(selectedTransferType)
+
+    val fromOptions = remember(
+        transferTypeId,
+        fromType,
+        accessibleBranches.toList(),
+        counters,
+        boxes,
+        packets,
+        branches
+    ) {
+        when {
+            transferTypeId == 15 && fromType == "branch" -> accessibleBranches.toList()
+            fromType == "counter" -> counters.map { it.CounterName }
+            fromType == "box" -> boxes.map { it.BoxName }
+            fromType == "packet" -> packets.map { it.PacketName }
+            fromType == "branch" -> branches.map { it.BranchName }
+            else -> emptyList()
+        }.filter { !it.isNullOrBlank() }
+    }
+
+    val toOptions = remember(
+        transferTypeId,
+        toType,
+        selectedFrom,
+        accessibleBranches.toList(),
+        counters,
+        boxes,
+        packets,
+        branches
+    ) {
+        when {
+            transferTypeId == 15 && toType == "branch" -> accessibleBranches.toList()
+            toType == "counter" -> counters.map { it.CounterName }
+            toType == "box" -> boxes.map { it.BoxName }
+            toType == "packet" -> packets.map { it.PacketName }
+            toType == "branch" -> branches.map { it.BranchName }
+            else -> emptyList()
+        }
+            .filter { !it.isNullOrBlank() }
+            .filter { it != selectedFrom || fromType != toType }
+    }
+
+    LaunchedEffect(selectedFrom, selectedTransferType) {
+        if (selectedFrom != "From" && !fromType.isNullOrBlank()) {
+            viewModel.filterBulkItemsByFrom(fromType, selectedFrom)
+        } else {
+            viewModel.loadAllLabelledStock()
+        }
+        checkedKeys.clear()
+    }
+
+    val availableItems = remember(filteredStockItems) { filteredStockItems }
+
+    val displayItems = remember(
+        availableItems,
+        appliedCategory,
+        appliedProduct,
+        appliedDesign
+    ) {
+        availableItems.filter { item ->
+            val categoryMatch =
+                appliedCategory == null ||
+                        item.category.equals(appliedCategory, ignoreCase = true)
+
+            val productMatch =
+                appliedProduct == null ||
+                        item.productName.equals(appliedProduct, ignoreCase = true)
+
+            val designMatch =
+                appliedDesign == null ||
+                        item.design.equals(appliedDesign, ignoreCase = true)
+
+            categoryMatch && productMatch && designMatch
+        }
+    }
+
+    LaunchedEffect(itemCode.text) {
+
+        if (itemCode.text.isNotBlank()) {
+
+            val matchedItem = filteredStockItems.firstOrNull {
+                it.itemCode.equals(itemCode.text, ignoreCase = true) ||
+                        it.rfid.equals(itemCode.text, ignoreCase = true)
+            }
+
+            matchedItem?.let { item ->
+
+                val key = item.itemCode ?: item.rfid ?: ""
+
+                if (!checkedKeys.contains(key)) {
+                    checkedKeys.add(key)
+                }
+            }
+        }
+    }
+
+    val selectedItems = remember(displayItems, checkedKeys.toList()) {
+        displayItems.filter { item ->
+            val key = item.itemCode ?: item.rfid ?: ""
+            checkedKeys.contains(key)
+        }
+    }
+
+    val totalQty = displayItems.size
+    val selectedQty = selectedItems.size
+    val selectedGrossWeight = selectedItems.sumOf { it.grossWeight?.toDoubleOrNull() ?: 0.0 }
+    val selectedNetWeight = selectedItems.sumOf { it.netWeight?.toDoubleOrNull() ?: 0.0 }
+    val selectAllChecked = displayItems.isNotEmpty() &&
+            displayItems.all { item ->
+                val key = item.itemCode ?: item.rfid ?: ""
+                checkedKeys.contains(key)
+            }
+
+  /*  Scaffold(
+        topBar = {
+            GradientTopBar(
+                title = "Stock Transfer",
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                selectedCount = 0,
+                titleTextSize = 20.sp
+            )
+        },
+        bottomBar = {
+            ScanBottomBar(
+                onSave = {
+                    bulkViewModel.barcodeReader.close()
+                    if (selectedItems.isNotEmpty()) {
+                        viewModel.setTransferPreviewItems(selectedItems)
+                        Log.d("@@", "selectedItems = $selectedItems")
+                        navController.navigate(Screens.StockTransferPreviewScreen.route)
+                    }
+                },
+                onList = { navController.navigate(Screens.ProductListScreen.route) },
+                onScan = {
+
+                        bulkViewModel.startSingleScan(20)
+
+
+
+                },
+                onGscan = {
+                    if (isBulkScanning) {
+                        bulkViewModel.stopScanning()
+                        isBulkScanning = false
+                    } else {
+                        bulkViewModel.stopScanning()
+                        bulkViewModel.startScanning(selectedPower)
+                        isBulkScanning = true
+                        isScanning = false
+                    }
+                },
+                onReset = {
+                    try {
+                        bulkViewModel.stopBarcodeScanner()
+                        bulkViewModel.resetProductScanResults()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                },
+                isScanning = isScanning,
+                isEditMode = false,
+                isScreen = true,
+                isBulkScanning= isBulkScanning
+            )
+        }
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(vertical = 8.dp)
+        ) {
+
+            // Same horizontal alignment for filter + itemcode row
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+            ) {
+                TransferFilter(
+                    selectedTransferType = selectedTransferType,
+                    selectedFrom = selectedFrom,
+                    selectedTo = selectedTo,
+                    onTransferClick = { showTransferDialog = true },
+                    onFromClick = { showFromDialog = true },
+                    onToClick = { showToDialog = true }
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        StockTransferItemCode(
+                            itemCode = itemCode,
+                            onItemCodeChange = { itemCode = it },
+                            showDropdown = showDropdownItemcode,
+                            setShowDropdown = { showDropdownItemcode = it },
+                            context = context,
+                            onScanClicked = {
+                                bulkViewModel.startBarcodeScanning(context)
+                            },
+                            onClearClicked = { itemCode = TextFieldValue("") },
+                            filteredList = filteredStockItems,
+                            isLoading = isLoading,
+                            onItemSelected = { item ->
+                                val code = item.itemCode ?: item.rfid ?: ""
+                                itemCode = TextFieldValue(code)
+
+                                val key = item.itemCode ?: item.rfid ?: ""
+                                if (!checkedKeys.contains(key)) {
+                                    checkedKeys.add(key)
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.filter_gary),
+                        contentDescription = "Filter",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable {
+                                showFilterDialog = true
+                            },
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            StockTransferHeader(
+                actionTitle = "",
+                selectAllChecked = selectAllChecked,
+                onSelectAllChange = { checked ->
+                    checkedKeys.clear()
+                    if (checked) {
+                        displayItems.forEach { item ->
+                            val key = item.itemCode ?: item.rfid ?: ""
+                            checkedKeys.add(key)
+                        }
+                    }
+                }
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 120.dp),
+                contentPadding = PaddingValues(bottom = 8.dp)
+            ) {
+                itemsIndexed(
+                    items = displayItems,
+                    key = { index, item -> item.itemCode ?: item.rfid ?: index.toString() }
+                ) { index, item ->
+
+                    val rowKey = item.itemCode ?: item.rfid ?: index.toString()
+
+                    StockTransferRow(
+                        sr = index + 1,
+                        productName = item.productName ?: "",
+                        label = item.rfid ?: item.itemCode ?: "",
+                        grossWt = item.grossWeight ?: "0",
+                        netWt = item.netWeight ?: "0",
+                        checked = checkedKeys.contains(rowKey),
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                if (!checkedKeys.contains(rowKey)) {
+                                    checkedKeys.add(rowKey)
+                                }
+                            } else {
+                                checkedKeys.remove(rowKey)
+                            }
+                        }
+                    )
+                }
+            }
+
+            StockTransferBottomBar(
+                totalQty = totalQty,
+                selectedQty = selectedQty,
+                totalGrossWeight = selectedGrossWeight,
+                totalNetWeight = selectedNetWeight
+            )
+        }
+    }*/
+
+    Scaffold(
+        topBar = {
+            GradientTopBar(
+                title = "Stock Transfer",
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                selectedCount = 0,
+                titleTextSize = 20.sp
+            )
+        },
+        bottomBar = {
+            ScanBottomBar(
+                onSave = {
+                    bulkViewModel.barcodeReader.close()
+                    if (selectedItems.isNotEmpty()) {
+                        viewModel.setTransferPreviewItems(selectedItems)
+                        Log.d("@@", "selectedItems = $selectedItems")
+                        navController.navigate(Screens.StockTransferPreviewScreen.route)
+                    }
+                },
+                onList = { showRequestPopup = true },
+                onScan = {
+                    bulkViewModel.startSingleScan(20)
+                },
+                onGscan = {
+                    if (isBulkScanning) {
+                        bulkViewModel.stopScanning()
+                        isBulkScanning = false
+                    } else {
+                        bulkViewModel.stopScanning()
+                        bulkViewModel.startScanning(selectedPower)
+                        isBulkScanning = true
+                        isScanning = false
+                    }
+                },
+                onReset = {
+                    try {
+                        bulkViewModel.stopBarcodeScanner()
+                        bulkViewModel.resetProductScanResults()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                },
+                isScanning = isScanning,
+                isEditMode = false,
+                isScreen = true,
+                isBulkScanning = isBulkScanning
+            )
+        }
+    ) { padding ->
+
+        // ✅ GET LOADER STATE
+        val isScreenLoading by viewModel.isLoading.collectAsState()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+
+            // ✅ MAIN UI (UNCHANGED)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 8.dp)
+            ) {
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                ) {
+
+                    TransferFilter(
+                        selectedTransferType = selectedTransferType,
+                        selectedFrom = selectedFrom,
+                        selectedTo = selectedTo,
+                        onTransferClick = { showTransferDialog = true },
+                        onFromClick = { showFromDialog = true },
+                        onToClick = { showToDialog = true }
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Box(modifier = Modifier.weight(1f)) {
+
+                            StockTransferItemCode(
+                                itemCode = itemCode,
+                                onItemCodeChange = { itemCode = it },
+                                showDropdown = showDropdownItemcode,
+                                setShowDropdown = { showDropdownItemcode = it },
+                                context = context,
+                                onScanClicked = {
+                                    bulkViewModel.startBarcodeScanning(context)
+                                },
+                                onClearClicked = { itemCode = TextFieldValue("") },
+                                filteredList = filteredStockItems,
+                                isLoading = isLoading,
+                                onItemSelected = { item ->
+                                    val code = item.itemCode ?: item.rfid ?: ""
+                                    itemCode = TextFieldValue(code)
+
+                                    val key = item.itemCode ?: item.rfid ?: ""
+                                    if (!checkedKeys.contains(key)) {
+                                        checkedKeys.add(key)
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.filter_gary),
+                            contentDescription = "Filter",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable { showFilterDialog = true },
+                            tint = Color.Gray
+                        )
+                    }
+                }
+
+                StockTransferHeader(
+                    actionTitle = "",
+                    selectAllChecked = selectAllChecked,
+                    onSelectAllChange = { checked ->
+                        checkedKeys.clear()
+                        if (checked) {
+                            displayItems.forEach { item ->
+                                val key = item.itemCode ?: item.rfid ?: ""
+                                checkedKeys.add(key)
+                            }
+                        }
+                    }
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 120.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    itemsIndexed(
+                        items = displayItems,
+                        key = { index, item -> item.itemCode ?: item.rfid ?: index.toString() }
+                    ) { index, item ->
+
+                        val rowKey = item.itemCode ?: item.rfid ?: index.toString()
+
+                        StockTransferRow(
+                            sr = index + 1,
+                            productName = item.productName ?: "",
+                            label = item.rfid ?: item.itemCode ?: "",
+                            grossWt = item.grossWeight ?: "0",
+                            netWt = item.netWeight ?: "0",
+                            checked = checkedKeys.contains(rowKey),
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (!checkedKeys.contains(rowKey)) {
+                                        checkedKeys.add(rowKey)
+                                    }
+                                } else {
+                                    checkedKeys.remove(rowKey)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                StockTransferBottomBar(
+                    totalQty = totalQty,
+                    selectedQty = selectedQty,
+                    totalGrossWeight = selectedGrossWeight,
+                    totalNetWeight = selectedNetWeight
+                )
+            }
+
+            // ✅ LOADER OVERLAY
+            if (isScreenLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Loading stock...",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+
+    if (showTransferDialog) {
+        Dialog(onDismissRequest = { showTransferDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(500.dp) // fixed height better here
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    DialogHeader("Choose Transfer Type")
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f, fill = true)
+                            .padding(12.dp)
+                    ) {
+                        items(transferTypes) { type ->
+                            DialogItem(type.TransferType ?: "") {
+                                selectedTransferType = type.TransferType ?: ""
+                                viewModel.onTransferTypeSelected(type.TransferType ?: "")
+                                selectedFrom = "From"
+                                selectedTo = "To"
+
+                                if (viewModel.getTransferTypeId(selectedTransferType) == 15) {
+                                    selectedFrom = employee?.branchName ?: "From"
+                                }
+
+                                showTransferDialog = false
+                            }
+                        }
+                    }
+
+
+                }
+            }
+        }
+    }
+
+    if (showFromDialog) {
+        Dialog(onDismissRequest = { showFromDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    DialogHeader("Select From")
+
+                    LazyColumn {
+                        items(fromOptions) { option ->
+                            DialogItem(option) {
+                                selectedFrom = option
+                                showFromDialog = false
+                                if (selectedTo == option) selectedTo = "To"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showFilterDialog) {
+        Dialog(onDismissRequest = { showFilterDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Filter",
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    FilterField(
+                        title = "Category",
+                        value = draftCategory,
+                        onClick = { showCategoryDialog = true }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    FilterField(
+                        title = "Product",
+                        value = draftProduct,
+                        onClick = { showProductDialog = true }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    FilterField(
+                        title = "Design",
+                        value = draftDesign,
+                        onClick = { showDesignDialog = true }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = {
+                                draftCategory = "Category"
+                                draftProduct = "Product"
+                                draftDesign = "Design"
+
+                                appliedCategory = null
+                                appliedProduct = null
+                                appliedDesign = null
+
+                                checkedKeys.clear()
+                                showFilterDialog = false
+                            }
+                        ) {
+                            Text("Clear")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = {
+                                appliedCategory =
+                                    if (draftCategory == "Category") null else draftCategory
+                                appliedProduct =
+                                    if (draftProduct == "Product") null else draftProduct
+                                appliedDesign =
+                                    if (draftDesign == "Design") null else draftDesign
+
+                                checkedKeys.clear()
+                                showFilterDialog = false
+                            }
+                        ) {
+                            Text("Apply")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCategoryDialog) {
+        Dialog(onDismissRequest = { showCategoryDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    DialogHeader("Select Category")
+
+                    LazyColumn(modifier = Modifier.padding(12.dp)) {
+                        items(categoryList) { item ->
+                            DialogItem(item.CategoryName ?: "") {
+                                draftCategory = item.CategoryName ?: "Category"
+                                draftProduct = "Product"
+                                draftDesign = "Design"
+                                showCategoryDialog = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showProductDialog) {
+        Dialog(onDismissRequest = { showProductDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    DialogHeader("Select Product")
+
+                    LazyColumn(modifier = Modifier.padding(12.dp)) {
+                        items(productList) { item ->
+                            DialogItem(item.ProductName ?: "") {
+                                draftProduct = item.ProductName ?: "Product"
+                                draftDesign = "Design"
+                                showProductDialog = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showRequestPopup) {
+        Dialog(onDismissRequest = { showRequestPopup = false }) {
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+
+                    DialogHeader("Stock Requests")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // ✅ IN REQUEST
+                    DialogItem("In Request") {
+
+                        Log.d("StockTransferPreview", "In Request clicked")
+
+                        showRequestPopup = false
+
+                        navController.navigate(Screens.StockInScreen.route)
+                    }
+
+                    // ✅ OUT REQUEST
+                    DialogItem("Out Request") {
+
+                        Log.d("StockTransferPreview", "Out Request clicked")
+
+                        showRequestPopup = false
+
+                        navController.navigate(Screens.StockOutScreen.route)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+
+    if (showDesignDialog) {
+        Dialog(onDismissRequest = { showDesignDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    DialogHeader("Select Design")
+
+                    LazyColumn(modifier = Modifier.padding(12.dp)) {
+                        items(designList) { item ->
+                            DialogItem(item.DesignName ?: "") {
+                                draftDesign = item.DesignName ?: "Design"
+                                showDesignDialog = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    if (showToDialog) {
+        Dialog(onDismissRequest = { showToDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    DialogHeader("Select To")
+
+                    LazyColumn {
+                     /*   items(toOptions) { option ->
+                            DialogItem(option) {
+                                selectedTo = option
+                                showToDialog = false
+                            }
+                        }*/
+
+                        items(toOptions) { option ->
+                            DialogItem(option) {
+
+                                selectedTo = option
+                                showToDialog = false
+
+                                val sourceBranchId = branches.firstOrNull {
+                                    it.BranchName == selectedFrom
+                                }?.Id ?: 0
+
+                                val destinationBranchId = branches.firstOrNull {
+                                    it.BranchName == option
+                                }?.Id ?: 0
+
+                                viewModel.setTransferBranches(
+                                    source = sourceBranchId,
+                                    destination = destinationBranchId
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FilterField(
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            fontSize = 13.sp,
+            color = Color.DarkGray
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF3F3F3), RoundedCornerShape(10.dp))
+                .clickable { onClick() }
+                .padding(horizontal = 12.dp, vertical = 14.dp)
+        ) {
+            Text(
+                text = value,
+                color = if (value == title) Color.Gray else Color.Black,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun StockTransferHeader(
+    actionTitle: String,
+    selectAllChecked: Boolean,
+    onSelectAllChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(35.dp)
+            .background(Color(0xFF4A4A4A))
+            .padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Sr",
+            modifier = Modifier.weight(COL_SR),
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Product Name",
+            modifier = Modifier.weight(COL_PNAME),
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Label",
+            modifier = Modifier.weight(COL_LABEL),
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Gr Wt",
+            modifier = Modifier.weight(COL_GWT),
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "N Wt",
+            modifier = Modifier.weight(COL_NWT),
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+
+        Row(
+            modifier = Modifier.weight(COL_ACTION),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = actionTitle,
+                color = Color.White,
+                fontSize = 10.sp
+            )
+            Checkbox(
+                checked = selectAllChecked,
+                onCheckedChange = onSelectAllChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color.White,
+                    uncheckedColor = Color.White,
+                    checkmarkColor = Color.Black
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun StockTransferRow(
+    sr: Int,
+    productName: String,
+    label: String,
+    grossWt: String,
+    netWt: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp), // fixed row height for proper alignment
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = sr.toString(),
+            modifier = Modifier.weight(COL_SR),
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+
+        Text(
+            text = productName,
+            modifier = Modifier
+                .weight(COL_PNAME)
+                .padding(horizontal = 2.dp),
+            fontSize = 10.sp,
+            textAlign = TextAlign.Start,
+            maxLines = 1, // important
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = label,
+            modifier = Modifier
+                .weight(COL_LABEL)
+                .padding(horizontal = 2.dp),
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1, // important
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = grossWt,
+            modifier = Modifier.weight(COL_GWT),
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+
+        Text(
+            text = netWt,
+            modifier = Modifier.weight(COL_NWT),
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+
+        Box(
+            modifier = Modifier.weight(COL_ACTION),
+            contentAlignment = Alignment.Center
+        ) {
+            Checkbox(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color(0xFF6750A4),
+                    uncheckedColor = Color.Gray,
+                    checkmarkColor = Color.White
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun StockTransferBottomBar(
+    totalQty: Int,
+    selectedQty: Int,
+    totalGrossWeight: Double,
+    totalNetWeight: Double,
+  /*  buttonText: String,
+    onTransferClick: () -> Unit*/
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFD9D9D9))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "TQ: $totalQty",
+            fontSize = 11.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = "SQ: $selectedQty",
+            fontSize = 11.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = "GW: ${"%.3f".format(totalGrossWeight)}",
+            fontSize = 11.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = "NW: ${"%.3f".format(totalNetWeight)}",
+            fontSize = 11.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+      /*  Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Button(
+                onClick = onTransferClick,
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(buttonText, fontSize = 11.sp)
+            }
+        }*/
+    }
+}
+@Composable
+fun DialogHeader(title: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(Color(0xFFB71C1C), Color(0xFF3F51B5))
+                )
+            )
+            .padding(16.dp)
+    ) {
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 16.sp
+        )
+    }
+}
+
+@Composable
+fun DialogItem(text: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFEDEDED))
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(12.dp),
+            fontSize = 14.sp
+        )
+    }
+}

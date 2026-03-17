@@ -24,4 +24,7 @@ interface UserPermissionDao {
 
     @Query("DELETE FROM user_permissions")
     suspend fun clearAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllUsers(users: List<UserPermissionEntity>)
 }

@@ -271,6 +271,9 @@ interface RetrofitInterface {
     suspend fun getAllUserPermissions(@Body request: UserPermissionRequest): Response<List<UserPermissionResponse>>
 
 
+    @POST("/api/RoleManagement/GetAllUserPermissions-Optimized")
+    suspend fun getAllUserPermissionsAll(@Body request: ClientCodeRequest): Response<List<UserPermissionResponse>>
+
     @POST("/api/Invoice/GetAllDeliveryChallan")
     suspend fun getAllChallanList(@Body request: DeliveryChallanRequestList): Response<List<DeliveryChallanResponseList>>
 

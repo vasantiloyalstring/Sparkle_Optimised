@@ -11,6 +11,9 @@ data class UserPermissionEntity(
     val roleId: Int,
     val roleName: String,
     val clientCode: String,
-    val branchSelectionJson: String
+    val branchSelectionJson: String,
+    val companySelectionJson: String,
+    val EmployeeId: Int,
+
 )
 

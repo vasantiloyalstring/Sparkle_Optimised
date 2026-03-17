@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -624,7 +625,8 @@ fun AddProductScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = isEditMode,
-                isScreen = false
+                isScreen = false,
+                isBulkScanning = true
             )
         }
     ) { innerPadding ->
@@ -719,7 +721,8 @@ fun ScanBottomBar(
     onReset: () -> Unit,
     isScanning: Boolean,
     isEditMode: Boolean,
-    isScreen: Boolean
+    isScreen: Boolean,
+    isBulkScanning: Boolean
 ) {
 
     // We use a Box to allow the center button to overlap/elevate
@@ -733,7 +736,7 @@ fun ScanBottomBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onSave) {
+          /*  TextButton(onClick = onSave) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         painter = painterResource(R.drawable.ic_save),
@@ -743,6 +746,36 @@ fun ScanBottomBar(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (isEditMode) "Update" else "Save",
+                        color = Color.DarkGray,
+                        fontSize = 12.sp,
+                        fontFamily = poppins
+                    )
+                }
+            }*/
+            TextButton(onClick = onSave) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (isScreen) {
+                        Icon(
+                            imageVector = Icons.Default.CompareArrows,
+                            tint = Color.DarkGray,
+                            contentDescription = "Transfer"
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_save),
+                            tint = Color.DarkGray,
+                            contentDescription = "Save",
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Text(
+                        text = when {
+                            isScreen -> "Transfer"
+                            isEditMode -> "Update"
+                            else -> "Save"
+                        },
                         color = Color.DarkGray,
                         fontSize = 12.sp,
                         fontFamily = poppins
@@ -774,7 +807,16 @@ fun ScanBottomBar(
             }*/
             TextButton(onClick = onGscan) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (isScanning && !isScreen) {
+
+
+                    if ((isScanning && !isScreen)) {
+                        // Use vector icon when scanning
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Stop Scan",
+                            tint = Color.DarkGray
+                        )
+                    }else  if ( isBulkScanning) {
                         // Use vector icon when scanning
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -793,7 +835,8 @@ fun ScanBottomBar(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = if (isScanning && !isScreen) "Stop" else "Gscan",
+                        text = if ((isScanning && !isScreen) || isBulkScanning) "Stop" else "Gscan",
+                        //text = if (isScanning && !isScreen) "Stop" else "Gscan",
                         color = if (isScanning) Color.DarkGray else Color.DarkGray,
                         fontSize = 12.sp,
                         fontFamily = poppins

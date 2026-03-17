@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loyalstring.rfid.data.local.entity.BulkItem
+import com.loyalstring.rfid.data.local.entity.UserPermissionEntity
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.stockTransfer.CancelStockTransfer
 import com.loyalstring.rfid.data.model.stockTransfer.CancelStockTransferResponse
@@ -16,7 +17,8 @@ import com.loyalstring.rfid.data.model.stockTransfer.STApproveRejectResponse
 import com.loyalstring.rfid.data.model.stockTransfer.StockInOutRequest
 import com.loyalstring.rfid.data.model.stockTransfer.StockTransferInOutResponse
 import com.loyalstring.rfid.data.model.stockTransfer.StockTransferResponse
-import com.loyalstring.rfid.data.remote.data.StockTransferItem
+import com.loyalstring.rfid.data.model.stockVerification.AccessibleCompany
+
 import com.loyalstring.rfid.data.remote.data.StockTransferRequest
 import com.loyalstring.rfid.repository.BulkRepositoryImpl
 import com.loyalstring.rfid.repository.TransferRepository
@@ -26,10 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatten
-import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -112,14 +111,35 @@ class StockTransferViewModel @Inject constructor(
         MutableStateFlow<Result<CancelStockTransferResponse>?>(null)
     val cancelResponse: StateFlow<Result<CancelStockTransferResponse>?> = _cancelResponse
 
+    private val _transferPreviewItems = MutableStateFlow<List<BulkItem>>(emptyList())
+    val transferPreviewItems: StateFlow<List<BulkItem>> = _transferPreviewItems
+
+    fun setTransferPreviewItems(items: List<BulkItem>) {
+        _transferPreviewItems.value = items
+    }
+
+    fun clearTransferPreviewItems() {
+        _transferPreviewItems.value = emptyList()
+    }
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
     suspend fun loadAllLabelledStock() {
+        try {
+            _isLoading.value = true   // ✅ START LOADER
+            kotlinx.coroutines.delay(500)
+            val labelledItems =
+                allBulkItems.first().filter {
+                    !it.itemCode.isNullOrBlank()
+                }
 
-        val labelledItems =
-            allBulkItems.first().filter {
-                !it.itemCode.isNullOrBlank()
-            }
+            _filteredBulkItems.value = labelledItems
 
-        _filteredBulkItems.value = labelledItems
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            _isLoading.value = false  // ✅ STOP LOADER
+        }
     }
 
 /*    suspend fun loadAllLabelledStock() {
@@ -198,9 +218,35 @@ class StockTransferViewModel @Inject constructor(
             ?.Id ?: -1
     }
 
+    private val _accessibleBranches = MutableStateFlow<List<String>>(emptyList())
+    val accessibleBranches: StateFlow<List<String>> = _accessibleBranches
+
+    fun loadAccessibleBranches(branches: List<String>) {
+        _accessibleBranches.value = branches
+    }
+
+    private val _accessibleCompany = MutableStateFlow<List<UserPermissionEntity>>(emptyList())
+    val accessibleCompany: StateFlow<List<UserPermissionEntity>> = _accessibleCompany
+
+    fun loadAccessibleCompany(companyEmp: List<UserPermissionEntity>) {
+        _accessibleCompany.value = companyEmp
+    }
+
+    private val _transferSourceBranchId = MutableStateFlow<Int?>(null)
+    val transferSourceBranchId: StateFlow<Int?> = _transferSourceBranchId
+
+    private val _transferDestinationBranchId = MutableStateFlow<Int?>(null)
+    val transferDestinationBranchId: StateFlow<Int?> = _transferDestinationBranchId
+
+    fun setTransferBranches(source: Int, destination: Int) {
+        _transferSourceBranchId.value = source
+        _transferDestinationBranchId.value = destination
+    }
 
 
-    fun extractCategoryProductDesignFromFiltered() {
+
+
+        fun extractCategoryProductDesignFromFiltered() {
         val currentFiltered = _filteredBulkItems.value
 
         _categoryFilters.value = currentFiltered
@@ -288,17 +334,9 @@ class StockTransferViewModel @Inject constructor(
 
 
     /** --------------------Submit Stock Transfer-------------------- **/
-    fun submitStockTransfer(
-        clientCode: String,
-        stockIds: List<Int>,
-        transferTypeId: Int,
-        transferByEmployee: String,
-        fromId: Int,
-        toId: Int,
-        onResult: (Boolean) -> Unit
-    ) = viewModelScope.launch {
+    fun submitStockTransfer(request1: StockTransferRequest) = viewModelScope.launch {
         try {
-            val request = StockTransferRequest(
+          /*  val request = StockTransferRequest(
                 ClientCode = clientCode,
                 StockTransferItems = stockIds.map { StockTransferItem(it) },
                 StockType = "labelled",
@@ -309,14 +347,14 @@ class StockTransferViewModel @Inject constructor(
                 Destination = toId,
                 Remarks = "",
                 ReceivedByEmployee = ""
-            )
+            )*/
 
-            val result = repository.submitStockTransfer(request)
+            val result = repository.submitStockTransfer(request1)
             _transferStatus.value = result.map { "Transfer successful" }
-            onResult(result.isSuccess)
+           // onResult(result.isSuccess)
         } catch (e: Exception) {
             _transferStatus.value = Result.failure(e)
-            onResult(false)
+            //onResult(false)
         }
     }
 

@@ -141,8 +141,8 @@ fun AppNavigation(
 
 
 
-            composable(Screens.StockTransferScreen.route) {
-                StockTransferScreen(onBack = { navController.popBackStack() }, navController)
+            composable(Screens.StockTransferScreenNew.route) {
+                StockTransferScreenNew(onBack = { navController.popBackStack() }, navController)
             }
 
             composable(Screens.EditProductScreen.route) {
@@ -437,6 +437,13 @@ fun AppNavigation(
 
                 BatchDetailsScreen(
                     scanBatchId = scanBatchId,
+                    navController = navController
+                )
+            }
+
+            composable(Screens.StockTransferPreviewScreen.route) {
+                StockTransferPreviewScreen(
+                    onBack = { navController.popBackStack() },
                     navController = navController
                 )
             }

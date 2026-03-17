@@ -1,5 +1,11 @@
 package com.loyalstring.rfid.ui.screens
 
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+
+import androidx.compose.ui.res.painterResource
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -190,7 +197,7 @@ fun StockTransferScreen(
 
         toType == "counter" -> counters.map { it.CounterName }
         toType == "box" -> boxes.map { it.BoxName }
-       // toType == "branch" -> branches.map { it.BranchName }
+        // toType == "branch" -> branches.map { it.BranchName }
         toType == "packet" -> packets.map { it.PacketName }
         else -> emptyList()
     }.filter { it != selectedFrom || fromType != toType }
@@ -703,24 +710,24 @@ fun StockTransferScreen(
                     )
 
                     GradientButton(
-                            onClick = {
-                                showDialog = true
-                            },
-                            icon = painterResource(id = R.drawable.list_svg),
-                            text = "",
+                        onClick = {
+                            showDialog = true
+                        },
+                        icon = painterResource(id = R.drawable.list_svg),
+                        text = "",
                         modifier = Modifier.weight(1f).size(20.dp)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
 
                     GradientButton(
-                            onClick = {
-                                viewModel.filterBulkItemsByFrom(viewModel.currentFrom.value, selectedFrom)
-                            },
-                            icon = painterResource(id = R.drawable.ic_reset),
-                            text = "",
-                            modifier = Modifier.weight(1f).size(20.dp)
-                     )
-                    }
+                        onClick = {
+                            viewModel.filterBulkItemsByFrom(viewModel.currentFrom.value, selectedFrom)
+                        },
+                        icon = painterResource(id = R.drawable.ic_reset),
+                        text = "",
+                        modifier = Modifier.weight(1f).size(20.dp)
+                    )
+                }
 
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -896,7 +903,7 @@ fun TransferDetailsDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                       BackgroundGradient,
+                        BackgroundGradient,
                     )
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1160,15 +1167,15 @@ fun BottomActionBar(navController: NavHostController) {
     var showStockOut by remember { mutableStateOf(false) }
 
     when {
-       /* showStockIn -> StockInScreen(  transferTypes = listOf("Internal", "External"),
-            selectedTransferType = "Internal",
-            onTransferTypeSelected = {},
-            stockTransfers = listOf(),
-            onApprove = {},
-            onReject = {},
-            onLost = {},
-            onBack = { showStockIn = false }) */// ✅ works fine)
-     ///   showStockOut -> StockOutScreen(onBack = { showStockOut = false })
+        /* showStockIn -> StockInScreen(  transferTypes = listOf("Internal", "External"),
+             selectedTransferType = "Internal",
+             onTransferTypeSelected = {},
+             stockTransfers = listOf(),
+             onApprove = {},
+             onReject = {},
+             onLost = {},
+             onBack = { showStockIn = false }) */// ✅ works fine)
+        ///   showStockOut -> StockOutScreen(onBack = { showStockOut = false })
         else -> {
             Row(
                 modifier = Modifier
@@ -1225,37 +1232,33 @@ fun ActionButton(text: String, icon: Painter,  onClick: () -> Unit) {
     }
 }
 
-
 @Composable
 fun GradientDropdownButton(
+    modifier: Modifier = Modifier,
     label: String,
     selectedOption: String,
     onClick: () -> Unit
 ) {
-    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
-        Box(
-            modifier = Modifier
-                .width(100.dp) // 🔥 Fixed width (adjust as needed)
-                .border(
-                    width = 1.dp,
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color(0xFF2F1EFA), Color(0xFFE5203F))
-                    ),
-                    shape = RoundedCornerShape(10)
-                )
-                .clickable { onClick() }
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center // keep text centered
-        ) {
-            Text(
-                text = selectedOption,
-                color = Color.DarkGray,
-                fontSize = 10.sp,
-                fontFamily = poppins,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis // handle long text
+    Box(
+        modifier = modifier
+            .height(35.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    listOf(Color(0xFF5231A7), Color(0xFFD32940))
+                ),
+                shape = RoundedCornerShape(6.dp)
             )
-        }
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (selectedOption.isBlank()) label else selectedOption,
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
     }
 }
 

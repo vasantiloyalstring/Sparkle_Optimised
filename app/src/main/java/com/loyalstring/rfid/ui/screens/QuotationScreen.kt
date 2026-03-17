@@ -49,7 +49,6 @@ import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
-import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
@@ -1422,7 +1421,8 @@ fun QuotationScreen(
                 },
                 isScanning = isScanning,
                 isEditMode = isEditMode,
-                isScreen=false
+                isScreen=false,
+                isBulkScanning = false
 
             )
         }

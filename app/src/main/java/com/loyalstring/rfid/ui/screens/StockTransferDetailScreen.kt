@@ -802,7 +802,7 @@ fun handleDetailAction(
         StockTransferItem(Id = id, Approved = true, Status = statusType)
     }
 
-    val request = STApproveRejectRequest(
+    /*val request = STApproveRejectRequest(
         StockTransferItems = items,
         ClientCode = employee?.clientCode.orEmpty(),
         UserID = employee?.id.toString(),
@@ -810,6 +810,6 @@ fun handleDetailAction(
     )
 
     // ✅ Just trigger the ViewModel call — don’t observe here
-    viewModel.stApproveReject(request)
+    viewModel.stApproveReject(request)*/
 }
 

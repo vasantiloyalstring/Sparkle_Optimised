@@ -267,7 +267,8 @@ fun BulkProductScreen(
 
                 isScanning = isScanning,
                 isEditMode = false,
-                isScreen = false
+                isScreen = false,
+                isBulkScanning = false
             )
         }
     ) { innerPadding ->
