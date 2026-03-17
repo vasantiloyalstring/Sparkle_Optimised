@@ -458,6 +458,65 @@
     <string name="settings">सेटिंग्स</string>
     <string name="logout">लॉगआउट</string>
 
+    <!--stock transfer-->
+
+    <string name="transfer_type">ट्रांसफर प्रकार</string>
+    <string name="from">से</string>
+    <string name="to">तक</string>
+
+
+
+    <string name="select_category">श्रेणी चुनें</string>
+    <string name="select_product">उत्पाद चुनें</string>
+    <string name="select_design">डिज़ाइन चुनें</string>
+    <string name="select_from">से चुनें</string>
+    <string name="select_to">तक चुनें</string>
+    <string name="choose_transfer_type">ट्रांसफर प्रकार चुनें</string>
+
+    <string name="loading_stock">स्टॉक लोड हो रहा है...</string>
+
+    <string name="sr">क्र.</string>
+
+    <string name="label">लेबल</string>
+
+
+    <string name="gross_weight_short">GW</string>
+    <string name="net_weight_short">NW</string>
+
+    <string name="stock_requests">स्टॉक अनुरोध</string>
+    <string name="in_request">आवक अनुरोध</string>
+    <string name="out_request">जावक अनुरोध</string>
+
+    <string name="t_qty">कुल: %1$d</string>
+    <string name="selected_qty">चयनित: %1$d</string>
+    <string name="t_gross_weight">कुल वज़न: %1$.3f</string>
+    <string name="t_net_weight">शुद्ध वज़न: %1$.3f</string>
+
+    <!---->
+    <string name="transfer_preview">ट्रांसफर पूर्वावलोकन</string>
+
+    <string name="gross_wt">कुल वजन</string>
+    <string name="net_wt">शुद्ध वजन</string>
+
+    <string name="transfer_details">ट्रांसफर विवरण</string>
+    <string name="transferred_by">द्वारा ट्रांसफर</string>
+    <string name="transferred_to">को ट्रांसफर</string>
+    <string name="remark">टिप्पणी</string>
+    <string name="remark_hint">टिप्पणी लिखें...</string>
+
+
+    <string name="select_emp">कर्मचारी चुनें</string>
+
+    <string name="transfer">ट्रांसफर</string>
+
+    <string name="remove">हटाएं</string>
+
+    <string name="transfer_success">ट्रांसफर सफल हुआ</string>
+    <string name="transfer_failed">ट्रांसफर असफल हुआ</string>
+    <string name="select_employee_error">कृपया कर्मचारी चुनें</string>
+
+
+
 
 
 

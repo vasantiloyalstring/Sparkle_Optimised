@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.content.Context
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +58,7 @@ import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.StockTransferViewModel
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlin.text.isNotBlank
 
 private const val COL_SR = 1f
@@ -83,6 +87,12 @@ fun StockTransferScreenNew(
             10
         )
     }
+
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
     val parentEntry = remember(navController) {
         navController.getBackStackEntry("main_graph")
     }
@@ -531,7 +541,7 @@ fun StockTransferScreenNew(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Stock Transfer",
+                title = localizedContext.getString(R.string.stock_transfer_title),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -664,6 +674,7 @@ fun StockTransferScreenNew(
                 }
 
                 StockTransferHeader(
+                    localizedContext=localizedContext,
                     actionTitle = "",
                     selectAllChecked = selectAllChecked,
                     onSelectAllChange = { checked ->
@@ -714,7 +725,9 @@ fun StockTransferScreenNew(
                     totalQty = totalQty,
                     selectedQty = selectedQty,
                     totalGrossWeight = selectedGrossWeight,
-                    totalNetWeight = selectedNetWeight
+                    totalNetWeight = selectedNetWeight,
+                    localizedContext= localizedContext
+
                 )
             }
 
@@ -732,7 +745,7 @@ fun StockTransferScreenNew(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Loading stock...",
+                            text = localizedContext.getString(R.string.loading_stock),
                             color = Color.White,
                             fontSize = 14.sp
                         )
@@ -754,7 +767,7 @@ fun StockTransferScreenNew(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    DialogHeader("Choose Transfer Type")
+                    DialogHeader(localizedContext.getString(R.string.choose_transfer_type))
 
                     LazyColumn(
                         modifier = Modifier
@@ -790,7 +803,7 @@ fun StockTransferScreenNew(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DialogHeader("Select From")
+                    DialogHeader(localizedContext.getString(R.string.select_from))
 
                     LazyColumn {
                         items(fromOptions) { option ->
@@ -818,7 +831,7 @@ fun StockTransferScreenNew(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "Filter",
+                        text = localizedContext.getString(R.string.filter),
                         fontSize = 18.sp,
                         color = Color.Black
                     )
@@ -826,7 +839,7 @@ fun StockTransferScreenNew(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     FilterField(
-                        title = "Category",
+                        title = localizedContext.getString(R.string.category),
                         value = draftCategory,
                         onClick = { showCategoryDialog = true }
                     )
@@ -834,7 +847,7 @@ fun StockTransferScreenNew(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     FilterField(
-                        title = "Product",
+                        title = localizedContext.getString(R.string.product),
                         value = draftProduct,
                         onClick = { showProductDialog = true }
                     )
@@ -842,7 +855,7 @@ fun StockTransferScreenNew(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     FilterField(
-                        title = "Design",
+                        title = localizedContext.getString(R.string.lbl_design),
                         value = draftDesign,
                         onClick = { showDesignDialog = true }
                     )
@@ -867,7 +880,7 @@ fun StockTransferScreenNew(
                                 showFilterDialog = false
                             }
                         ) {
-                            Text("Clear")
+                            Text(localizedContext.getString(R.string.clear))
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -885,7 +898,7 @@ fun StockTransferScreenNew(
                                 showFilterDialog = false
                             }
                         ) {
-                            Text("Apply")
+                            Text(localizedContext.getString(R.string.apply))
                         }
                     }
                 }
@@ -900,7 +913,7 @@ fun StockTransferScreenNew(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DialogHeader("Select Category")
+                    DialogHeader(localizedContext.getString(R.string.select_category))
 
                     LazyColumn(modifier = Modifier.padding(12.dp)) {
                         items(categoryList) { item ->
@@ -924,7 +937,7 @@ fun StockTransferScreenNew(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DialogHeader("Select Product")
+                    DialogHeader(localizedContext.getString(R.string.select_product))
 
                     LazyColumn(modifier = Modifier.padding(12.dp)) {
                         items(productList) { item ->
@@ -949,7 +962,7 @@ fun StockTransferScreenNew(
             ) {
                 Column {
 
-                    DialogHeader("Stock Requests")
+                    DialogHeader(localizedContext.getString(R.string.stock_requests))
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -986,7 +999,7 @@ fun StockTransferScreenNew(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DialogHeader("Select Design")
+                    DialogHeader(localizedContext.getString(R.string.select_design))
 
                     LazyColumn(modifier = Modifier.padding(12.dp)) {
                         items(designList) { item ->
@@ -1009,7 +1022,7 @@ fun StockTransferScreenNew(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DialogHeader("Select To")
+                    DialogHeader(localizedContext.getString(R.string.select_to))
 
                     LazyColumn {
                      /*   items(toOptions) { option ->
@@ -1079,6 +1092,7 @@ fun FilterField(
 
 @Composable
 fun StockTransferHeader(
+    localizedContext:Context,
     actionTitle: String,
     selectAllChecked: Boolean,
     onSelectAllChange: (Boolean) -> Unit
@@ -1092,35 +1106,35 @@ fun StockTransferHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "Sr",
+            localizedContext.getString(R.string.sr),
             modifier = Modifier.weight(COL_SR),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Product Name",
+            localizedContext.getString(R.string.product_name),
             modifier = Modifier.weight(COL_PNAME),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Label",
+            localizedContext.getString(R.string.itemcode),
             modifier = Modifier.weight(COL_LABEL),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Gr Wt",
+            localizedContext.getString(R.string.gross_wt_header),
             modifier = Modifier.weight(COL_GWT),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "N Wt",
+            localizedContext.getString(R.string.net_wt_header),
             modifier = Modifier.weight(COL_NWT),
             color = Color.White,
             fontSize = 10.sp,
@@ -1235,6 +1249,7 @@ fun StockTransferBottomBar(
     selectedQty: Int,
     totalGrossWeight: Double,
     totalNetWeight: Double,
+    localizedContext: Context
   /*  buttonText: String,
     onTransferClick: () -> Unit*/
 ) {
@@ -1246,25 +1261,25 @@ fun StockTransferBottomBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "TQ: $totalQty",
+            text =localizedContext.getString(R.string.t_qty, totalQty),
             fontSize = 11.sp,
             modifier = Modifier.weight(1f)
         )
 
         Text(
-            text = "SQ: $selectedQty",
+            text = localizedContext.getString(R.string.selected_qty,selectedQty),
             fontSize = 11.sp,
             modifier = Modifier.weight(1f)
         )
 
         Text(
-            text = "GW: ${"%.3f".format(totalGrossWeight)}",
+            text = localizedContext.getString(R.string.t_gross_weight, totalGrossWeight),
             fontSize = 11.sp,
             modifier = Modifier.weight(1f)
         )
 
         Text(
-            text = "NW: ${"%.3f".format(totalNetWeight)}",
+            text = localizedContext.getString(R.string.t_net_weight, totalNetWeight),
             fontSize = 11.sp,
             modifier = Modifier.weight(1f)
         )

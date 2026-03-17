@@ -1,8 +1,10 @@
 package com.loyalstring.rfid.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +72,7 @@ import com.loyalstring.rfid.data.model.stockVerification.AccessibleCompany
 import com.loyalstring.rfid.data.remote.data.StockTransferItemData
 import com.loyalstring.rfid.data.remote.data.StockTransferRequest
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 
 
 private const val PRE_COL_SR = 1f
@@ -101,6 +104,9 @@ fun StockTransferPreviewScreen(
     var showTransferPopup by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     val employee = remember {
         UserPreferences.getInstance(context).getEmployee(Employee::class.java)
@@ -173,7 +179,7 @@ fun StockTransferPreviewScreen(
 
         if (result.isSuccess) {
 
-            Toast.makeText(context, "Transfer successful", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context,localizedContext.getString(R.string.transfer_success), Toast.LENGTH_SHORT).show()
 
             showTransferPopup = false
             removeCheckedKeys.clear()
@@ -184,7 +190,7 @@ fun StockTransferPreviewScreen(
 
             Toast.makeText(
                 context,
-                result.exceptionOrNull()?.message ?: "Transfer failed",
+                result.exceptionOrNull()?.message ?: localizedContext.getString(R.string.transfer_failed),
                 Toast.LENGTH_SHORT
             ).show()
 
@@ -201,7 +207,7 @@ fun StockTransferPreviewScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Transfer Preview",
+                title =localizedContext.getString(R.string.transfer_preview),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -223,6 +229,7 @@ fun StockTransferPreviewScreen(
                 .padding(vertical = 8.dp)
         ) {
             StockTransferPreviewHeader(
+                localizedContext=localizedContext,
                 actionTitle = "",
                 selectAllChecked = selectAllRemoveChecked,
                 onSelectAllChange = { checked ->
@@ -271,7 +278,8 @@ fun StockTransferPreviewScreen(
                 totalQty = totalQty,
                 selectedQty = selectedQty,
                 totalGrossWeight = selectedGrossWeight,
-                totalNetWeight = selectedNetWeight
+                totalNetWeight = selectedNetWeight,
+                localizedContext=localizedContext
             )
 
             StockTransferPreviewActionBar(
@@ -329,6 +337,7 @@ fun StockTransferPreviewScreen(
 
         if (showTransferPopup) {
             TransferDetailsDialogNew(
+                localizedContext=localizedContext,
                 isBranchToBranch= isBranchToBranch,
                 transferredBy = transferredBy,
                 transferredTo = transferredTo,
@@ -342,7 +351,7 @@ fun StockTransferPreviewScreen(
 
                     // Validation
                     if (isBranchToBranch && (transferredTo == "Select Emp" || transferredTo.isBlank())) {
-                        Toast.makeText(context, "Please select employee", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context,localizedContext.getString(R.string.select_employee_error), Toast.LENGTH_SHORT).show()
                         return@TransferDetailsDialogNew
                     }
 
@@ -427,6 +436,7 @@ fun parseBranches(json: String?): List<BranchSelection> {
 
 @Composable
 fun TransferDetailsDialogNew(
+    localizedContext: Context,
     isBranchToBranch: Boolean,
     transferredBy: String,
     transferredTo: String,
@@ -471,7 +481,7 @@ fun TransferDetailsDialogNew(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Transfer Details",
+                        text = localizedContext.getString(R.string.transfer_details),
                         color = Color.White,
                         fontSize = 18.sp
                     )
@@ -480,7 +490,7 @@ fun TransferDetailsDialogNew(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 ReadOnlyTransferFieldRow(
-                    label = "Transferred by",
+                    label = localizedContext.getString(R.string.transferred_by),
                     value = transferredBy
                 )
 
@@ -504,7 +514,7 @@ fun TransferDetailsDialogNew(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     TransferFieldRow(
-                        label = "Transferred to",
+                        label = localizedContext.getString(R.string.transferred_to),
                         value = transferredTo,
                         expanded = showToDropdown,
                         onExpandChange = { showToDropdown = it },
@@ -525,7 +535,7 @@ fun TransferDetailsDialogNew(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Remark",
+                        text = localizedContext.getString(R.string.remark),
                         color = Color.DarkGray,
                         fontSize = 16.sp
                     )
@@ -549,7 +559,7 @@ fun TransferDetailsDialogNew(
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (remark.isBlank()) {
                                 Text(
-                                    text = "Remark.....",
+                                    text = localizedContext.getString(R.string.remark_hint),
                                     color = Color.Gray,
                                     fontSize = 14.sp
                                 )
@@ -566,13 +576,13 @@ fun TransferDetailsDialogNew(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GradientDialogButton(
-                        text = "Cancel",
+                        text = localizedContext.getString(R.string.cancel),
                         modifier = Modifier.weight(1f),
                         onClick = onDismiss
                     )
 
                     GradientDialogButton(
-                        text = "Ok",
+                        text = localizedContext.getString(R.string.ok),
                         modifier = Modifier.weight(1f),
                         onClick = onOk
                     )
@@ -747,6 +757,7 @@ fun GradientDialogButton(
 
 @Composable
 fun StockTransferPreviewHeader(
+    localizedContext: Context,
     actionTitle: String,
     selectAllChecked: Boolean,
     onSelectAllChange: (Boolean) -> Unit
@@ -759,35 +770,35 @@ fun StockTransferPreviewHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "Sr",
+            localizedContext.getString(R.string.sr),
             modifier = Modifier.weight(PRE_COL_SR),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Product Name",
+            localizedContext.getString(R.string.product_name),
             modifier = Modifier.weight(PRE_COL_PNAME),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Label",
+            localizedContext.getString(R.string.itemcode),
             modifier = Modifier.weight(PRE_COL_LABEL),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "Gr Wt",
+            localizedContext.getString(R.string.gross_wt_header),
             modifier = Modifier.weight(PRE_COL_GWT),
             color = Color.White,
             fontSize = 10.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            "N Wt",
+            localizedContext.getString(R.string.net_wt_header),
             modifier = Modifier.weight(PRE_COL_NWT),
             color = Color.White,
             fontSize = 10.sp,
@@ -903,7 +914,8 @@ fun StockTransferPreviewBottomBar(
     totalQty: Int,
     selectedQty: Int,
     totalGrossWeight: Double,
-    totalNetWeight: Double
+    totalNetWeight: Double,
+    localizedContext: Context
 ) {
     Row(
         modifier = Modifier
@@ -913,28 +925,28 @@ fun StockTransferPreviewBottomBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "TQ: $totalQty",
+            text = localizedContext.getString(R.string.t_qty, totalQty),
             fontSize = 10.sp,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
         )
 
         Text(
-            text = "SQ: $selectedQty",
+            text =  localizedContext.getString(R.string.selected_qty,selectedQty),
             fontSize = 10.sp,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
         )
 
         Text(
-            text = "GW: ${"%.3f".format(totalGrossWeight)}",
+            text = localizedContext.getString(R.string.t_gross_weight, totalGrossWeight),
             fontSize = 10.sp,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
         )
 
         Text(
-            text = "NW: ${"%.3f".format(totalNetWeight)}",
+            text = localizedContext.getString(R.string.t_net_weight, totalNetWeight),
             fontSize = 10.sp,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center

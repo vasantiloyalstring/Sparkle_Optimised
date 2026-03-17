@@ -474,6 +474,72 @@
     <string name="settings">Settings</string>
     <string name="logout">Logout</string>
 
+    <!--stock transfer-->
+
+    <string name="transfer_type">Transfer Type</string>
+    <string name="from">From</string>
+    <string name="to">To</string>
+
+
+
+    <string name="select_category">Select Category</string>
+    <string name="select_product">Select Product</string>
+    <string name="select_design">Select Design</string>
+    <string name="select_from">Select From</string>
+    <string name="select_to">Select To</string>
+    <string name="choose_transfer_type">Choose Transfer Type</string>
+
+    <string name="loading_stock">Loading stock...</string>
+
+    <!-- Table -->
+    <string name="sr">Sr</string>
+
+    <string name="label">Label</string>
+
+
+    <!-- Bottom -->
+
+
+    <string name="gross_weight_short">GW</string>
+    <string name="net_weight_short">NW</string>
+
+    <!-- Popup -->
+    <string name="stock_requests">Stock Requests</string>
+    <string name="in_request">In Request</string>
+    <string name="out_request">Out Request</string>
+
+    <string name="t_qty">TQ: %1$d</string>
+    <string name="selected_qty">SQ: %1$d</string>
+    <string name="t_gross_weight">GW: %1$.3f</string>
+    <string name="t_net_weight">NW: %1$.3f</string>
+
+
+
+    <string name="transfer_preview">Transfer Preview</string>
+
+
+
+    <string name="gross_wt">Gr Wt</string>
+    <string name="net_wt">N Wt</string>
+
+    <string name="transfer_details">Transfer Details</string>
+    <string name="transferred_by">Transferred by</string>
+    <string name="transferred_to">Transferred to</string>
+    <string name="remark">Remark</string>
+    <string name="remark_hint">Remark.....</string>
+
+
+    <string name="select_emp">Select Emp</string>
+
+    <string name="transfer">Transfer</string>
+
+    <string name="remove">Remove</string>
+
+
+    <string name="transfer_success">Transfer successful</string>
+    <string name="transfer_failed">Transfer failed</string>
+    <string name="select_employee_error">Please select employee</string>
+
 
 
 

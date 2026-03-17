@@ -454,6 +454,64 @@
     <string name="logout">تسجيل الخروج</string>
 
 
+    <string name="transfer_type">نوع النقل</string>
+    <string name="from">من</string>
+    <string name="to">إلى</string>
+
+
+
+    <string name="select_category">اختر الفئة</string>
+    <string name="select_product">اختر المنتج</string>
+    <string name="select_design">اختر التصميم</string>
+    <string name="select_from">اختر من</string>
+    <string name="select_to">اختر إلى</string>
+    <string name="choose_transfer_type">اختر نوع النقل</string>
+
+    <string name="loading_stock">جارٍ تحميل المخزون...</string>
+
+    <string name="sr">م</string>
+
+    <string name="label">الملصق</string>
+
+
+    <string name="gross_weight_short">GW</string>
+    <string name="net_weight_short">NW</string>
+
+    <string name="stock_requests">طلبات المخزون</string>
+    <string name="in_request">طلب وارد</string>
+    <string name="out_request">طلب صادر</string>
+    <string name="t_qty">الإجمالي: %1$d</string>
+    <string name="selected_qty">المحدد: %1$d</string>
+    <string name="t_gross_weight">الإجمالي: %1$.3f</string>
+    <string name="t_net_weight">الصافي: %1$.3f</string>
+
+
+    <!---->
+    <string name="transfer_preview">معاينة النقل</string>
+
+
+
+    <string name="gross_wt">الوزن الإجمالي</string>
+    <string name="net_wt">الوزن الصافي</string>
+
+    <string name="transfer_details">تفاصيل النقل</string>
+    <string name="transferred_by">تم النقل بواسطة</string>
+    <string name="transferred_to">تم النقل إلى</string>
+    <string name="remark">ملاحظة</string>
+    <string name="remark_hint">اكتب ملاحظة...</string>
+
+
+    <string name="select_emp">اختر موظف</string>
+
+    <string name="transfer">نقل</string>
+
+    <string name="remove">إزالة</string>
+    <string name="transfer_success">تم النقل بنجاح</string>
+    <string name="transfer_failed">فشل النقل</string>
+    <string name="select_employee_error">يرجى اختيار موظف</string>
+
+
+
 
 
 
