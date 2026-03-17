@@ -102,17 +102,17 @@ import kotlin.text.clear
 
 
 // column widths
-val colCategoryWidth = 72.dp
+val colCategoryWidth = 80.dp
 val colQtyWidth = 44.dp
 val colWeightWidth = 62.dp
-val colMatchedQtyWidth = 44.dp
+val colMatchedQtyWidth = 50.dp
 val colMatchedWtWidth = 62.dp
 val colStatusWidth = 50.dp
-val colDesignNameWidth = 100.dp
-val colRfidWidth = 90.dp
-val colItemCodeWidth = 100.dp
-val colGWtWidth = 50.dp
-val colStatusIconWidth = 50.dp
+val colDesignNameWidth = 90.dp   // was 100 → FIX wrap issue
+val colRfidWidth = 80.dp          // slightly increased
+val colItemCodeWidth = 80.dp     // better spacing
+val colGWtWidth = 60.dp           // was 50 → avoid tight text
+val colStatusIconWidth = 55.dp    // better icon spacing
 
 private const val MENU_ALL = "ALL"
 private const val MENU_MATCHED = "MATCHED"
