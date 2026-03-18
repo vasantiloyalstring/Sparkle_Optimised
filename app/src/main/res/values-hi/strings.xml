@@ -607,6 +607,14 @@
     <string name="open_pdf">पीडीएफ खोलें</string>
     <string name="label_category_wt">कैटेगरी वजन</string>
 
+    <string name="msg_customer_required">कृपया ग्राहक का नाम चुनें</string>
+    <string name="msg_customer_added">ग्राहक सफलतापूर्वक जोड़ा गया</string>
+    <string name="msg_error">त्रुटि</string>
+    <string name="msg_challan_saved">चालान सफलतापूर्वक सेव हुआ</string>
+    <string name="msg_challan_updated">चालान सफलतापूर्वक अपडेट हुआ</string>
+    <string name="msg_generic_error">कुछ गलत हो गया</string>
+    <string name="challan_fields">चालान फ़ील्ड्स</string>
+
 
 
 

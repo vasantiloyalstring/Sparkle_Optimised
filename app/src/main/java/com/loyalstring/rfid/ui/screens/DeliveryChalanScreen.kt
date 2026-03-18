@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -76,6 +77,7 @@ import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -103,6 +105,10 @@ fun DeliveryChalanScreen(
     var firstPress by remember { mutableStateOf(false) }
     var shouldNavigateBack by remember { mutableStateOf(false) }
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     // Customer input fields
     var customerName by remember { mutableStateOf("") }
@@ -351,12 +357,12 @@ fun DeliveryChalanScreen(
             is Resource.Success -> {
                 Toast.makeText(
                     context,
-                    state.message ?: "Customer added successfully",
+                    state.message ?: localizedContext.getString(R.string.msg_customer_added),
                     Toast.LENGTH_SHORT
                 ).show()
             }
             is Resource.Error -> {
-                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message ?: localizedContext.getString(R.string.error), Toast.LENGTH_SHORT).show()
             }
             is Resource.Loading -> {}
             null -> {}
@@ -893,7 +899,7 @@ fun DeliveryChalanScreen(
         Log.d("DeliveryChallan", "➡️ Adding challan with No: $newChallanNo")
         if (customerName.isNullOrBlank()) {
             Toast
-                .makeText(context, "Please select customer name", Toast.LENGTH_SHORT)
+                .makeText(context,localizedContext.getString(R.string.please_select_customer), Toast.LENGTH_SHORT)
                 .show()
             isSaving = false
             return@LaunchedEffect
@@ -1419,7 +1425,7 @@ fun DeliveryChalanScreen(
         addChallanResponse?.let { response ->
             Toast.makeText(
                 context,
-               "✅ Challan saved successfully",
+               localizedContext.getString(R.string.msg_challan_saved),
                 Toast.LENGTH_SHORT
             ).show()
 
@@ -1535,7 +1541,7 @@ fun DeliveryChalanScreen(
     LaunchedEffect(deliveryChallanViewModel.updateChallanResponse.collectAsState().value) {
         deliveryChallanViewModel.updateChallanResponse.collect { response ->
             if (response != null) {
-                Toast.makeText(context, "Challan updated successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, localizedContext.getString(R.string.msg_challan_updated), Toast.LENGTH_SHORT).show()
                // deliveryChallanViewModel.fetchAllChallans(clientCode, branchId)
                 onBack()
             }
@@ -2312,7 +2318,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Invoice Fields",
+                            text =localizedContext.getString(R.string.challan_fields),
                             fontSize = 13.sp,
                             color = Color.Gray
                         )

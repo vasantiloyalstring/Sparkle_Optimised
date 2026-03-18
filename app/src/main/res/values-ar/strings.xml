@@ -571,6 +571,7 @@
     <string name="enter_mrp">أدخل السعر الأقصى</string>
 
 
+
 <!--order list-->
     <string name="order_list">قائمة الطلبات</string>
     <string name="search_hint">ابحث برقم الطلب أو الاسم</string>
@@ -601,7 +602,13 @@
     <string name="open_pdf">فتح ملف PDF</string>
     <string name="label_category_wt">وزن الفئة</string>
 
-
+    <string name="msg_customer_required">يرجى اختيار اسم العميل</string>
+    <string name="msg_customer_added">تم إضافة العميل بنجاح</string>
+    <string name="msg_error">خطأ</string>
+    <string name="msg_challan_saved">تم حفظ الفاتورة بنجاح</string>
+    <string name="msg_challan_updated">تم تحديث الفاتورة بنجاح</string>
+    <string name="msg_generic_error">حدث خطأ ما</string>
+    <string name="challan_fields">حقول الفاتورة</string>
 
 
 

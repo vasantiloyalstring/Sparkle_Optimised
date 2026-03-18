@@ -643,6 +643,14 @@
     <string name="open_pdf">Open PDF with...</string>
     <string name="label_category_wt">Category Wt</string>
 
+    <string name="msg_customer_required">Please select customer name</string>
+    <string name="msg_customer_added">Customer added successfully</string>
+    <string name="msg_error">Error</string>
+    <string name="msg_challan_saved">Challan saved successfully</string>
+    <string name="msg_challan_updated">Challan updated successfully!</string>
+    <string name="msg_generic_error">Something went wrong</string>
+    <string name="challan_fields">Challan Fields</string>
+
 
 
 
