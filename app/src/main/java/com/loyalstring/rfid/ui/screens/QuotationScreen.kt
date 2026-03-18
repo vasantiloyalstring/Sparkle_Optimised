@@ -24,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -48,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
+import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.model.ClientCodeRequest
@@ -59,6 +61,7 @@ import com.loyalstring.rfid.data.model.quotation.QuotationPrintData
 import com.loyalstring.rfid.data.model.quotation.QuotationPrintItem
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
 import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
+import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
@@ -267,6 +270,31 @@ fun QuotationScreen(
         if (shouldNavigateBack) {
             kotlinx.coroutines.delay(50)
             onBack()
+        }
+    }
+    val activity = LocalContext.current as? MainActivity
+    DisposableEffect(Unit) {
+        val listener = object : ScanKeyListener {
+            override fun onBarcodeKeyPressed() {
+
+
+                viewModel.startBarcodeScanning(context)
+            }
+
+            override fun onRfidKeyPressed() {
+                if (isScanning) {
+                    viewModel.stopScanning()
+                    isScanning = false
+                } else {
+                    viewModel.startScanning(selectedPower)
+                    isScanning = true
+                }
+            }
+        }
+        activity?.registerScanKeyListener(listener)
+
+        onDispose {
+            activity?.unregisterScanKeyListener()
         }
     }
 

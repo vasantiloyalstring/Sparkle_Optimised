@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -53,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.google.gson.Gson
+import com.loyalstring.rfid.MainActivity
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.BulkItem
 import com.loyalstring.rfid.data.local.entity.DeliveryChallanItem
@@ -66,6 +68,7 @@ import com.loyalstring.rfid.data.model.deliveryChallan.InvoiceFields
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
+import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
@@ -80,6 +83,7 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -1504,6 +1508,8 @@ fun DeliveryChalanScreen(
             //Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
             deliveryChallanViewModel.clearAddChallanResponse()
         }
+
+
         resetAllFields(   onResetCustomerName = { customerName = it },
             onResetCustomerId = { customerId = it },
             onResetSelectedCustomer = { selectedCustomer = it },
@@ -1527,6 +1533,29 @@ fun DeliveryChalanScreen(
         }
     }
 
+    val activity = LocalContext.current as? MainActivity
+    DisposableEffect(Unit) {
+        val listener = object : ScanKeyListener {
+            override fun onBarcodeKeyPressed() {
+                viewModel.startBarcodeScanning(context)
+            }
+
+            override fun onRfidKeyPressed() {
+                if (!isScanning) {
+                    isScanning = true
+                   /* scope.launch(Dispatchers.Default) {
+                        viewModel.setFilteredItems(scannedItemsSequence.map { it.originalBulkItem }.toList())
+                    }*/
+                    viewModel.startScanningInventory(selectedPower)
+                } else {
+                    isScanning = false
+                    viewModel.stopScanningAndCompute()
+                }
+            }
+        }
+        activity?.registerScanKeyListener(listener)
+        onDispose { activity?.unregisterScanKeyListener() }
+    }
 
     LaunchedEffect(scanTrigger) {
         scanTrigger?.let { type ->
