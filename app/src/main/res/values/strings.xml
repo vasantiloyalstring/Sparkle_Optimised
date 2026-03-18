@@ -651,6 +651,15 @@
     <string name="msg_generic_error">Something went wrong</string>
     <string name="challan_fields">Challan Fields</string>
 
+    <!--quotation-->
+    <string name="msg_client_code_missing">Client code missing</string>
+    <string name="msg_select_customer">Please select customer</string>
+    <string name="msg_add_item_required">Please add at least 1 item</string>
+
+    <string name="msg_quotation_saved">Quotation saved successfully</string>
+    <string name="msg_quotation_updated">Quotation updated successfully</string>
+    <string name="quotation_details">Quotation Details</string>
+
 
 
 

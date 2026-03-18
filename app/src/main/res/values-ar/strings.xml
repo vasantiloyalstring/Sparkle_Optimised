@@ -609,6 +609,14 @@
     <string name="msg_challan_updated">تم تحديث الفاتورة بنجاح</string>
     <string name="msg_generic_error">حدث خطأ ما</string>
     <string name="challan_fields">حقول الفاتورة</string>
+    <!--arebic-->
+    <string name="msg_client_code_missing">رمز العميل غير موجود</string>
+    <string name="msg_select_customer">يرجى اختيار العميل</string>
+    <string name="msg_add_item_required">يرجى إضافة عنصر واحد على الأقل</string>
+
+    <string name="msg_quotation_saved">تم حفظ عرض السعر بنجاح</string>
+    <string name="msg_quotation_updated">تم تحديث عرض السعر بنجاح</string>
+    <string name="quotation_details">تفاصيل عرض السعر</string>
 
 
 

@@ -488,7 +488,7 @@ fun QuotationDialogEditAndDisplay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Fine+Wastage Wt",
+                            text = localizedContext.getString(R.string.fine_wastage_wt),
                             modifier = Modifier.weight(0.4f),
                             fontSize = 12.sp,
                             color = Color.Black,
@@ -521,7 +521,7 @@ fun QuotationDialogEditAndDisplay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Item Amount",
+                            text = localizedContext.getString(R.string.item_amount),
                             modifier = Modifier.weight(0.4f),
                             fontSize = 12.sp,
                             color = Color.Black,

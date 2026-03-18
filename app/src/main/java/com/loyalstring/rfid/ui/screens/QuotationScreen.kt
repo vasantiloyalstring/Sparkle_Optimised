@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -69,6 +70,7 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.QuotationViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -123,6 +125,11 @@ fun QuotationScreen(
     var totalWithGst by remember { mutableStateOf(0.0) }
 
     var pendingMatchedItem by remember { mutableStateOf<BulkItem?>(null) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -270,12 +277,12 @@ fun QuotationScreen(
             is Resource.Success -> {
                 Toast.makeText(
                     context,
-                    state.message ?: "Customer added successfully",
+                    state.message ?:localizedContext.getString(R.string.msg_customer_added),
                     Toast.LENGTH_SHORT
                 ).show()
             }
             is Resource.Error -> {
-                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message ?: localizedContext.getString(R.string.error), Toast.LENGTH_SHORT).show()
             }
             is Resource.Loading -> {}
             null -> {}
@@ -1101,7 +1108,7 @@ fun QuotationScreen(
             Log.e("SampleOut", "ClientCode missing")
             Toast.makeText(
                 context,
-                "Client code missing",
+                localizedContext.getString(R.string.msg_client_code_missing),
                 Toast.LENGTH_SHORT
             ).show()
            // quotationViewModel.clearLastSampleOutNo()
@@ -1113,7 +1120,7 @@ fun QuotationScreen(
             Log.e("SampleOut", "Customer not selected")
             Toast.makeText(
                 context,
-                "Please select customer",
+                localizedContext.getString(R.string.please_select_customer),
                 Toast.LENGTH_SHORT
             ).show()
           //  sampleOutViewModel.clearLastSampleOutNo()
@@ -1125,7 +1132,8 @@ fun QuotationScreen(
             Log.e("SampleOut", "No items in productList")
             Toast.makeText(
                 context,
-                "Please add at least 1 item",
+                localizedContext.getString(R.string.please_add_item),
+
                 Toast.LENGTH_SHORT
             ).show()
          //   sampleOutViewModel.clearLastSampleOutNo()
@@ -1214,7 +1222,7 @@ fun QuotationScreen(
         val result = addSampleOut ?: return@LaunchedEffect
         Toast.makeText(
             context,
-            "✅ Quotation saved successfully",
+            localizedContext.getString(R.string.msg_quotation_saved),
             Toast.LENGTH_SHORT
         ).show()
 
@@ -1284,7 +1292,7 @@ fun QuotationScreen(
     LaunchedEffect(updateSampleOut) {
         val result = updateSampleOut ?: return@LaunchedEffect
 
-        Toast.makeText(context, "✅ Quotation updated successfully", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, localizedContext.getString(R.string.msg_quotation_updated), Toast.LENGTH_SHORT).show()
         //sampleOutViewModel.clearUpdateResult()
     }
 
@@ -1292,7 +1300,7 @@ fun QuotationScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Quotation",
+                title = localizedContext.getString(R.string.quotations),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },
@@ -1512,7 +1520,7 @@ fun QuotationScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Quotation",
+                            text = localizedContext.getString(R.string.quotation_details),
                             fontSize = 13.sp,
                             color = Color.Gray
                         )

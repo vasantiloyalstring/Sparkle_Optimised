@@ -615,6 +615,15 @@
     <string name="msg_generic_error">कुछ गलत हो गया</string>
     <string name="challan_fields">चालान फ़ील्ड्स</string>
 
+    <!--quotation-->
+    <string name="msg_client_code_missing">क्लाइंट कोड उपलब्ध नहीं है</string>
+    <string name="msg_select_customer">कृपया ग्राहक चुनें</string>
+    <string name="msg_add_item_required">कृपया कम से कम 1 आइटम जोड़ें</string>
+
+    <string name="msg_quotation_saved">कोटेशन सफलतापूर्वक सेव हुआ</string>
+    <string name="msg_quotation_updated">कोटेशन सफलतापूर्वक अपडेट हुआ</string>
+    <string name="quotation_details">कोटेशन विवरण</string>
+
 
 
 
