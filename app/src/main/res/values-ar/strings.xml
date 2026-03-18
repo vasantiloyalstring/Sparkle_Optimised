@@ -328,15 +328,15 @@
     <string name="currency_amount">₹ %1$,.2f</string>
 
     <!--    SampleIn-->
-    <string name="sample_in_list_title">Sample In List</string>
+    <string name="sample_in_list_title">قائمة العينات الواردة</string>
 
-    <!--Quotation-->
-    <string name="Quotation_no">Q.No</string>
-    <string name="order_date">Order Date</string>
-    <string name="delivery_date">Delivery Date</string>
-    <string name="quotation_List">Quotatation List</string>
-    <string name="return_label">Return</string>
-    <string name="non_return_label">Non Return</string>
+    <!-- Quotation -->
+    <string name="Quotation_no">رقم العرض</string>
+    <string name="order_date">تاريخ الطلب</string>
+    <string name="delivery_date">تاريخ التسليم</string>
+    <string name="quotation_List">قائمة عروض الأسعار</string>
+    <string name="return_label">مرتجع</string>
+    <string name="non_return_label">غير مرتجع</string>
 
     <!--product main screen-->
     <string name="product">منتج</string>
@@ -509,9 +509,97 @@
     <string name="transfer_success">تم النقل بنجاح</string>
     <string name="transfer_failed">فشل النقل</string>
     <string name="select_employee_error">يرجى اختيار موظف</string>
+    <!--order-->
+    <string name="order_details">تفاصيل الطلب</string>
+
+    <string name="enter_exhibition">أدخل المعرض</string>
+
+    <string name="enter_remark">أدخل ملاحظة</string>
+
+    <string name="purity">النقاء</string>
+    <string name="size">الحجم</string>
+    <string name="enter_size">أدخل الحجم</string>
+
+    <string name="colors">الألوان</string>
+    <string name="screw_type">نوع المسمار</string>
+    <string name="polish_type">نوع التلميع</string>
+
+    <string name="fine_percent">النسبة %%</string>
+    <string name="enter_fine">أدخل النسبة %%</string>
+
+    <string name="wastage">الهدر</string>
+    <string name="enter_wastage">أدخل الهدر</string>
+
+
+    <string name="enter_order_date">أدخل تاريخ الطلب</string>
+
+    <string name="deliver_date">تاريخ التسليم</string>
+    <string name="enter_deliver_date">أدخل تاريخ التسليم</string>
 
 
 
+    <string name="select_option">اختر %1$s</string>
+
+<!---->
+
+
+        <string name="custom_order_fields">حقول الطلب المخصص</string>
+        <string name="total_weight">الوزن الكلي</string>
+        <string name="packing_wt">وزن التعبئة</string>
+        <string name="stone_weight">وزن الحجر</string>
+        <string name="diamond_weight">وزن الماس</string>
+        <string name="rate_per_gram">السعر/جرام</string>
+        <string name="sku">SKU</string>
+        <string name="length">الطول</string>
+        <string name="quantity">الكمية</string>
+        <string name="hallmark_amt">مبلغ الدمغة</string>
+        <string name="mrp">السعر</string>
+        <string name="fine_wastage_wt">وزن الفاين + الهدر</string>
+        <string name="item_amount">قيمة العنصر</string>
+        <string name="enter_delivery_date_error">يرجى إدخال تاريخ التسليم</string>
+
+
+    <string name="enter_total_weight">أدخل الوزن الإجمالي</string>
+    <string name="enter_packing_weight">أدخل وزن التعبئة</string>
+    <string name="enter_gross_weight">أدخل الوزن الإجمالي</string>
+    <string name="enter_stone_weight">أدخل وزن الحجر</string>
+    <string name="enter_diamond_weight">أدخل وزن الألماس</string>
+    <string name="enter_rate">أدخل السعر لكل جرام</string>
+    <string name="enter_length">أدخل الطول</string>
+    <string name="enter_quantity">أدخل الكمية</string>
+    <string name="enter_hallmark">أدخل مبلغ الهولمارك</string>
+    <string name="enter_mrp">أدخل السعر الأقصى</string>
+
+
+<!--order list-->
+    <string name="order_list">قائمة الطلبات</string>
+    <string name="search_hint">ابحث برقم الطلب أو الاسم</string>
+    <string name="order_no">رقم</string>
+    <string name="customer_name">الاسم</string>
+    <string name="contact">الاتصال</string>
+    <string name="fine_metal">المعدن النقي</string>
+    <string name="taxable_amount">المبلغ الخاضع للضريبة</string>
+    <string name="actions">الإجراءات</string>
+    <string name="print">طباعة</string>
+    <string name="edit">تعديل</string>
+    <string name="confirm_delete">تأكيد الحذف</string>
+    <string name="delete_message">هل أنت متأكد أنك تريد حذف هذا الطلب؟</string>
+    <string name="yes">نعم</string>
+    <string name="order_deleted_success">تم حذف الطلب بنجاح</string>
+    <string name="delete_failed">فشل الحذف</string>
+
+    <string name="order_screen">شاشة الطلب</string>
+    <string name="image_not_available">الصورة غير متوفرة</string>
+    <string name="please_select_customer">يرجى اختيار العميل</string>
+    <string name="please_add_item">يرجى إضافة عنصر واحد على الأقل</string>
+    <string name="order_success">تم إنشاء الطلب بنجاح!</string>
+    <string name="order_update_success">تم تحديث الطلب بنجاح!</string>
+    <string name="customer_not_found">العميل غير موجود في القائمة</string>
+
+    <string name="customer_order">طلب العميل</string>
+    <string name="order_received">تم استلام الطلب</string>
+    <string name="open_pdf">فتح ملف PDF</string>
+    <string name="label_category_wt">وزن الفئة</string>
 
 
 

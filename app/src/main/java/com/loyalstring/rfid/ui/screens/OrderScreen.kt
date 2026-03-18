@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -89,6 +90,7 @@ import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -128,6 +130,10 @@ fun OrderScreen(
   //  var selectedPower by remember { mutableStateOf(10) }
 
     var selectedPower by remember { mutableIntStateOf(10) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     LaunchedEffect(Unit) {
         selectedPower = userPreferences.getInt(
@@ -1213,7 +1219,7 @@ fun OrderScreen(
             Log.e("SampleOut", "Customer not selected")
             Toast.makeText(
                 context,
-                "Please select customer",
+                localizedContext.getString(R.string.please_select_customer),
                 Toast.LENGTH_SHORT
             ).show()
             //sampleOutViewModel.clearLastSampleOutNo()
@@ -1225,7 +1231,7 @@ fun OrderScreen(
             Log.e("SampleOut", "No items in productList")
             Toast.makeText(
                 context,
-                "Please add at least 1 item",
+                localizedContext.getString(R.string.please_add_item),
                 Toast.LENGTH_SHORT
             ).show()
             //sampleOutViewModel.clearLastSampleOutNo()
@@ -1542,8 +1548,8 @@ fun OrderScreen(
         orderSuccess?.let {
             if (!isEditMode) {
                 orderViewModel.setOrderResponse(it)
-                Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
-                generateTablePdfWithImages(context, it)
+                Toast.makeText(context,localizedContext.getString(R.string.order_success), Toast.LENGTH_SHORT).show()
+                generateTablePdfWithImages(context, it,localizedContext)
                 //showInvoice = true
                 orderViewModel.clearOrderItems()
                 customerName = customerName
@@ -1570,7 +1576,7 @@ fun OrderScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Order Screen",
+                title = localizedContext.getString(R.string.order_screen),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },
@@ -1873,7 +1879,7 @@ fun OrderScreen(
                                        clientCode = employee?.clientCode.toString(),
                                        updatedReq = request
                                    )
-                                   Toast.makeText(context, "Order Updated Successfully!", Toast.LENGTH_SHORT).show()
+                                   Toast.makeText(context,localizedContext.getString(R.string.order_update_success), Toast.LENGTH_SHORT).show()
                               /* } else {
                                    // offline-created order editing
                                    orderViewModel.updateOfflineCreatedOrder(
@@ -1900,7 +1906,7 @@ fun OrderScreen(
                                (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
 
                            if ((customerId ?: 0) == 0) {
-                               Toast.makeText(context, "Please select customer", Toast.LENGTH_SHORT).show()
+                               Toast.makeText(context, localizedContext.getString(R.string.please_select_customer), Toast.LENGTH_SHORT).show()
                                return@ScanBottomBar
                            }
 
@@ -1908,12 +1914,12 @@ fun OrderScreen(
                                customerList.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
 
                            if (selectedCustomerObj == null) {
-                               Toast.makeText(context, "Customer not found in list", Toast.LENGTH_SHORT).show()
+                               Toast.makeText(context, localizedContext.getString(R.string.customer_not_found), Toast.LENGTH_SHORT).show()
                                return@ScanBottomBar
                            }
 
                            if (productList.isEmpty()) {
-                               Toast.makeText(context, "Please add at least 1 item", Toast.LENGTH_SHORT).show()
+                               Toast.makeText(context,localizedContext.getString(R.string.please_add_item), Toast.LENGTH_SHORT).show()
                                return@ScanBottomBar
                            }
 
@@ -1931,12 +1937,12 @@ fun OrderScreen(
                            orderViewModel.saveOrderOffline(request, context)
 
 // ✅ 3) Show toast
-                           Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
+                           Toast.makeText(context,localizedContext.getString(R.string.order_success), Toast.LENGTH_SHORT).show()
 
 // ✅ 4) Generate + open PDF (offline request-based)
 
                            scope.launch {
-                               generateTablePdfWithImages1(context, request)
+                               generateTablePdfWithImages1(context, request,localizedContext)
                            }
 
 // ✅ 5) Reset UI (IMPORTANT: return should be at end)
@@ -2094,7 +2100,7 @@ fun OrderScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Order Details",
+                            text = localizedContext.getString(R.string.order_details),
                             fontSize = 13.sp,
                             color = Color.Gray
                         )
@@ -2346,7 +2352,7 @@ fun CustomOrderItem.toItemCodeResponse(): ItemCodeResponse {
 
 
 
-suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequest) {
+suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequest,localizedContext:Context) {
     val file = File(
         context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS),
         "Order_${order.Customer.FirstName}.pdf"
@@ -2355,7 +2361,7 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
     val pdf = PdfDocument(writer)
     val doc = Document(pdf, PageSize.A4)
     doc.setMargins(20f, 20f, 20f, 20f)
-    val header = Paragraph("Customer Order")
+    val header = Paragraph(localizedContext.getString(R.string.customer_order))
         .setTextAlignment(TextAlignment.CENTER)
         .setBold()
         .setFontSize(18f)
@@ -3016,7 +3022,7 @@ private fun qtyOrOne(raw: Any?): String {
 }
 
 
-suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderResponse) {
+suspend fun generateTablePdfWithImages(context: Context, order: CustomOrderResponse,localizedContext:Context) {
     val file = File(
         context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS),
         "Order_${order.Customer.FirstName}.pdf"

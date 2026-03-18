@@ -734,7 +734,7 @@ fun OrderScreenContent(
 
                 orderViewModel.setOrderResponse(orderResponse)
                 Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
-                generateTablePdfWithImages(context, orderResponse)
+            //    generateTablePdfWithImages(context, orderResponse)
                 showInvoice = true
                 orderViewModel.clearOrderItems()
                 customerName = ""
@@ -754,7 +754,7 @@ fun OrderScreenContent(
             if (!isEditMode) {
                 orderViewModel.setOrderResponse(it)
                 Toast.makeText(context, "Order Placed Successfully!", Toast.LENGTH_SHORT).show()
-                generateTablePdfWithImages(context, it)
+               // generateTablePdfWithImages(context, it)
                 showInvoice = true
                 orderViewModel.clearOrderItems()
                 customerName = ""

@@ -43,6 +43,7 @@ class SearchViewModel @Inject constructor(
     private var lastSoundId: Int? = null
     private var lastBlinkEpc: String? = null
     private var blinkingJob: Job? = null
+    var lastSoundTime = 0L
 
     fun startSearch(unmatchedItems: List<BulkItem>, power: Int) {
         _searchItems.clear()
@@ -117,10 +118,18 @@ class SearchViewModel @Inject constructor(
                                 readerManager.playSound(id)
                             }*/
 
-                            if (lastSoundId != id) {
+                      /*      if (lastSoundId != id) {
                                 lastSoundId?.let { readerManager.stopSound(it) }
                                 lastSoundId = id
                                 readerManager.playSound(id)
+                            }*/
+
+                            val currentTime = System.currentTimeMillis()
+
+                            if (id != -1 && (lastSoundId != id || currentTime - lastSoundTime > 300)) {
+                                lastSoundId = id
+                                readerManager.playSound(id)
+                                lastSoundTime = currentTime
                             }
 
                             val searchedEpc = _searchItems[index].epc.trim()

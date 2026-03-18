@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,7 @@ import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -195,6 +197,10 @@ fun OrderDetailsDialogEditAndDisplay(
 
     // Gross focus (auto calc should not override when user typing)
     var grossHasFocus by remember { mutableStateOf(false) }
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     /* ============================
        Unified Recalculation
@@ -393,7 +399,7 @@ fun OrderDetailsDialogEditAndDisplay(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Custom Order Fields",
+                            text = localizedContext.getString(R.string.custom_order_fields),
                             fontSize = 18.sp,
                             color = Color.White,
                             fontFamily = poppins
@@ -449,7 +455,7 @@ fun OrderDetailsDialogEditAndDisplay(
                         ) {
                             if (branchList.isNotEmpty()) {
                                 DropdownMenuFieldDisplay(
-                                    label = "Branch",
+                                    label = localizedContext.getString(R.string.branch),
                                     options = branchList,
                                     selectedValue = branch,
                                     expanded = expandedBranch,
@@ -468,33 +474,33 @@ fun OrderDetailsDialogEditAndDisplay(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    FieldRowReadOnly(label = "Product Name", value = productName)
+                    FieldRowReadOnly(label = localizedContext.getString(R.string.product_name), value = productName)
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    FieldRowReadOnly(label = "ItemCode", value = itemCode)
+                    FieldRowReadOnly(label = localizedContext.getString(R.string.item_code), value = itemCode)
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Total Weight",
+                        label = localizedContext.getString(R.string.label_total_weight),
                         value = totalWt,
-                        placeholder = "Enter total wt",
+                        placeholder =localizedContext.getString(R.string.enter_total_weight),
                         onChange = { totalWt = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Packing Wt",
+                        label = localizedContext.getString(R.string.packing_wt),
                         value = packingWt,
-                        placeholder = "Enter packing wt",
+                        placeholder = localizedContext.getString(R.string.enter_packing_weight),
                         onChange = { packingWt = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Gross Wt (editable) - focus tracking
                     FieldRowInput(
-                        label = "Gross Wt",
+                        label = localizedContext.getString(R.string.gross_wt_header),
                         value = grossWT,
-                        placeholder = "Enter gross wt",
+                        placeholder = localizedContext.getString(R.string.enter_gross_weight),
                         onChange = { grossWT = it },
                         onFocusChange = { focused ->
                             if (grossHasFocus && !focused) {
@@ -506,44 +512,44 @@ fun OrderDetailsDialogEditAndDisplay(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Stone Weight",
+                        label = localizedContext.getString(R.string.stone_weight),
                         value = stoneWt,
-                        placeholder = "Enter stone wt",
+                        placeholder = localizedContext.getString(R.string.enter_stone_weight),
                         onChange = { stoneWt = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Dimond Weight",
+                        label = localizedContext.getString(R.string.diamond_weight),
                         value = dimondWt,
-                        placeholder = "Enter dimond wt",
+                        placeholder = localizedContext.getString(R.string.enter_diamond_weight),
                         onChange = { dimondWt = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    FieldRowDisplay(label = "Net Wt", value = if (NetWt.isBlank()) "0.000" else NetWt)
+                    FieldRowDisplay(label = localizedContext.getString(R.string.net_weight), value = if (NetWt.isBlank()) "0.000" else NetWt)
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Rate/Gram",
+                        label = localizedContext.getString(R.string.rate_per_gram),
                         value = ratePerGRam,
-                        placeholder = "Enter Rate/gram",
+                        placeholder = localizedContext.getString(R.string.enter_rate),
                         onChange = { ratePerGRam = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Exhibition",
+                        label = localizedContext.getString(R.string.exhibition),
                         value = exhibition,
-                        placeholder = "Enter exhibition",
+                        placeholder = localizedContext.getString(R.string.enter_exhibition),
                         onChange = { exhibition = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Remark",
+                        label = localizedContext.getString(R.string.remark),
                         value = remark,
-                        placeholder = "Enter remark",
+                        placeholder = localizedContext.getString(R.string.enter_remark),
                         onChange = { remark = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -564,7 +570,7 @@ fun OrderDetailsDialogEditAndDisplay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             DropdownMenuFieldDisplay(
-                                label = "SKU",
+                                label = localizedContext.getString(R.string.sku),
                                 options = skuList,
                                 selectedValue = sku,
                                 expanded = expandedSKU,
@@ -594,7 +600,7 @@ fun OrderDetailsDialogEditAndDisplay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             DropdownMenuFieldDisplay(
-                                label = "Purity",
+                                label = localizedContext.getString(R.string.purity),
                                 options = purityList,
                                 selectedValue = purity,
                                 expanded = expandedPurity,
@@ -609,17 +615,17 @@ fun OrderDetailsDialogEditAndDisplay(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Size",
+                        label = localizedContext.getString(R.string.size),
                         value = size,
-                        placeholder = "Enter size",
+                        placeholder = localizedContext.getString(R.string.enter_size),
                         onChange = { size = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Length",
+                        label = localizedContext.getString(R.string.length),
                         value = length,
-                        placeholder = "Enter length",
+                        placeholder =localizedContext.getString(R.string.enter_length),
                         onChange = { length = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -640,7 +646,7 @@ fun OrderDetailsDialogEditAndDisplay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             DropdownMenuFieldDisplay(
-                                label = "Colors",
+                                label = localizedContext.getString(R.string.colors),
                                 options = colorsList,
                                 selectedValue = typeOfColors,
                                 expanded = expandedColors,
@@ -670,7 +676,7 @@ fun OrderDetailsDialogEditAndDisplay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             DropdownMenuFieldDisplay(
-                                label = "Screw Type",
+                                label = localizedContext.getString(R.string.screw_type),
                                 options = screwList,
                                 selectedValue = screwType,
                                 expanded = expandedScrew,
@@ -700,7 +706,7 @@ fun OrderDetailsDialogEditAndDisplay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             DropdownMenuFieldDisplay(
-                                label = "Polish Type",
+                                label = localizedContext.getString(R.string.polish_type),
                                 options = polishList,
                                 selectedValue = polishType,
                                 expanded = expandedPolish,
@@ -715,72 +721,72 @@ fun OrderDetailsDialogEditAndDisplay(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Fine %",
+                        label = localizedContext.getString(R.string.fine_percent),
                         value = finePercentage,
-                        placeholder = "Enter Fine %",
+                        placeholder = localizedContext.getString(R.string.enter_fine),
                         onChange = { finePercentage = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Wastage",
+                        label = localizedContext.getString(R.string.wastage),
                         value = wastage,
-                        placeholder = "Enter wastage",
+                        placeholder = localizedContext.getString(R.string.enter_wastage),
                         onChange = { wastage = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     DateRow(
-                        label = "Order Date",
+                        label = localizedContext.getString(R.string.order_date),
                         value = orderDate,
-                        placeholder = "Enter Order Date",
+                        placeholder = localizedContext.getString(R.string.enter_order_date),
                         onPick = { picked -> orderDate = picked }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     DateRow(
-                        label = "Deliver Date",
+                        label = deliverDate,
                         value = deliverDate,
-                        placeholder = "Enter Deliver Date",
+                        placeholder = localizedContext.getString(R.string.enter_deliver_date),
                         minDateYmd = orderDate,
                         onPick = { picked -> deliverDate = picked }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowInput(
-                        label = "Quantity",
+                        label = localizedContext.getString(R.string.quantity),
                         value = qty,
-                        placeholder = "Enter quantity",
+                        placeholder = localizedContext.getString(R.string.enter_quantity),
                         onChange = { qty = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // ✅ Hallmark (cursor-safe)
                     FieldRowInput(
-                        label = "Hallmark Amt",
+                        label = localizedContext.getString(R.string.hallmark_amt),
                         value = hallMarkAmt,
-                        placeholder = "Enter hallmark amt",
+                        placeholder =localizedContext.getString(R.string.enter_hallmark),
                         onChange = { hallMarkAmt = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // ✅ MRP (cursor-safe)
                     FieldRowInput(
-                        label = "Mrp",
+                        label = localizedContext.getString(R.string.mrp),
                         value = mrp,
-                        placeholder = "Enter mrp",
+                        placeholder =localizedContext.getString(R.string.enter_mrp),
                         onChange = { mrp = it }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowDisplay(
-                        label = "Fine+Wastage Wt",
+                        label = localizedContext.getString(R.string.header_fine_plus_weight),
                         value = if (finePlusWt.isBlank()) "0.000" else finePlusWt
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FieldRowDisplay(
-                        label = "Item Amount",
+                        label = localizedContext.getString(R.string.item_amount),
                         value = if (itemAmt.isBlank()) "0.00" else itemAmt
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -792,7 +798,7 @@ fun OrderDetailsDialogEditAndDisplay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     GradientButtonIcon(
-                        text = "Cancel",
+                        text = localizedContext.getString(R.string.cancel),
                         onClick = { onDismiss() },
                         modifier = Modifier
                             .weight(1f)
@@ -806,10 +812,10 @@ fun OrderDetailsDialogEditAndDisplay(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     GradientButtonIcon(
-                        text = "OK",
+                        text = localizedContext.getString(R.string.ok),
                         onClick = {
                             if (deliverDate.isBlank()) {
-                                Toast.makeText(context, "Please enter Delivery Date", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, localizedContext.getString(R.string.enter_delivery_date_error), Toast.LENGTH_SHORT).show()
                                 return@GradientButtonIcon
                             }
 

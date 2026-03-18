@@ -330,15 +330,15 @@
     <string name="currency_amount">₹ %1$,.2f</string>
 
     <!--    SampleIn-->
-    <string name="sample_in_list_title">Sample In List</string>
+    <string name="sample_in_list_title">सैंपल इन सूची</string>
 
-    <!--Quotation-->
-    <string name="Quotation_no">Q.No</string>
-    <string name="order_date">Order Date</string>
-    <string name="delivery_date">Delivery Date</string>
-    <string name="quotation_List">Quotatation List</string>
-    <string name="return_label">Return</string>
-    <string name="non_return_label">Non Return</string>
+    <!-- Quotation -->
+    <string name="Quotation_no">क्यू.सं</string>
+    <string name="order_date">ऑर्डर तारीख</string>
+    <string name="delivery_date">डिलीवरी तारीख</string>
+    <string name="quotation_List">कोटेशन सूची</string>
+    <string name="return_label">वापसी</string>
+    <string name="non_return_label">बिना वापसी</string>
 
     <!--product main screen-->
     <string name="product">उत्पाद</string>
@@ -514,8 +514,98 @@
     <string name="transfer_success">ट्रांसफर सफल हुआ</string>
     <string name="transfer_failed">ट्रांसफर असफल हुआ</string>
     <string name="select_employee_error">कृपया कर्मचारी चुनें</string>
+<!--order-->
+    <string name="order_details">ऑर्डर विवरण</string>
+
+    <string name="enter_exhibition">प्रदर्शनी दर्ज करें</string>
+
+    <string name="enter_remark">टिप्पणी दर्ज करें</string>
+
+    <string name="purity">शुद्धता</string>
+    <string name="size">आकार</string>
+    <string name="enter_size">आकार दर्ज करें</string>
+
+    <string name="colors">रंग</string>
+    <string name="screw_type">स्क्रू प्रकार</string>
+    <string name="polish_type">पॉलिश प्रकार</string>
+
+    <string name="fine_percent">फाइन %%</string>
+    <string name="enter_fine">फाइन %% दर्ज करें</string>
+
+    <string name="wastage">वेस्टेज</string>
+    <string name="enter_wastage">वेस्टेज दर्ज करें</string>
+
+    <string name="enter_order_date">ऑर्डर तिथि दर्ज करें</string>
+
+    <string name="deliver_date">डिलीवरी तिथि</string>
+    <string name="enter_deliver_date">डिलीवरी तिथि दर्ज करें</string>
 
 
+    <string name="select_option">%1$s चुनें</string>
+
+    <!---->
+    <string name="custom_order_fields">कस्टम ऑर्डर विवरण</string>
+
+    <string name="total_weight">कुल वजन</string>
+    <string name="packing_wt">पैकिंग वजन</string>
+
+    <string name="stone_weight">स्टोन वजन</string>
+    <string name="diamond_weight">हीरा वजन</string>
+
+    <string name="rate_per_gram">प्रति ग्राम दर</string>
+    <string name="sku">एसकेयू</string>
+
+    <string name="length">लंबाई</string>
+    <string name="quantity">मात्रा</string>
+    <string name="hallmark_amt">हॉलमार्क राशि</string>
+    <string name="mrp">एमआरपी</string>
+
+    <string name="fine_wastage_wt">फाइन + वेस्टेज वजन</string>
+    <string name="item_amount">कुल राशि</string>
+
+    <string name="enter_delivery_date_error">कृपया डिलीवरी तारीख दर्ज करें</string>
+
+    <string name="enter_total_weight">कुल वजन दर्ज करें</string>
+    <string name="enter_packing_weight">पैकिंग वजन दर्ज करें</string>
+    <string name="enter_gross_weight">कुल वजन दर्ज करें</string>
+    <string name="enter_stone_weight">स्टोन वजन दर्ज करें</string>
+    <string name="enter_diamond_weight">हीरा वजन दर्ज करें</string>
+    <string name="enter_rate">प्रति ग्राम दर दर्ज करें</string>
+    <string name="enter_length">लंबाई दर्ज करें</string>
+    <string name="enter_quantity">मात्रा दर्ज करें</string>
+    <string name="enter_hallmark">हॉलमार्क राशि दर्ज करें</string>
+    <string name="enter_mrp">एमआरपी दर्ज करें</string>
+
+    <!--order list-->
+    <string name="order_list">ऑर्डर सूची</string>
+    <string name="search_hint">ऑर्डर नंबर और नाम से खोजें</string>
+    <string name="order_no">ऑ.सं</string>
+    <string name="customer_name">नाम</string>
+    <string name="contact">संपर्क</string>
+    <string name="fine_metal">फाइन मेटल</string>
+    <string name="taxable_amount">कर योग्य राशि</string>
+    <string name="actions">कार्य</string>
+
+    <string name="print">प्रिंट</string>
+    <string name="edit">संपादित करें</string>
+    <string name="confirm_delete">हटाने की पुष्टि</string>
+    <string name="delete_message">क्या आप इस ऑर्डर को हटाना चाहते हैं?</string>
+    <string name="yes">हाँ</string>
+    <string name="order_deleted_success">ऑर्डर सफलतापूर्वक हटाया गया</string>
+    <string name="delete_failed">हटाने में विफल</string>
+
+    <string name="order_screen">ऑर्डर स्क्रीन</string>
+    <string name="image_not_available">छवि उपलब्ध नहीं है</string>
+    <string name="please_select_customer">कृपया ग्राहक चुनें</string>
+    <string name="please_add_item">कम से कम 1 आइटम जोड़ें</string>
+    <string name="order_success">ऑर्डर सफलतापूर्वक बनाया गया!</string>
+    <string name="order_update_success">ऑर्डर सफलतापूर्वक अपडेट हुआ!</string>
+    <string name="customer_not_found">ग्राहक सूची में नहीं मिला</string>
+
+    <string name="customer_order">ग्राहक ऑर्डर</string>
+    <string name="order_received">ऑर्डर प्राप्त हुआ</string>
+    <string name="open_pdf">पीडीएफ खोलें</string>
+    <string name="label_category_wt">कैटेगरी वजन</string>
 
 
 

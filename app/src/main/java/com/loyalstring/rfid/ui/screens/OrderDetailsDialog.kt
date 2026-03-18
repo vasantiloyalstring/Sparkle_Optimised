@@ -1,7 +1,9 @@
 package com.loyalstring.rfid.ui.screens
 
+import androidx.compose.ui.res.stringResource
 import android.app.DatePickerDialog
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +62,7 @@ import com.loyalstring.rfid.ui.utils.formatDate_ddMMyyyy
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -187,6 +190,9 @@ fun OrderDetailsDialog(
     val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val context = LocalContext.current
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     /*  LaunchedEffect(Unit) {
           employee?.clientCode?.let {
               orderViewModel.getAllBranchList(ClientCodeRequest(it))
@@ -226,7 +232,7 @@ fun OrderDetailsDialog(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.new_order_icon), // or use any Material icon you prefer
-                            contentDescription = "Order Details",
+                            contentDescription =localizedContext.getString(R.string.order_details),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -234,7 +240,7 @@ fun OrderDetailsDialog(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = "Order Details",
+                            text = localizedContext.getString(R.string.order_details),
                             fontSize = 18.sp,
                             color = Color.White,
                             fontFamily = poppins
@@ -272,7 +278,7 @@ fun OrderDetailsDialog(
                                 //Text("Loading branches...", modifier = Modifier.padding(8.dp))
                             } else {
                                 DropdownMenuField(
-                                    label = "Branch",
+                                    label = localizedContext.getString(R.string.branch),
                                     options = branchList,
                                     selectedValue = branch,
                                     expanded = expandedBranch,
@@ -293,7 +299,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Exhibition",
+                            text = localizedContext.getString(R.string.exhibition),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -313,7 +319,7 @@ fun OrderDetailsDialog(
                         ) {
                             if (exhibition.isEmpty()) {
                                 Text(
-                                    text = "Enter exhibition",
+                                    text = localizedContext.getString(R.string.enter_exhibition),
                                     fontSize = 13.sp,
                                     color = Color.Gray,
                                     modifier = Modifier.padding(start = 4.dp),
@@ -342,7 +348,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Remark",
+                            text = localizedContext.getString(R.string.remark),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -362,7 +368,7 @@ fun OrderDetailsDialog(
                         ) {
                             if (remark.isEmpty()) {
                                 Text(
-                                    text = "Enter remark",
+                                    text = localizedContext.getString(R.string.enter_remark),
                                     fontSize = 13.sp,
                                     color = Color.Gray,
                                     modifier = Modifier.padding(start = 4.dp),
@@ -398,7 +404,7 @@ fun OrderDetailsDialog(
                         ) {
 
                             DropdownMenuField(
-                                "Purity",
+                                localizedContext.getString(R.string.purity),
                                 purityList,
                                 purity,
                                 expandedPurity,
@@ -419,7 +425,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Size",
+                            text = localizedContext.getString(R.string.size),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -439,7 +445,7 @@ fun OrderDetailsDialog(
                         ) {
                             if (exhibition.isEmpty()) {
                                 Text(
-                                    text = "Enter size",
+                                    text = localizedContext.getString(R.string.enter_size),
                                     fontSize = 13.sp,
                                     color = Color.Gray,
                                     modifier = Modifier.padding(start = 4.dp),
@@ -475,7 +481,7 @@ fun OrderDetailsDialog(
                         ) {
 
                             DropdownMenuField(
-                                "Colors",
+                                localizedContext.getString(R.string.colors),
                                 colorsList,
                                 typeOfColors,
                                 expandedColors,
@@ -504,7 +510,7 @@ fun OrderDetailsDialog(
                         ) {
 
                             DropdownMenuField(
-                                "Screw Type",
+                                localizedContext.getString(R.string.screw_type),
                                 screwList,
                                 screwType,
                                 expandedScrew,
@@ -533,7 +539,7 @@ fun OrderDetailsDialog(
                         ) {
 
                             DropdownMenuField(
-                                "Polish Type",
+                                localizedContext.getString(R.string.polish_type),
                                 polishList,
                                 polishType,
                                 expandedPolish,
@@ -553,7 +559,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Fine %",
+                            text = localizedContext.getString(R.string.fine_percent),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -573,7 +579,7 @@ fun OrderDetailsDialog(
                         ) {
                             if (finePercentage.isEmpty()) {
                                 Text(
-                                    text = "Enter Fine %",
+                                    text = localizedContext.getString(R.string.enter_fine),
                                     fontSize = 13.sp,
                                     color = Color.Gray,
                                     modifier = Modifier.padding(start = 4.dp),
@@ -601,7 +607,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Wastage",
+                            text = localizedContext.getString(R.string.wastage),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -621,7 +627,7 @@ fun OrderDetailsDialog(
                         ) {
                             if (wastage.isEmpty()) {
                                 Text(
-                                    text = "Enter wastage",
+                                    text = localizedContext.getString(R.string.enter_wastage),
                                     fontSize = 13.sp,
                                     color = Color.Gray,
                                     modifier = Modifier.padding(start = 4.dp),
@@ -650,7 +656,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Order Date",
+                            text =  localizedContext.getString(R.string.order_date),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -688,7 +694,7 @@ fun OrderDetailsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (orderDate.isEmpty()) "Enter Order Date" else orderDate,
+                                    text = if (orderDate.isEmpty()) stringResource(R.string.enter_order_date) else orderDate,
                                     fontSize = 13.sp,
                                     color = if (orderDate.isEmpty()) Color.Gray else Color.Black,
                                     modifier = Modifier.weight(1f),
@@ -713,7 +719,7 @@ fun OrderDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Deliver Date",
+                            text = localizedContext.getString(R.string.delivery_date),
                             modifier = Modifier
                                 .weight(0.4f)
                                 .padding(start = 2.dp),
@@ -751,7 +757,7 @@ fun OrderDetailsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (deliverDate.isEmpty()) "Enter Deliver Date" else deliverDate,
+                                    text = if (deliverDate.isEmpty())stringResource(R.string.enter_deliver_date)else deliverDate,
                                     fontSize = 13.sp,
                                     color = if (deliverDate.isEmpty()) Color.Gray else Color.Black,
                                     modifier = Modifier.weight(1f),
@@ -778,7 +784,7 @@ fun OrderDetailsDialog(
                 ) {
 
                     GradientButtonIcon(
-                        text = "Cancel",
+                        text = localizedContext.getString(R.string.cancel),
                         onClick = {
                             println("Form Reset")
                             onDismiss()
@@ -794,7 +800,7 @@ fun OrderDetailsDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp)) // Add space between buttons
                     GradientButtonIcon(
-                        text = "OK",
+                        text = localizedContext.getString(R.string.ok),
 
                         onClick = {
                          /*   val orderItem = OrderItem(

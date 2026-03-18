@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.data.model.order.CustomOrderResponse
@@ -66,6 +68,7 @@ import com.loyalstring.rfid.ui.utils.NetworkUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.OrderViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -90,6 +93,9 @@ fun OrderLisrScreen(
     var visibleItems by remember { mutableStateOf(7000) }
     var searchQuery by remember { mutableStateOf("") }
 
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
     LaunchedEffect(Unit) {
         employee?.clientCode?.let {
@@ -122,20 +128,20 @@ fun OrderLisrScreen(
     )
 
     val headerTitles = listOf(
-        "O.No",
-        "Name",
-        "Contact",
-        "Product",
-        "Branch",
-        "Qty",
-        "Tot Wt",
-        "G wt",
-        "N.Wt",
-        "Fine Metal",
-        "Taxable Amt",
-        "Total Amt",
-        "Order Date",
-        "Status"
+        localizedContext.getString(R.string.order_no) ,
+        localizedContext.getString(R.string.customer_name),
+        localizedContext.getString(R.string.contact),
+        localizedContext.getString(R.string.product),
+        localizedContext.getString(R.string.branch),
+        localizedContext.getString(R.string.qty),
+        localizedContext.getString(R.string.header_total_weight),
+        localizedContext.getString(R.string.header_gross_weight),
+        localizedContext.getString(R.string.header_net_weight),
+        localizedContext.getString(R.string.fine_metal),
+        localizedContext.getString(R.string.taxable_amount),
+        localizedContext.getString(R.string.total_amount),
+        localizedContext.getString(R.string.order_date),
+        localizedContext.getString(R.string.status)
 
     )
 
@@ -159,12 +165,12 @@ fun OrderLisrScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         GradientTopBar(
-            title = "OrderList",
+            title =  localizedContext.getString(R.string.order_list),
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription =  localizedContext.getString(R.string.back),
                         tint = Color.White
                     )
                 }
@@ -173,10 +179,14 @@ fun OrderLisrScreen(
             titleTextSize = 20.sp
         )
 
-        SearchBar(searchQuery) {
-            searchQuery = it
-            visibleItems = 10
-        }
+        SearchBar(
+            value = searchQuery,
+            onValueChange = {
+                searchQuery = it
+                visibleItems = 10
+            },
+            localizedContext = localizedContext
+        )
 
         OrderTableWithPagination(
             navController = navController,
@@ -191,13 +201,14 @@ fun OrderLisrScreen(
             isLoading = isLoading,
             context = context,
             employee = employee,
-            itemCodeList = itemCodeList
+            itemCodeList = itemCodeList,
+            localizedContext= localizedContext
         )
     }
 }
 
 @Composable
-fun SearchBar(value: String, onValueChange: (String) -> Unit) {
+fun SearchBar(value: String, onValueChange: (String) -> Unit,localizedContext:Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -210,7 +221,7 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit) {
     ) {
         Icon(
             Icons.Default.Search,
-            contentDescription = "Search",
+            contentDescription =  localizedContext.getString(R.string.search),
             modifier = Modifier.padding(start = 12.dp),
             tint = Color.Gray
         )
@@ -229,7 +240,7 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit) {
             )
             if (value.isEmpty()) {
                 Text(
-                    text = "Search by order no. and name",
+                    text =  localizedContext.getString(R.string.search_placeholder),
                     color = Color.Gray,
                     fontSize = 16.sp,
                     modifier = Modifier
@@ -245,7 +256,7 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit) {
                         .padding(end = 4.dp)
                         .size(24.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray)
+                    Icon(Icons.Default.Close, contentDescription =  localizedContext.getString(R.string.clear), tint = Color.Gray)
                 }
             }
         }
@@ -262,7 +273,8 @@ fun OrderTableWithPagination(
     isLoading: Boolean,
     context: Context,
     employee: Employee?,
-    itemCodeList: List<ItemCodeResponse>
+    itemCodeList: List<ItemCodeResponse>,
+    localizedContext:Context
 
 ) {
     val sharedScrollState = rememberScrollState()
@@ -304,7 +316,7 @@ fun OrderTableWithPagination(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Actions",
+                    text =  localizedContext.getString(R.string.actions),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -396,11 +408,11 @@ fun OrderTableWithPagination(
                         ) {
                             IconButton(onClick = {
                                 CoroutineScope(Dispatchers.Main).launch {
-                                    generateTablePdfWithImages(context, row)
+                                    generateTablePdfWithImages(context, row,localizedContext)
                                 }
                             },
                                 modifier = Modifier.size(28.dp) ) {
-                                Icon(Icons.Default.Print, contentDescription = "Print", tint = Color.DarkGray,
+                                Icon(Icons.Default.Print, contentDescription =  localizedContext.getString(R.string.print), tint = Color.DarkGray,
                                     modifier = Modifier.size(18.dp))
                             }
 
@@ -420,7 +432,7 @@ fun OrderTableWithPagination(
                                 // Navigate back
                                 navController.popBackStack()
                             }, modifier = Modifier.size(28.dp) ) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.DarkGray,
+                                Icon(Icons.Default.Edit, contentDescription =  localizedContext.getString(R.string.edit), tint = Color.DarkGray,
                                     modifier = Modifier.size(18.dp))
                             }
 
@@ -443,7 +455,7 @@ fun OrderTableWithPagination(
                                     }
                                 }*/
                             }, modifier = Modifier.size(28.dp) ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.DarkGray,
+                                Icon(Icons.Default.Delete, contentDescription =  localizedContext.getString(R.string.delete), tint = Color.DarkGray,
                                     modifier = Modifier.size(18.dp))
                             }
                         }
@@ -451,8 +463,8 @@ fun OrderTableWithPagination(
                         if (orderToDelete != null) {
                             AlertDialog(
                                 onDismissRequest = { orderToDelete = null },
-                                title = { Text("Confirm Delete") },
-                                text = { Text("Are you sure you want to delete this order?") },
+                                title = { Text( localizedContext.getString(R.string.confirm_delete)) },
+                                text = { Text( localizedContext.getString(R.string.delete_confirmation_message)) },
                                 confirmButton = {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -460,12 +472,12 @@ fun OrderTableWithPagination(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         GradientButton(
-                                            text = "Cancel",
+                                            text =  localizedContext.getString(R.string.cancel),
                                             onClick = { orderToDelete = null },
                                             modifier = Modifier.weight(1f)
                                         )
                                         GradientButton(
-                                            text = "Yes",
+                                            text = localizedContext.getString(R.string.yes),
                                             onClick = {
                                                 orderToDelete?.let { order ->
                                                     Log.d("customer order id","onclick ok " + order.CustomOrderId)
@@ -478,7 +490,7 @@ fun OrderTableWithPagination(
                                                             ) { isSuccess ->
                                                                 Toast.makeText(
                                                                     context,
-                                                                    if (isSuccess) "Order Deleted Successfully" else "Failed to delete",
+                                                                    if (isSuccess)  localizedContext.getString(R.string.order_deleted_success) else  localizedContext.getString(R.string.delete_failed_message),
                                                                     Toast.LENGTH_SHORT
                                                                 ).show()
                                                                 if (isSuccess) {
