@@ -660,6 +660,28 @@
     <string name="msg_quotation_updated">Quotation updated successfully</string>
     <string name="quotation_details">Quotation Details</string>
 
+    <!--sample out -->
+    <string name="error_prefix">Error: %1$s</string>
+    <string name="customer_added_success">Customer added successfully</string>
+    <string name="generic_error">Error</string>
+    <string name="client_code_missing">Client code missing</string>
+    <string name="select_customer">Please select customer</string>
+    <string name="add_at_least_one_item">Please add at least 1 item</string>
+    <string name="sampleout_saved">SampleOut saved successfully</string>
+    <string name="sampleout_updated">SampleOut updated successfully</string>
+    <string name="sampleout_details">SampleOut Details</string>
+    <!--sample in-->
+    <string name="samplein_details">Sample In Details</string>
+    <string name="samplein_saved_success">Sample In saved successfully</string>
+
+    <string name="no_checkbox_selected">No item selected</string>
+    <string name="duplicate_sampleout">Already exists</string>
+    <string name="no_item_found">No item found</string>
+    <string name="no_challan_found">No challan found</string>
+    <string name="scan_error">Scan failed</string>
+
+
+
 
 
 

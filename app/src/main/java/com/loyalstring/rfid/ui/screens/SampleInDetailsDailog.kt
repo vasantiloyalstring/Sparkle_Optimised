@@ -81,7 +81,7 @@ fun SampleInDetailsDailog(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = "Sample In Details", // ✅ if you have string resource, replace
+                            text = localizedContext.getString(R.string.samplein_details), // ✅ if you have string resource, replace
                             fontSize = 18.sp,
                             color = Color.White,
                             fontFamily = poppins

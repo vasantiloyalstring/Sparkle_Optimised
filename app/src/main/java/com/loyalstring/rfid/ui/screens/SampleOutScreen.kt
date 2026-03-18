@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -72,6 +73,7 @@ import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -128,7 +130,9 @@ fun SampleOutScreen(
     val errorMsg by sampleOutViewModel.error.collectAsState()
     val loading by sampleOutViewModel.loading.collectAsState()
     // ✅ Success toast – sirf jab addResult non-null ho
-
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
 
 // ❌ Error toast – sirf jab errorMsg set ho
     LaunchedEffect(errorMsg) {
@@ -196,12 +200,12 @@ fun SampleOutScreen(
             is Resource.Success -> {
                 Toast.makeText(
                     context,
-                    state.message ?: "Customer added successfully",
+                    state.message ?: localizedContext.getString(R.string.customer_added_success),
                     Toast.LENGTH_SHORT
                 ).show()
             }
             is Resource.Error -> {
-                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message ?: localizedContext.getString(R.string.error), Toast.LENGTH_SHORT).show()
             }
             is Resource.Loading -> {}
             null -> {}
@@ -809,7 +813,7 @@ fun SampleOutScreen(
             Log.e("SampleOut", "ClientCode missing")
             Toast.makeText(
                 context,
-                "Client code missing",
+                localizedContext.getString(R.string.msg_client_code_missing),
                 Toast.LENGTH_SHORT
             ).show()
             sampleOutViewModel.clearLastSampleOutNo()
@@ -821,7 +825,7 @@ fun SampleOutScreen(
             Log.e("SampleOut", "Customer not selected")
             Toast.makeText(
                 context,
-                "Please select customer",
+                localizedContext.getString(R.string.please_select_customer),
                 Toast.LENGTH_SHORT
             ).show()
             sampleOutViewModel.clearLastSampleOutNo()
@@ -833,7 +837,7 @@ fun SampleOutScreen(
             Log.e("SampleOut", "No items in productList")
             Toast.makeText(
                 context,
-                "Please add at least 1 item",
+                localizedContext.getString(R.string.add_at_least_one_item),
                 Toast.LENGTH_SHORT
             ).show()
             sampleOutViewModel.clearLastSampleOutNo()
@@ -925,7 +929,7 @@ fun SampleOutScreen(
         val result = addSampleOut ?: return@LaunchedEffect
         Toast.makeText(
             context,
-            "✅ SampleOut saved successfully",
+            localizedContext.getString(R.string.sampleout_saved),
             Toast.LENGTH_SHORT
         ).show()
 
@@ -997,7 +1001,7 @@ fun SampleOutScreen(
     LaunchedEffect(updateSampleOut) {
         val result = updateSampleOut ?: return@LaunchedEffect
 
-        Toast.makeText(context, "✅ SampleOut updated successfully", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, localizedContext.getString(R.string.sampleout_updated), Toast.LENGTH_SHORT).show()
         sampleOutViewModel.clearUpdateResult()
     }
     fun IssueItemDto.toSampleOutDetails(): SampleOutDetails {
@@ -1373,7 +1377,7 @@ fun SampleOutScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Sample Out",
+                title = localizedContext.getString(R.string.sampleout_details),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },

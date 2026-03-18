@@ -3,6 +3,7 @@ package com.loyalstring.rfid.ui.screens
 import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ import com.loyalstring.rfid.viewmodel.SampleInViewModel
 import com.loyalstring.rfid.viewmodel.SampleOutViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -86,6 +88,10 @@ fun SampleInScreen(
     val viewModel: BulkViewModel = hiltViewModel()
     val orderViewModel: OrderViewModel = hiltViewModel()
     val context = LocalContext.current
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
     var selectedPower by remember { mutableStateOf(10) }
     var isScanning by remember { mutableStateOf(false) }
     //var showSuccessDialog by remember { mutableStateOf(false) }
@@ -154,7 +160,7 @@ fun SampleInScreen(
     LaunchedEffect(updateSampleOut) {
         val result = updateSampleOut ?: return@LaunchedEffect
 
-        Toast.makeText(context, "✅ SampleIn Saved successfully", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context,localizedContext.getString(R.string.samplein_saved_success), Toast.LENGTH_SHORT).show()
         sampleOutViewModel.clearUpdateResult()
 
 
@@ -280,12 +286,12 @@ fun SampleInScreen(
             is Resource.Success -> {
                 Toast.makeText(
                     context,
-                    state.message ?: "Customer added successfully",
+                    state.message ?: localizedContext.getString(R.string.customer_added_success),
                     Toast.LENGTH_SHORT
                 ).show()
             }
             is Resource.Error -> {
-                Toast.makeText(context, state.message ?: "Error", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message ?: localizedContext.getString(R.string.error), Toast.LENGTH_SHORT).show()
             }
             is Resource.Loading -> {}
             null -> {}
@@ -833,7 +839,7 @@ fun SampleInScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Sample In",
+                title = localizedContext.getString(R.string.sample_in),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },

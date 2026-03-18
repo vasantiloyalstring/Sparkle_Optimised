@@ -624,6 +624,26 @@
     <string name="msg_quotation_updated">कोटेशन सफलतापूर्वक अपडेट हुआ</string>
     <string name="quotation_details">कोटेशन विवरण</string>
 
+    <string name="error_prefix">त्रुटि: %1$s</string>
+    <string name="customer_added_success">ग्राहक सफलतापूर्वक जोड़ा गया</string>
+    <string name="generic_error">त्रुटि</string>
+    <string name="client_code_missing">क्लाइंट कोड उपलब्ध नहीं है</string>
+    <string name="select_customer">कृपया ग्राहक चुनें</string>
+    <string name="add_at_least_one_item">कृपया कम से कम 1 आइटम जोड़ें</string>
+    <string name="sampleout_saved">सैंपल आउट सफलतापूर्वक सेव हुआ</string>
+    <string name="sampleout_updated">सैंपल आउट सफलतापूर्वक अपडेट हुआ</string>
+    <string name="sampleout_details">सैंपलआउट विवरण</string>
+    <!--sample in-->
+    <string name="samplein_details">सैंपल इन विवरण</string>
+    <string name="samplein_saved_success">सैंपल इन सफलतापूर्वक सेव हुआ</string>
+
+    <string name="no_checkbox_selected">कोई आइटम चयनित नहीं है</string>
+    <string name="duplicate_sampleout">पहले से मौजूद है</string>
+    <string name="no_item_found">कोई आइटम नहीं मिला</string>
+    <string name="no_challan_found">कोई चालान नहीं मिला</string>
+    <string name="scan_error">स्कैन विफल हुआ</string>
+
+
 
 
 

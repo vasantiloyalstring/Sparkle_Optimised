@@ -617,9 +617,27 @@
     <string name="msg_quotation_saved">تم حفظ عرض السعر بنجاح</string>
     <string name="msg_quotation_updated">تم تحديث عرض السعر بنجاح</string>
     <string name="quotation_details">تفاصيل عرض السعر</string>
+    <!--sample out -->
 
 
+    <string name="error_prefix">خطأ: %1$s</string>
+    <string name="customer_added_success">تمت إضافة العميل بنجاح</string>
+    <string name="generic_error">خطأ</string>
+    <string name="client_code_missing">رمز العميل مفقود</string>
+    <string name="select_customer">يرجى اختيار عميل</string>
+    <string name="add_at_least_one_item">يرجى إضافة عنصر واحد على الأقل</string>
+    <string name="sampleout_saved">تم حفظ SampleOut بنجاح</string>
+    <string name="sampleout_updated">تم تحديث SampleOut بنجاح</string>
+    <string name="sampleout_details">تفاصيل SampleOut</string>
+<!--sample in-->
+    <string name="samplein_details">تفاصيل الإدخال للعينة</string>
+    <string name="samplein_saved_success">تم حفظ الإدخال للعينة بنجاح</string>
 
+    <string name="no_checkbox_selected">لم يتم اختيار أي عنصر</string>
+    <string name="duplicate_sampleout">موجود بالفعل</string>
+    <string name="no_item_found">لم يتم العثور على عنصر</string>
+    <string name="no_challan_found">لم يتم العثور على فاتورة</string>
+    <string name="scan_error">فشل في المسح</string>
 
 
 
