@@ -679,15 +679,10 @@
     <string name="no_item_found">No item found</string>
     <string name="no_challan_found">No challan found</string>
     <string name="scan_error">Scan failed</string>
-
-
-
-
-
-
-
-
-
+    <string name="no_counters">No counters available</string>
+    <string name="no_branches">No branches available</string>
+    <string name="no_boxes">No boxes available</string>
+    <string name="no_exhibitions">No exhibitions available</string>
 
 
 </resources>

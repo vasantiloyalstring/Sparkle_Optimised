@@ -638,9 +638,10 @@
     <string name="no_item_found">لم يتم العثور على عنصر</string>
     <string name="no_challan_found">لم يتم العثور على فاتورة</string>
     <string name="scan_error">فشل في المسح</string>
-
-
-
+    <string name="no_counters">कोणतेही काउंटर उपलब्ध नाहीत</string>
+    <string name="no_branches">कोणतीही शाखा उपलब्ध नाही</string>
+    <string name="no_boxes">कोणतेही बॉक्स उपलब्ध नाहीत</string>
+    <string name="no_exhibitions">कोणतीही प्रदर्शन उपलब्ध नाही</string>
 
 
 </resources>

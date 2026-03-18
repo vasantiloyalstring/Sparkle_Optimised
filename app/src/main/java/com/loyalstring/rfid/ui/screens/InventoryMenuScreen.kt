@@ -136,17 +136,17 @@ fun InventoryMenuScreen(
 
 
     val menuItems = listOf(
-        "Scan Display" to R.drawable.scan_barcode,
-        "Scan Counter" to R.drawable.scan_counter,
-        "Scan Box" to R.drawable.scan_box,
-        "Scan Branch" to R.drawable.scan_branch,
-        "Exhibition" to R.drawable.scan_exhibition
+        localizedContext.getString(R.string.scan_display) to R.drawable.scan_barcode,
+        localizedContext.getString(R.string.scan_counter) to R.drawable.scan_counter,
+        localizedContext.getString(R.string.scan_box) to R.drawable.scan_box,
+        localizedContext.getString(R.string.scan_branch) to R.drawable.scan_branch,
+        localizedContext.getString(R.string.exhibition) to R.drawable.scan_exhibition
     )
 
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Inventory",
+                title =  localizedContext.getString(R.string.inventory),
                 navigationIcon = {
                     IconButton(onClick = { shouldNavigateBack = true }, modifier = Modifier.size(40.dp)) {
                         Icon(
@@ -171,7 +171,7 @@ fun InventoryMenuScreen(
             menuItems.forEach { (title, icon) ->
                 MenuButton(title = title, icon = icon) {
                     when (title) {
-                        "Scan Display" -> {
+                        localizedContext.getString(R.string.scan_display)-> {
                             navController.currentBackStackEntry
                                 ?.savedStateHandle
                                 ?.set("filterType", "Scan Display")
@@ -181,7 +181,7 @@ fun InventoryMenuScreen(
                             navController.navigate(Screens.ScanDisplayScreen.route)
                         }
 
-                        "Scan Counter" -> {
+                        localizedContext.getString(R.string.scan_counter) -> {
                             // 🔥 Load data in background, then open dialog
                             //CoroutineScope(Dispatchers.IO).launch {
                                 scope.launch(Dispatchers.IO) {
@@ -189,7 +189,7 @@ fun InventoryMenuScreen(
                                     if (counters.isEmpty()) {
                                         ToastUtils.showToast(
                                             context,
-                                            "No counters available"
+                                            localizedContext.getString(R.string.no_counters)
                                         )
                                     } else {
                                         dialogTitle = "Counter"
@@ -209,14 +209,14 @@ fun InventoryMenuScreen(
                             }
                         }
 
-                        "Scan Branch" -> {
+                        localizedContext.getString(R.string.scan_branch) -> {
                             //CoroutineScope(Dispatchers.IO).launch {
                                 scope.launch(Dispatchers.IO) {
                                 withContext(Dispatchers.Main) {
                                     if (branches.isEmpty()) {
                                         ToastUtils.showToast(
                                             context,
-                                            "No branches available"
+                                            localizedContext.getString(R.string.no_branches)
                                         )
                                     } else {
                                         dialogTitle = "Branch"
@@ -236,14 +236,14 @@ fun InventoryMenuScreen(
                             }
                         }
 
-                        "Scan Box" -> {
+                        localizedContext.getString(R.string.scan_box)-> {
                             //CoroutineScope(Dispatchers.IO).launch {
                             scope.launch(Dispatchers.IO) {
                                 withContext(Dispatchers.Main) {
                                     if (boxes.isEmpty()) {
                                         ToastUtils.showToast(
                                             context,
-                                            "No boxes available"
+                                            localizedContext.getString(R.string.no_boxes)
                                         )
                                     } else {
                                         dialogTitle = "Box"
@@ -263,14 +263,14 @@ fun InventoryMenuScreen(
                             }
                         }
 
-                        "Exhibition" -> {
+                        localizedContext.getString(R.string.exhibition) -> {
                             //CoroutineScope(Dispatchers.IO).launch {
                             scope.launch(Dispatchers.IO) {
                                 withContext(Dispatchers.Main) {
                                     if (exhibitions.isEmpty()) {
                                         ToastUtils.showToast(
                                             context,
-                                            "No exhibitions branch available"
+                                            localizedContext.getString(R.string.no_exhibitions)
                                         )
                                     } else {
                                         dialogTitle = "Exhibition"

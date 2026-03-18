@@ -642,10 +642,10 @@
     <string name="no_item_found">कोई आइटम नहीं मिला</string>
     <string name="no_challan_found">कोई चालान नहीं मिला</string>
     <string name="scan_error">स्कैन विफल हुआ</string>
-
-
-
-
+    <string name="no_counters">कोई काउंटर उपलब्ध नहीं है</string>
+    <string name="no_branches">कोई शाखा उपलब्ध नहीं है</string>
+    <string name="no_boxes">कोई बॉक्स उपलब्ध नहीं है</string>
+    <string name="no_exhibitions">कोई प्रदर्शनी उपलब्ध नहीं है</string>
 
 
 </resources>
