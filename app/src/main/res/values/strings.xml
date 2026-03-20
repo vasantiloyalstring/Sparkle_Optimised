@@ -753,6 +753,31 @@
     <string name="date">Date</string>
     <string name="userid">UserId</string>
     <string name="address">Address</string>
+    <string name="drag_and_drop_file_or">"Drag and drop file or "</string>
+    <string name="close">Close</string>
+    <string name="choose_file">Choose File</string>
+    <string name="support_formats_xls_xlsx">Support Formats: XLS, XLSX</string>
+    <string name="maximum_size_250_mb">Maximum Size: 250 MB</string>
+    <string name="table_view">Table View</string>
+    <string name="select_the_fields_that_should_appear_in_the_table_view">Select the fields that should  appear in the table view</string>
+    <string name="main_fields">Main Fields</string>
+    <string name="select_sheet_fields">Select Sheet Fields</string>
+    <string name="no_matches">No matches</string>
+    <string name="please_select_file_first">Please Select file first</string>
+    <string name="please_add_a_valid_sheet_url_in_settings">Please add a valid Sheet URL in Settings</string>
+    <string name="failed_to_fetch_or_parse_sheet_headers">Failed to fetch or parse sheet headers.</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="stock_added_successfully">Stock Added Successfully!</string>
+    <string name="failed_to_add_stock">Failed to Add Stock</string>
+    <string name="email_sent_successfully">Email Sent successfully</string>
+    <string name="all_items_matched_scan_stopped">All items matched. Scan stopped.</string>
+    <string name="load_more_items">Load More Items</string>
+    <string name="please_wait">Please wait...</string>
+    <string name="loading_products">Loading products...</string>
+    <string name="design">Design</string>
+    <string name="rfid_no">RFID No</string>
+    <string name="m_qty">M.Qty</string>
+    <string name="m_wt">M.Wt</string>
 
 
 </resources>

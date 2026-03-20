@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.ui.utils
 
 import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -48,11 +49,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
+import com.loyalstring.rfid.R
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun TableMappingScreen(
@@ -67,6 +71,9 @@ fun TableMappingScreen(
     val context: Context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
 
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -82,7 +89,7 @@ fun TableMappingScreen(
             ) {
                 Column( modifier = Modifier.padding(5.dp) ) {
                     Text(
-                        "Table View",
+                        localizedContext.getString(R.string.table_view),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = poppins,
@@ -90,7 +97,7 @@ fun TableMappingScreen(
                     )
                     if (isFromSheet) {
                         Text(
-                            "Select the fields that should  appear in the table view",
+                            localizedContext.getString(R.string.select_the_fields_that_should_appear_in_the_table_view),
                             fontSize = 12.sp,
                             fontFamily = poppins,
                             color = Color.White,
@@ -98,7 +105,7 @@ fun TableMappingScreen(
                         )
                     } else {
                         Text(
-                            "Select the fields that should  appear in the table view",
+                            localizedContext.getString(R.string.select_the_fields_that_should_appear_in_the_table_view),
                             fontSize = 12.sp,
                             fontFamily = poppins,
                             color = Color.White,
@@ -126,14 +133,14 @@ fun TableMappingScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Main Fields",
+                        text =localizedContext.getString(R.string.main_fields),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1.5f),
 
                         fontSize = 13.sp
                     )
                     Text(
-                        "Select Sheet Fields",
+                        localizedContext.getString(R.string.select_sheet_fields),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .weight(1.8f)
@@ -227,7 +234,7 @@ fun TableMappingScreen(
                                                 contentDescription = null
                                             )
                                         },
-                                        placeholder = { Text("Search", fontSize = 12.sp, fontFamily = poppins) },
+                                        placeholder = { Text(localizedContext.getString(R.string.search), fontSize = 12.sp, fontFamily = poppins) },
                                         singleLine = true,
                                         textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
                                         modifier = Modifier
@@ -249,7 +256,7 @@ fun TableMappingScreen(
                                     if (filteredFields.isEmpty()) {
                                         DropdownMenuItem(
                                             enabled = false,
-                                            text = { Text("No matches", fontSize = 12.sp) },
+                                            text = { Text(localizedContext.getString(R.string.no_matches), fontSize = 12.sp) },
                                             onClick = {},
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
@@ -283,7 +290,7 @@ fun TableMappingScreen(
             ) {
 
                 GradientButton(
-                    text = "Cancel",
+                    text = localizedContext.getString(R.string.cancel),
                     modifier = Modifier
                         .width(100.dp) // fixed width keeps them even
                         .height(48.dp),
@@ -299,7 +306,8 @@ fun TableMappingScreen(
                         if (fileselected) {
                             onImport(mappings)
                         } else {
-                            ToastUtils.showToast(context, "Please Select file first")
+                            ToastUtils.showToast(context,
+                                localizedContext.getString(R.string.please_select_file_first))
                         }
                     }
                 )

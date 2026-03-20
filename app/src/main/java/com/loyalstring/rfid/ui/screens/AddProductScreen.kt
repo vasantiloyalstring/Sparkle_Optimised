@@ -335,7 +335,8 @@ fun AddProductScreen(
                 photoUri.value = uri
                 cameraLauncher.launch(uri)
             } else {
-                Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context,
+                    localizedContext.getString(R.string.camera_permission_denied), Toast.LENGTH_SHORT).show()
             }
             shouldLaunchCamera.value = false
         }
@@ -566,12 +567,14 @@ fun AddProductScreen(
 
                             Log.d("AddProductScreen", "isStockAdded" + isStockAdded)
                             if (isStockAdded) {
-                                ToastUtils.showToast(context, "Stock Added Successfully!")
+                                ToastUtils.showToast(context,
+                                    localizedContext.getString(R.string.stock_added_successfully))
                                 bulkViewModel.syncItems(context)
 
                             }else
                             {
-                                ToastUtils.showToast(context, "Failed to Add Stock")
+                                ToastUtils.showToast(context,
+                                    localizedContext.getString(R.string.failed_to_add_stock))
                             }
                             updateField("Vendor", "")
                             updateField("Product", "")

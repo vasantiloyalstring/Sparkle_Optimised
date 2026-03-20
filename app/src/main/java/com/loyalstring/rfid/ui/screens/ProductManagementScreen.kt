@@ -437,7 +437,7 @@ fun ProductManagementScreen(
                                     if (sheetId.isNullOrEmpty()) {
                                         ToastUtils.showToast(
                                             context,
-                                            "Please add a valid Sheet URL in Settings"
+                                            localizedContext.getString(R.string.please_add_a_valid_sheet_url_in_settings)
                                         )
 
                                         return@ProductGridCard
@@ -460,7 +460,7 @@ fun ProductManagementScreen(
                                                 launch(Dispatchers.Main) {
                                                     ToastUtils.showToast(
                                                         context,
-                                                        "Failed to fetch or parse sheet headers."
+                                                        localizedContext.getString(R.string.failed_to_fetch_or_parse_sheet_headers)
                                                     )
                                                 }
                                             }

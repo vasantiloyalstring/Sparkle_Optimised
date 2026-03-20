@@ -712,5 +712,30 @@
     <string name="date">التاريخ</string>
     <string name="userid">معرف المستخدم</string>
     <string name="address">العنوان</string>
-
+    <string name="drag_and_drop_file_or">"اسحب وأفلت الملف أو "</string>
+    <string name="close">إغلاق</string>
+    <string name="choose_file">اختر الملف</string>
+    <string name="support_formats_xls_xlsx">الصيغ المدعومة: XLS، XLSX</string>
+    <string name="maximum_size_250_mb">أقصى حجم: 250 ميغابايت</string>
+    <string name="table_view">عرض الجدول</string>
+    <string name="select_the_fields_that_should_appear_in_the_table_view">اختر الحقول التي يجب أن تظهر في عرض الجدول</string>
+    <string name="main_fields">الحقول الرئيسية</string>
+    <string name="select_sheet_fields">اختر حقول الورقة</string>
+    <string name="no_matches">لا توجد تطابقات</string>
+    <string name="please_select_file_first">يرجى اختيار الملف أولاً</string>
+    <!-- Arabic -->
+    <string name="please_add_a_valid_sheet_url_in_settings">يرجى إضافة رابط Sheet صالح في الإعدادات</string>
+    <string name="failed_to_fetch_or_parse_sheet_headers">فشل في جلب أو تحليل رؤوس الشيت.</string>
+    <string name="camera_permission_denied">تم رفض إذن الكاميرا</string>
+    <string name="stock_added_successfully">تمت إضافة المخزون بنجاح!</string>
+    <string name="failed_to_add_stock">فشل في إضافة المخزون</string>
+    <string name="email_sent_successfully">تم إرسال البريد الإلكتروني بنجاح</string>
+    <string name="all_items_matched_scan_stopped">تمت مطابقة جميع العناصر. تم إيقاف المسح.</string>
+    <string name="load_more_items">تحميل المزيد من العناصر</string>
+    <string name="please_wait">يرجى الانتظار...</string>
+    <string name="loading_products">جارٍ تحميل المنتجات...</string>
+    <string name="design">التصميم</string>
+    <string name="rfid_no">رقم RFID</string>
+    <string name="m_qty">الكمية</string>
+    <string name="m_wt">الوزن</string>
 </resources>

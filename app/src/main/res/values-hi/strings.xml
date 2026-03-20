@@ -716,5 +716,30 @@
     <string name="date">तारीख</string>
     <string name="userid">उपयोगकर्ता आईडी</string>
     <string name="address">पता</string>
-
+    <string name="drag_and_drop_file_or">"फाइल को खींचें और छोड़ें या "</string>
+    <string name="close">बंद करें</string>
+    <string name="choose_file">फाइल चुनें</string>
+    <string name="support_formats_xls_xlsx">समर्थित फ़ॉर्मेट्स: XLS, XLSX</string>
+    <string name="maximum_size_250_mb">अधिकतम आकार: 250 MB</string>
+    <string name="table_view">टेबल व्यू</string>
+    <string name="select_the_fields_that_should_appear_in_the_table_view">उन फ़ील्ड्स का चयन करें जो टेबल व्यू में दिखाई देनी चाहिए</string>
+    <string name="main_fields">मुख्य फ़ील्ड्स</string>
+    <string name="select_sheet_fields">शीट फ़ील्ड्स का चयन करें</string>
+    <string name="no_matches">कोई मेल नहीं</string>
+    <string name="please_select_file_first">कृपया पहले फ़ाइल चयन करें</string>
+    <!-- Hindi -->
+    <string name="please_add_a_valid_sheet_url_in_settings">कृपया सेटिंग्स में एक मान्य शीट URL जोड़ें</string>
+    <string name="failed_to_fetch_or_parse_sheet_headers">शीट हेडर्स प्राप्त या पार्स करने में विफल।</string>
+    <string name="camera_permission_denied">कैमरा अनुमति अस्वीकृत</string>
+    <string name="stock_added_successfully">स्टॉक सफलतापूर्वक जोड़ा गया!</string>
+    <string name="failed_to_add_stock">स्टॉक जोड़ने में विफल</string>
+    <string name="email_sent_successfully">ईमेल सफलतापूर्वक भेजा गया</string>
+    <string name="all_items_matched_scan_stopped">सभी आइटम मेल हो गए। स्कैन रोक दिया गया।</string>
+    <string name="load_more_items">और आइटम लोड करें</string>
+    <string name="please_wait">कृपया प्रतीक्षा करें...</string>
+    <string name="loading_products">प्रोडक्ट लोड हो रहे हैं...</string>
+    <string name="design">डिज़ाइन</string>
+    <string name="rfid_no">आरएफआईडी नंबर</string>
+    <string name="m_qty">मात्रा</string>
+    <string name="m_wt">वजन</string>
 </resources>

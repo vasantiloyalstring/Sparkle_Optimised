@@ -1,5 +1,7 @@
 package com.loyalstring.rfid.ui.utils
 
+import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 
 import androidx.compose.foundation.clickable
@@ -31,12 +33,15 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
 fun FilePickerDialog(
@@ -46,6 +51,12 @@ fun FilePickerDialog(
 
 )
 {
+
+    val context: Context = LocalContext.current
+
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
     Dialog(onDismissRequest = onDismiss) {
         Box(
             modifier = Modifier
@@ -64,7 +75,7 @@ fun FilePickerDialog(
                 ) {
                     androidx.compose.material3.Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = localizedContext.getString(R.string.close),
                         modifier = Modifier
                             .size(22.dp)
                             .clickable { onDismiss() }
@@ -110,11 +121,11 @@ fun FilePickerDialog(
 
                         Row {
                             Text(
-                                "Drag and drop file or ",
+                                localizedContext.getString(R.string.drag_and_drop_file_or),
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "Choose File",
+                                text = localizedContext.getString(R.string.choose_file),
                                 fontSize = 14.sp,
                                 textDecoration = TextDecoration.Underline,
                                 modifier = Modifier.clickable { onFileSelected() }
@@ -130,8 +141,8 @@ fun FilePickerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Support Formats: XLS, XLSX", fontSize = 10.sp, color = Color.Gray)
-                    Text("Maximum Size: 250 MB", fontSize = 10.sp, color = Color.Gray)
+                    Text(localizedContext.getString(R.string.support_formats_xls_xlsx), fontSize = 10.sp, color = Color.Gray)
+                    Text(localizedContext.getString(R.string.maximum_size_250_mb), fontSize = 10.sp, color = Color.Gray)
                 }
 
 
@@ -150,7 +161,7 @@ fun FilePickerDialog(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                brush =BackgroundGradient,
+                                brush = BackgroundGradient,
                                 shape = RoundedCornerShape(8.dp)
                             )
                     ) {
@@ -160,12 +171,12 @@ fun FilePickerDialog(
                         ) {
                             androidx.compose.material3.Icon(
                                 painter = painterResource(id = R.drawable.ic_cancel), // ✅ your drawable
-                                contentDescription = "Cancel",
+                                contentDescription = localizedContext.getString(R.string.cancel),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Cancel", color = Color.White)
+                            Text(localizedContext.getString(R.string.cancel), color = Color.White)
                         }
                     }
 
@@ -177,7 +188,7 @@ fun FilePickerDialog(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                brush =BackgroundGradient,
+                                brush = BackgroundGradient,
                                 shape = RoundedCornerShape(8.dp)
                             )
                     ) {
@@ -187,12 +198,12 @@ fun FilePickerDialog(
                         ) {
                             androidx.compose.material3.Icon(
                                 painter = painterResource(id = R.drawable.check_circle), // ✅ your drawable
-                                contentDescription = "Ok",
+                                contentDescription = localizedContext.getString(R.string.ok),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Ok", color = Color.White)
+                            Text(localizedContext.getString(R.string.ok), color = Color.White)
                         }
                     }
 

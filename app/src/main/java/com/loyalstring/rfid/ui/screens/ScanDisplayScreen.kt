@@ -6,6 +6,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,6 +67,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -90,6 +92,7 @@ import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.ScanDisplayViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -190,6 +193,10 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val isLoadingAllItems by productListViewModel.isLoadingAllItems.collectAsState()
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
 
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
     // ✅ Performance logging for initial load
     LaunchedEffect(allItems.size) {
         if (allItems.isNotEmpty()) {
@@ -262,7 +269,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
         emailStatus?.let { status ->
 
             if (status == "success") {
-                Toast.makeText(context, "Email Sent successfully", Toast.LENGTH_LONG).show()
+                Toast.makeText(context,
+                    localizedContext.getString(R.string.email_sent_successfully), Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(context, status, Toast.LENGTH_LONG).show()
             }
@@ -714,7 +722,8 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     bulkViewModel.stopScanningAndCompute()
                     isScanning = false
 
-                    Toast.makeText(context, "All items matched. Scan stopped.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context,
+                        localizedContext.getString(R.string.all_items_matched_scan_stopped), Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -813,7 +822,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
             Column {
 
                 //  SummaryRow(currentLevel, displayItems, selectedMenu)
-                SummaryRow(currentLevel, displayItems, selectedMenu)
+                SummaryRow(currentLevel, displayItems, selectedMenu,localizedContext)
                 ScanBottomBarInventory(
                     onSave = { /* save */
                         _isLoadingCommon.value = true
@@ -956,7 +965,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     }
                 )
 
-                TableHeader(currentLevel)
+                TableHeader(currentLevel,localizedContext)
 
                 // ✅ Optimized: Pre-compute all grouped data and filter sets outside LazyColumn
                 val categorySetForGrouping = remember(selectedCategories) {
@@ -1126,7 +1135,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                                 }
                                             }
                                         ) {
-                                            Text("Load More Items")
+                                            Text(localizedContext.getString(R.string.load_more_items))
                                         }
                                     }
                                 }
@@ -1169,9 +1178,9 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     Text(
                         when {
                             isLoadingAllItems -> "Loading all items... (${allItems.size} loaded)"
-                            bulkIsLoading -> "Please wait..."
-                            isLoadingCommon -> "Please wait..."
-                            else -> "Loading products..."
+                            bulkIsLoading ->localizedContext.getString(R.string.please_wait)
+                            isLoadingCommon ->localizedContext.getString(R.string.please_wait)
+                            else -> localizedContext.getString(R.string.loading_products)
                         },
                         color = Color.White,
                         fontFamily = poppins
@@ -2213,7 +2222,7 @@ fun SummaryRow(currentLevel: String, items: List<BulkItem>, selectedMenu: String
 }*/
 
 @Composable
-fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu: String) {
+fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu: String, localizedContext:Context) {
     // ✅ Optimized: Use derivedStateOf and sequence for better performance
     val totals by remember(items) {
         derivedStateOf {
@@ -2255,12 +2264,14 @@ fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu:
 
         // ✅ DesignItems view: show Total + Matched + Unmatched (filterwise)
         if (currentLevel == "DesignItems" || selectedMenu == MENU_MATCHED || selectedMenu == MENU_UNMATCHED) {
-            TableHeaderCell("Total", colDesignNameWidth)
+            TableHeaderCell(localizedContext.getString(R.string.total), colDesignNameWidth)
             TableHeaderCell("$totalQty", colRfidWidth)
 
             // 2-line info in same cell (M + U)
             Box(
-                modifier = Modifier.width(colItemCodeWidth).padding(horizontal = 2.dp, vertical = 3.dp),
+                modifier = Modifier
+                    .width(colItemCodeWidth)
+                    .padding(horizontal = 2.dp, vertical = 3.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -2277,7 +2288,7 @@ fun SummaryRow(currentLevel: String, items: List<ScannedBulkItem>, selectedMenu:
             TableHeaderCell("", colStatusIconWidth)
         } else {
             // ✅ Category/Product/Design summary (same as before but now always filterwise)
-            TableHeaderCell("Total", colCategoryWidth)
+            TableHeaderCell(localizedContext.getString(R.string.total), colCategoryWidth)
             TableHeaderCell("$totalQty", colQtyWidth)
             TableHeaderCell(formatTo3Decimals(totalWtBD), colWeightWidth)
             TableHeaderCell("$matchedQty", colMatchedQtyWidth)
@@ -2294,7 +2305,7 @@ fun TableHeaderCell(text: String, width: Dp) {
     Box(
         modifier = Modifier
             .width(width)
-           // .padding(horizontal = 2.dp, vertical = 3.dp),
+            // .padding(horizontal = 2.dp, vertical = 3.dp),
             .padding(start = 10.dp, top = 3.dp, bottom = 3.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -2311,25 +2322,35 @@ fun TableHeaderCell(text: String, width: Dp) {
 
 /* Reused simple TableHeader */
 @Composable
-fun TableHeader(currentLevel: String) {
+fun TableHeader(currentLevel: String,localizedContext:Context) {
     Row(
         Modifier
             .fillMaxWidth()
             .background(Color(0xFF3B363E))
             .padding(vertical = 2.dp)) {
         if (currentLevel == "DesignItems") {
-            TableHeaderCell("Design", colDesignNameWidth)
-            TableHeaderCell("RFID No", colRfidWidth)
-            TableHeaderCell("Item Code", colItemCodeWidth)
-            TableHeaderCell("G.Wt", colGWtWidth)
-            TableHeaderCell("Status", colStatusIconWidth)
+            TableHeaderCell(localizedContext.getString(R.string.design), colDesignNameWidth)
+            TableHeaderCell(localizedContext.getString(R.string.rfid_no), colRfidWidth)
+            TableHeaderCell(localizedContext.getString(R.string.itemcode), colItemCodeWidth)
+            TableHeaderCell(localizedContext.getString(R.string.gross_wt_header), colGWtWidth)
+            TableHeaderCell(localizedContext.getString(R.string.status), colStatusIconWidth)
         } else {
-            TableHeaderCell(currentLevel, colCategoryWidth)
-            TableHeaderCell("Qty", colQtyWidth)
-            TableHeaderCell("G.Wt", colWeightWidth)
-            TableHeaderCell("M.Qty", colMatchedQtyWidth)
-            TableHeaderCell("M.Wt", colMatchedWtWidth)
-            TableHeaderCell("Status", colStatusWidth)
+            if(currentLevel == "Design")
+            {
+                TableHeaderCell(localizedContext.getString(R.string.design), colCategoryWidth)
+            }else if(currentLevel == "Product"){
+                TableHeaderCell(localizedContext.getString(R.string.product), colCategoryWidth)
+            }else if(currentLevel == "Category")
+            {
+                TableHeaderCell(localizedContext.getString(R.string.category), colCategoryWidth)
+            }
+
+           // TableHeaderCell(currentLevel, colCategoryWidth)
+            TableHeaderCell(localizedContext.getString(R.string.qty), colQtyWidth)
+            TableHeaderCell(localizedContext.getString(R.string.gross_wt_header), colWeightWidth)
+            TableHeaderCell(localizedContext.getString(R.string.m_qty), colMatchedQtyWidth)
+            TableHeaderCell(localizedContext.getString(R.string.m_wt), colMatchedWtWidth)
+            TableHeaderCell(localizedContext.getString(R.string.status), colStatusWidth)
         }
     }
 }
