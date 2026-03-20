@@ -643,5 +643,74 @@
     <string name="no_boxes">कोणतेही बॉक्स उपलब्ध नाहीत</string>
     <string name="no_exhibitions">कोणतीही प्रदर्शन उपलब्ध नाही</string>
 
+    <string name="title_scan_display">مسح الجرد</string>
+
+    <string name="unlabelled_items">العناصر غير الموسومة</string>
+    <string name="resume_scan">استئناف الفحص</string>
+
+    <string name="no_items_found">لم يتم العثور على أي عناصر</string>
+
+    <!--settings-->
+
+    <string name="language">اللغة</string>
+    <string name="clear_data">مسح البيانات</string>
+    <string name="backup">نسخة احتياطية</string>
+    <string name="auto_sync">المزامنة التلقائية</string>
+    <string name="sheet_url">عنوان URL للورقة</string>
+    <string name="menu_apis">تكوين API</string>
+    <string name="account">الحساب</string>
+    <string name="notifications">الإشعارات</string>
+    <string name="branches">الفروع</string>
+    <string name="user_permissions">إذن المستخدم</string>
+
+    <string name="toast_auto_sync_enabled">تم تمكين المزامنة التلقائية</string>
+    <string name="toast_auto_sync_disabled">تم تعطيل المزامنة التلقائية</string>
+    <string name="toast_sheet_url_updated">تم تحديث عنوان URL للورقة بنجاح</string>
+    <string name="toast_custom_api_saved">تم حفظ API مخصص!</string>
+    <string name="toast_backup_failed">فشل النسخ الاحتياطي: %1$s</string>
+    <string name="toast_backup_email_sent">تم إرسال البريد الإلكتروني للنسخ الاحتياطي بنجاح إلى %1$s</string>
+    <string name="toast_restore_failed">فشل الاستعادة: %1$s</string>
+    <string name="toast_restore_successful">تم استعادة البيانات بنجاح!</string>
+    <string name="stock_transfer_url">رابط تحويل المخزون</string>
+    <string name="location">الموقع</string>
+    <string name="custom_api_saved">تم حفظ API مخصص!</string>
+    <string name="confirm_clear_data">تأكيد مسح البيانات</string>
+    <string name="this_will_permanently_delete_all_app_data_from_this_device_continue">سيؤدي هذا إلى حذف جميع بيانات التطبيق من هذا الجهاز بشكل دائم. هل تود المتابعة؟</string>
+    <string name="yes_clear_data">نعم، مسح البيانات</string>
+    <string name="backup_email_sent_success">✅ تم إرسال بريد النسخة الاحتياطية بنجاح إلى %1$s</string>
+    <string name="database_backup_saved">✅ تم حفظ النسخة الاحتياطية للقاعدة البيانات في:\n%1$s</string>
+    <string name="select_lagauge">اختار اللغة</string>
+    <string name="failed_to_get_location">فشل في الحصول على الموقع</string>
+    <string name="backup_options">خيارات النسخ الاحتياطي</string>
+    <string name="choose_how_you_d_like_to_back_up_your_data">اختر كيف ترغب في نسخ بياناتك احتياطيًا:</string>
+    <string name="backup_failed">❌ فشل النسخ الاحتياطي: %1$s</string>
+    <string name="save_to_device">📂 حفظ على الجهاز</string>
+    <string name="please_grant_storage_permission_to_send_backup">⚠️ يرجى منح إذن التخزين لإرسال النسخة الاحتياطية.</string>
+    <string name="send_via_email">📧 إرسال عبر البريد الإلكتروني</string>
+    <string name="restore_backup">🔄 استعادة النسخة الاحتياطية</string>
+    <string name="enter_email_address">أدخل عنوان البريد الإلكتروني</string>
+    <string name="sending_backup">📤 جاري إرسال النسخة الاحتياطية…</string>
+    <string name="please_enter_a_valid_email_address">⚠️ يرجى إدخال عنوان بريد إلكتروني صالح.</string>
+    <string name="save_send"><![CDATA[حفظ وإرسال]]></string>
+    <string name="backup_file_not_found">❌ لم يتم العثور على ملف النسخة الاحتياطية!</string>
+    <string name="database_restored_successfully">✅ تم استعادة قاعدة البيانات بنجاح!</string>
+    <string name="restore_failed">❌ فشل الاستعادة: %1$s</string>
+    <string name="set_sheet_url">تعيين عنوان URL للورقة</string>
+    <string name="enter_sheet_url">أدخل عنوان URL للورقة</string>
+    <string name="set_sheet_id">تعيين معرف الورقة</string>
+    <string name="data_backup">نسخ احتياطي للبيانات</string>
+    <string name="enable_automatic_sync">تمكين المزامنة التلقائية</string>
+    <string name="notification_settings">إعدادات الإشعارات</string>
+    <string name="branch_management">إدارة الفروع</string>
+    <string name="set_google_sheet_url">تعيين عنوان URL لورقة جوجل</string>
+    <string name="stock_transfer_api_url">عنوان URL لواجهة API لتحويل الأسهم</string>
+    <string name="username_password"><![CDATA[اسم المستخدم وكلمة المرور]]></string>
+    <string name="manage_permissions">إدارة الأذونات</string>
+
+    <string name="auto_sync_settings">إعدادات المزامنة التلقائية</string>
+    <string name="location_list">قائمة المواقع</string>
+    <string name="date">التاريخ</string>
+    <string name="userid">معرف المستخدم</string>
+    <string name="address">العنوان</string>
 
 </resources>

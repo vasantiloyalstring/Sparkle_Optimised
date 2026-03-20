@@ -13,17 +13,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import android.content.Intent
 import android.net.Uri
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.viewmodel.SettingsViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -42,6 +46,10 @@ fun LocationListScreen(
     val locations by viewModel.localLocations.collectAsState()
     var isLoading by remember { mutableStateOf(true) }
 
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+
     // Fetch locations from DB when screen opens
     LaunchedEffect(Unit) {
         isLoading = true
@@ -54,12 +62,12 @@ fun LocationListScreen(
 
     Scaffold(
         topBar = {  GradientTopBar(
-            title = "Location List",
+            title = localizedContext.getString(R.string.location_list),
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = localizedContext.getString(R.string.back),
                         tint = Color.White
                     )
                 }
@@ -102,7 +110,7 @@ fun LocationListScreen(
                                 Text(
                                     selectedDate?.let {
                                         SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
-                                    } ?: "Select Date"
+                                    } ?: localizedContext.getString(R.string.select_date)
                                 )
                             }
 
@@ -196,7 +204,7 @@ fun LocationListScreen(
                         ) {
 
                             Text(
-                                "S.no",
+                                localizedContext.getString(R.string.header_sr),
                                 modifier = Modifier.weight(0.5f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -204,7 +212,7 @@ fun LocationListScreen(
                             )
 
                             Text(
-                                "Date",
+                                localizedContext.getString(R.string.date),
                                 modifier = Modifier.weight(1f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -212,7 +220,7 @@ fun LocationListScreen(
                             )
 
                             Text(
-                                "UserId",
+                                localizedContext.getString(R.string.userid),
                                 modifier = Modifier.weight(1f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -220,7 +228,7 @@ fun LocationListScreen(
                             )
 
                             Text(
-                                "Address",
+                                localizedContext.getString(R.string.address),
                                 modifier = Modifier.weight(1.5f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,

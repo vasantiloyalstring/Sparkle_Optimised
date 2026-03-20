@@ -684,5 +684,75 @@
     <string name="no_boxes">No boxes available</string>
     <string name="no_exhibitions">No exhibitions available</string>
 
+    <!--inventory-->
+    <string name="title_scan_display">Inventory Scan</string>
+
+    <string name="unlabelled_items">Unlabelled Items</string>
+    <string name="resume_scan">Resume Scan</string>
+
+    <string name="no_items_found">No items found</string>
+
+    <!--settings-->
+
+    <string name="language">Language</string>
+    <string name="clear_data">Clear Data</string>
+    <string name="backup">Backup</string>
+    <string name="auto_sync">Auto Sync</string>
+    <string name="sheet_url">Sheet URL</string>
+    <string name="menu_apis">API Configuration</string>
+    <string name="account">Account</string>
+    <string name="notifications">Notifications</string>
+    <string name="branches">Branches</string>
+    <string name="user_permissions">User Permission</string>
+
+    <string name="toast_auto_sync_enabled">Auto Sync Enabled</string>
+    <string name="toast_auto_sync_disabled">Auto Sync Disabled</string>
+    <string name="toast_sheet_url_updated">Sheet URL updated successfully</string>
+    <string name="toast_custom_api_saved">Custom API saved!</string>
+    <string name="toast_backup_failed">Backup failed: %1$s</string>
+    <string name="toast_backup_email_sent">Backup email sent successfully to %1$s</string>
+    <string name="toast_restore_failed">Restore failed: %1$s</string>
+    <string name="toast_restore_successful">Data restored successfully!</string>
+    <string name="stock_transfer_url" >Stock Transffer URL</string>
+    <string name="location">Location</string>
+    <string name="custom_api_saved">Custom API saved!</string>
+    <string name="confirm_clear_data">Confirm Clear Data</string>
+    <string name="this_will_permanently_delete_all_app_data_from_this_device_continue">This will permanently delete all app data from this device. Continue?</string>
+    <string name="yes_clear_data">Yes, Clear Data</string>
+    <string name="backup_email_sent_success">✅ Backup email sent successfully to %1$s</string>
+    <string name="database_backup_saved">✅ Database backup saved at:\n%1$s</string>
+    <string name="select_lagauge">Select Language</string>
+    <string name="failed_to_get_location">Failed to get location</string>
+    <string name="backup_options">Backup Options</string>
+    <string name="choose_how_you_d_like_to_back_up_your_data">Choose how you’d like to back up your data:</string>
+    <string name="backup_failed">❌ Backup failed: %1$s</string>
+    <string name="save_to_device">📂 Save to Device</string>
+    <string name="please_grant_storage_permission_to_send_backup">⚠️ Please grant storage permission to send backup.</string>
+    <string name="send_via_email">📧 Send via Email</string>
+    <string name="restore_backup">🔄 Restore Backup</string>
+    <string name="enter_email_address">Enter Email Address</string>
+    <string name="sending_backup">📤 Sending backup…</string>
+    <string name="please_enter_a_valid_email_address">⚠️ Please enter a valid email address.</string>
+    <string name="save_send"><![CDATA[Save & Send]]></string>
+    <string name="backup_file_not_found">❌ Backup file not found!</string>
+    <string name="database_restored_successfully">✅ Database restored successfully!</string>
+    <string name="restore_failed">❌ Restore failed: %1$s</string>
+    <string name="set_sheet_url">Set Sheet URL</string>
+    <string name="enter_sheet_url">Enter Sheet Url</string>
+    <string name="set_sheet_id">Set Sheet Id</string>
+    <string name="data_backup">Data Backup</string>
+    <string name="enable_automatic_sync">Enable automatic sync</string>
+    <string name="notification_settings">Notification settings</string>
+    <string name="branch_management">Branch management</string>
+    <string name="set_google_sheet_url">Set Google Sheet URL</string>
+    <string name="stock_transfer_api_url">Stock Transfer API URL</string>
+    <string name="username_password"><![CDATA[Username & Password]]></string>
+    <string name="manage_permissions">Manage permissions</string>
+    <string name="auto_sync_settings">Auto Sync Settings</string>
+    <string name="location_list">Location List</string>
+    <string name="date">Date</string>
+    <string name="userid">UserId</string>
+    <string name="address">Address</string>
+
 
 </resources>

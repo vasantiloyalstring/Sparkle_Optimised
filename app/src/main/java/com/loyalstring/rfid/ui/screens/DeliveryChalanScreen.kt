@@ -908,6 +908,8 @@ fun DeliveryChalanScreen(
             isSaving = false
             return@LaunchedEffect
         }
+
+        Log.d("@@","branchId"+branchId)
         val request = AddDeliveryChallanRequest(
             BranchId = branchId,
             TransactionAmtType = "Cash",
@@ -2128,6 +2130,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                 onSave = {
                     if (isEditMode) {
                         // ✅ 1️⃣ Create the update request object
+                       // Log.d("@@","@@"barnchId+"      "+deliveryChallanViewModel.selectedChallan.value!!.CustomerId)
 
                         Log.d("@@","@@"+deliveryChallanViewModel.selectedChallan.value+"      "+deliveryChallanViewModel.selectedChallan.value!!.CustomerId)
                         val updateRequest = UpdateDeliveryChallanRequest(
