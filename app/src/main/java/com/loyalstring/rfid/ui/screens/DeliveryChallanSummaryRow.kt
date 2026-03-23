@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.worker.LocaleHelper
 
 @Composable
@@ -42,9 +43,11 @@ fun DeliveryChallanSummaryRow(
         onAmountsChange(gstAmount, finalAmount)
     }
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     Row(
         modifier = Modifier

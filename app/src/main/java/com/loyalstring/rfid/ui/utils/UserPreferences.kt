@@ -41,6 +41,7 @@ class UserPreferences @Inject constructor(
         const val KEY_BRANCH_ID="branch_id"
         const val KEY_ORG="organisation_name"
         const val DEVICE_ID="device_id"
+        private const val KEY_APP_LANGUAGE = "app_language"
 
         private val gson = Gson()
 
@@ -134,7 +135,7 @@ class UserPreferences @Inject constructor(
     fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_LOGGED_IN, false)
 
     fun logout() {
-        prefs.edit { clear() }
+        //prefs.edit { clear() }
         prefs.edit()
             .remove(KEY_USERNAME)
             .remove(KEY_PASSWORD)
@@ -174,7 +175,22 @@ class UserPreferences @Inject constructor(
 
     // ---------------- GENERIC CLEAR ----------------
     fun clearAll() {
-        prefs.edit { clear() }
+      //  prefs.edit { clear() }
+
+        prefs.edit()
+            .remove(KEY_TOKEN)
+            .remove(KEY_EMPLOYEE)
+            .remove(KEY_USERNAME)
+            .remove(KEY_PASSWORD)
+            .remove(KEY_REMEMBER_ME)
+            .remove(KEY_LOGGED_IN)
+            .remove(KEY_CLIENT)
+            .remove(KEY_RFIDTYPE)
+            .remove(KEY_CUSTOM_API_URL)
+            .remove(KEY_USER_ID)
+            .remove(KEY_BRANCH_ID)
+            .remove(KEY_ORG)
+            .apply()
     }
 
     // ---------------- INT HELPERS (for counters) ----------------
@@ -222,14 +238,16 @@ class UserPreferences @Inject constructor(
         return prefs.contains(key)
     }
 
-    fun saveAppLanguage(lang: String) {
-        prefs.edit().putString("app_language", lang).apply()
-        Log.d("LocaleDebug", "saveAppLanguage = $lang")
+    fun saveAppLanguage(languageCode: String) {
+        Log.d("LocaleDebug", "saveAppLanguage called with -> $languageCode")
+        val success = prefs.edit().putString(KEY_APP_LANGUAGE, languageCode).commit()
+        Log.d("LocaleDebug", "save success -> $success")
+        Log.d("LocaleDebug", "saved value now -> ${prefs.getString(KEY_APP_LANGUAGE, "en")}")
     }
 
     fun getAppLanguage(): String {
-        val value = prefs.getString("app_language", "en") ?: "en"
-        Log.d("LocaleDebug", "getAppLanguage -> $value")
+        val value = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        Log.d("LocaleDebug", "getAppLanguage pref-> $value")
         return value
     }
 

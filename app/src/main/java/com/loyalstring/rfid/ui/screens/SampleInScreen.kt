@@ -88,9 +88,11 @@ fun SampleInScreen(
     val viewModel: BulkViewModel = hiltViewModel()
     val orderViewModel: OrderViewModel = hiltViewModel()
     val context = LocalContext.current
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     var selectedPower by remember { mutableStateOf(10) }
     var isScanning by remember { mutableStateOf(false) }

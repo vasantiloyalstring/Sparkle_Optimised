@@ -56,7 +56,7 @@ class SparkleRFIDApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        LocaleHelper.applySavedLocale(this)
+      //  LocaleHelper.applySavedLocale(this)
         Log.d("StartupTrace", "Application.onCreate start")
 
         // ✅ 1. Load saved language
@@ -68,6 +68,13 @@ class SparkleRFIDApplication : Application(), Configuration.Provider {
 
         val localeList = LocaleListCompat.forLanguageTags(langCode)
         AppCompatDelegate.setApplicationLocales(localeList)
+
+        val userPrefs = UserPreferences.getInstance(this)
+        val savedLang = userPrefs.getAppLanguage().ifBlank { "en" }
+
+        AppCompatDelegate.setApplicationLocales(
+            LocaleListCompat.forLanguageTags(savedLang)
+        )
 
         val cfg = resources.configuration
         Log.d(
@@ -89,7 +96,7 @@ class SparkleRFIDApplication : Application(), Configuration.Provider {
                 Log.e("SparkleRFID", "Exception initializing RFID: ${ex.message}")
             }
         }
-        val userPrefs = UserPreferences.getInstance(this)
+      //  val userPrefs = UserPreferences.getInstance(this)
         ensureDefaultCounters(userPrefs)
         Log.d("StartupTrace", "Application.onCreate end")
     }

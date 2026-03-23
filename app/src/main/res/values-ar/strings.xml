@@ -86,7 +86,6 @@
 
     <!-- Buttons -->
     <string name="btn_cancel">إلغاء</string>
-    <string name="btn_ok">موافق</string>
 
     <!-- Toast / Validation Messages -->
     <string name="msg_enter_name">أدخل اسم العميل</string>
@@ -738,4 +737,5 @@
     <string name="rfid_no">رقم RFID</string>
     <string name="m_qty">الكمية</string>
     <string name="m_wt">الوزن</string>
+
 </resources>

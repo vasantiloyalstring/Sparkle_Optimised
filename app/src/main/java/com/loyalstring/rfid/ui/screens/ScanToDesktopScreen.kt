@@ -98,9 +98,11 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     var showClearDialog by remember { mutableStateOf(false) }
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     // ✅ IMPORTANT: whenever tags change → auto fill RFID from DB
     LaunchedEffect(tags) {
@@ -176,7 +178,7 @@ fun ScanToDesktopScreen(onBack: () -> Unit, navController: NavHostController) {
         context.contentResolver,
         Settings.Secure.ANDROID_ID
     )
-    val userPreferences = UserPreferences.getInstance(context)
+
     userPreferences.saveDeviceId(androidId)
 
     Scaffold(

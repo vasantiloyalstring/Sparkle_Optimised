@@ -53,11 +53,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.os.ConfigurationCompat
 import androidx.navigation.NavController
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.navigation.NavItems
 import com.loyalstring.rfid.navigation.listOfNavItems
 import com.loyalstring.rfid.ui.utils.ToastUtils
+import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
@@ -85,9 +87,25 @@ fun HomeScreen(
    // val items = remember { listOfNavItems.filter { it.title != "Home" && it.title != "Logout" } }
     val context: Context = LocalContext.current
 
-    val currentLocales = AppCompatDelegate.getApplicationLocales()
+  /*  val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")*/
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
+
+    val delegateLang = currentLocales[0]?.language
+    val delegateTags = currentLocales.toLanguageTags()
+    val configLang = ConfigurationCompat.getLocales(localizedContext.resources.configuration)[0]?.language
+    val configTags = ConfigurationCompat.getLocales(localizedContext.resources.configuration).toLanguageTags()
+
+    Log.d("LANG_DEBUG", "AppCompatDelegate locales = $delegateTags")
+    Log.d("LANG_DEBUG", "currentLang = $currentLang")
+    Log.d("LANG_DEBUG", "delegateLang = $delegateLang")
+    Log.d("LANG_DEBUG", "localizedContext config language = $configLang")
+    Log.d("LANG_DEBUG", "localizedContext config tags = $configTags")
     val topBarBrush = remember {
         Brush.horizontalGradient(
             colors = listOf(Color(0xFF5231A7), Color(0xFFD32940))

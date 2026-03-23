@@ -60,6 +60,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.DisposableEffect
+import com.loyalstring.rfid.ui.utils.UserPreferences
 
 @Composable
 fun InventoryMenuScreen(
@@ -123,9 +124,11 @@ fun InventoryMenuScreen(
     var dialogItems by remember { mutableStateOf(listOf<String>()) }
     var onItemSelected by remember { mutableStateOf<(String) -> Unit>({}) }
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
 //    LaunchedEffect(Unit) {
 //        showDialog = false

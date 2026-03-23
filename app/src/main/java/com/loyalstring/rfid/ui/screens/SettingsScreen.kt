@@ -3,11 +3,6 @@ package com.loyalstring.rfid.ui.screens
 
 
 
-import android.os.Looper
-
-
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.Priority
 
@@ -84,7 +79,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.DpOffset
@@ -92,13 +86,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.ConfigurationCompat
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.gms.location.LocationServices
@@ -124,7 +117,6 @@ import com.loyalstring.rfid.worker.SyncDataWorker
 import com.loyalstring.rfid.worker.cancelPeriodicSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -190,20 +182,44 @@ fun SettingsScreen(
 
 
     var showLanguageDialog by remember { mutableStateOf(false) }
-    val currentLocales = AppCompatDelegate.getApplicationLocales()
+   /* val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+   // val context = LocaleHelper.applyLocale(context, currentLang ?: "en")
+*/
+    /*val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")*/
 
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
+   // val savedLang = userPreferences.getAppLanguage()
+    val delegateLang = currentLocales[0]?.language
+    val delegateTags = currentLocales.toLanguageTags()
+    val configLocales = ConfigurationCompat.getLocales(localizedContext.resources.configuration)
+    val configLang = configLocales[0]?.language
+    val configTags = configLocales.toLanguageTags()
+
+    Log.d("LANG_DEBUG", "----------------------------------")
+    Log.d("LANG_DEBUG", "savedLang from prefs = $savedLang")
+    Log.d("LANG_DEBUG", "AppCompatDelegate locales = $delegateTags")
+    Log.d("LANG_DEBUG", "delegateLang = $delegateLang")
+    Log.d("LANG_DEBUG", "currentLang = $currentLang")
+    Log.d("LANG_DEBUG", "localizedContext config language = $configLang")
+    Log.d("LANG_DEBUG", "localizedContext config tags = $configTags")
+    Log.d("LANG_DEBUG", "test string settings = ${localizedContext.getString(R.string.settings)}")
+    Log.d("LANG_DEBUG", "----------------------------------")
     LaunchedEffect(Unit) {
         // Read the active locale from AppCompatDelegate
         //val currentLocales = AppCompatDelegate.getApplicationLocales()
         //val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
 
         // Wrap Compose context using your LocaleHelper
-        //val localizedContext = LocaleHelper.applyLocale(context, currentLang.toString())
+        //val context = LocaleHelper.applyLocale(context, currentLang.toString())
 
-       // val cfg = localizedContext.resources.configuration
+       // val cfg = context.resources.configuration
 
 
        // Log.d("LangCheck", "SettingsScreen cfg.locales[0] = ${cfg.locales[0].toLanguageTag()}")
@@ -275,7 +291,7 @@ fun SettingsScreen(
             val activity = context as Activity
             checkLocationSettings(activity)
 
-            getCurrentLocation(context,localizedContext) { latitude, longitude, address ->
+            getCurrentLocation(context,context) { latitude, longitude, address ->
 
                 val locationData = Data.Builder()
                     .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
@@ -491,7 +507,13 @@ fun SettingsScreen(
             localizedContext.getString( R.string.language),
             icon = Icons.Default.Settings,
             type = SettingType.Action,
-            subtitle = userPreferences.getAppLanguage().uppercase(Locale.getDefault()), // show selected
+           /* subtitle = when (AppCompatDelegate.getApplicationLocales()[0]?.language
+                ?: userPreferences.getAppLanguage().ifBlank { "en" }) {
+                "hi" -> "Hindi"
+                "ar" -> "Arabic"
+                else -> "English"
+            },*/
+           subtitle = userPreferences.getAppLanguage().uppercase(Locale.getDefault()), // show selected
             onClick = { /* will handle in MenuItemRow */ }
         ),
         SettingsMenuItem(
@@ -553,7 +575,7 @@ fun SettingsScreen(
     if (showSheetInput) {
         sheetUrl?.let {
             SheetInputDialog(
-                localizedContext=localizedContext,
+                localizedContext=context,
                 sheetUrl = it,
                 onValueChange = { sheetUrl = it },
                 onDismiss = { showSheetInput = false },
@@ -573,7 +595,7 @@ fun SettingsScreen(
     if (showCustomApiDialog) {
 
         CustomApiDialog(
-            localizedContext=localizedContext,
+            localizedContext=context,
             onDismiss = { showCustomApiDialog = false },
             onSave = { newApi ->
                 customApi = newApi
@@ -682,9 +704,57 @@ fun SettingsScreen(
         )
     }
 
-
     if (showLanguageDialog) {
         AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },  // Dismiss the dialog when clicked outside
+            title = { Text("Select Language") },
+            text = {
+                Column {
+                    // English Option
+                    LanguageOption(
+                        label = "English",
+                        selected = userPreferences.getAppLanguage() == "en",
+                        onSelect = {
+                           // userPreferences.saveAppLanguage("en")
+                            applyLocaleAndRestart(context, "en",userPreferences)
+                            showLanguageDialog = false  // Close the dialog after selection
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Hindi Option
+                    LanguageOption(
+                        label = "Hindi (हिन्दी)",
+                        selected = userPreferences.getAppLanguage() == "hi",
+                        onSelect = {
+                            //userPreferences.saveAppLanguage("hi")
+                            applyLocaleAndRestart(context, "hi",userPreferences)
+                            showLanguageDialog = false  // Close the dialog after selection
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Arabic Option
+                    LanguageOption(
+                        label = "Arabic (العربية)",
+                        selected = userPreferences.getAppLanguage() == "ar",
+                        onSelect = {
+                            //userPreferences.saveAppLanguage("ar")
+                            applyLocaleAndRestart(context, "ar",userPreferences)
+                            showLanguageDialog = false  // Close the dialog after selection
+                        }
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showLanguageDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+      /*  AlertDialog(
             onDismissRequest = { showLanguageDialog = false },
             title = { Text(localizedContext.getString( R.string.select_lagauge), fontFamily = poppins) },
             text = {
@@ -754,10 +824,25 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showLanguageDialog = false }) { Text(localizedContext.getString(R.string.cancel)) }
             }
-        )
+        )*/
+
+
+
+}
+
+@Composable
+fun LanguageOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onSelect)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = label, fontFamily = poppins, fontSize = 15.sp)
     }
-
-
 }
 
 fun checkLocationSettings(activity: Activity) {
@@ -790,7 +875,7 @@ fun checkLocationSettings(activity: Activity) {
     }
 }
 
-fun restartApp(context: Context) {
+/*fun restartApp(context: Context) {
 
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
     val mainIntent = Intent.makeRestartActivityTask(intent?.component)
@@ -811,6 +896,26 @@ fun LanguageOption(label: String, selected: Boolean, onSelect: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(text = label, fontFamily = poppins, fontSize = 15.sp)
     }
+}*/
+
+fun applyLocaleAndRestart(context: Context, langCode: String, userPreferences1: UserPreferences) {
+    userPreferences1.saveAppLanguage(langCode)
+
+    AppCompatDelegate.setApplicationLocales(
+        LocaleListCompat.forLanguageTags(langCode)
+    )
+
+    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val mainIntent = Intent.makeRestartActivityTask(intent?.component)
+    context.startActivity(mainIntent)
+    Runtime.getRuntime().exit(0)
+}
+
+fun restartApp(context: Context) {
+    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val mainIntent = Intent.makeRestartActivityTask(intent?.component)
+    context.startActivity(mainIntent)
+    Runtime.getRuntime().exit(0)
 }
 
 
@@ -933,9 +1038,10 @@ fun getCurrentLocation(
     }
 }*/
 
+/*
 
 @SuppressLint("MissingPermission")
-fun getCurrentLocation(localizedContext: Context,context: Context, onLocationFetched: (String, String, String) -> Unit) {
+fun getCurrentLocation(context: Context,context: Context, onLocationFetched: (String, String, String) -> Unit) {
 
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
@@ -967,7 +1073,8 @@ fun getCurrentLocation(localizedContext: Context,context: Context, onLocationFet
 
             val geocoder = Geocoder(context, Locale.getDefault())
 
-         /*   val addressInfo =
+         */
+/*   val addressInfo =
                 geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()
 
             val area = addressInfo?.subLocality ?: ""
@@ -980,7 +1087,8 @@ fun getCurrentLocation(localizedContext: Context,context: Context, onLocationFet
 
             val address = listOf(area, city, state, pinCode)
                 .filter { it.isNotEmpty() }
-                .joinToString(", ")*/
+                .joinToString(", ")*//*
+
             CoroutineScope(Dispatchers.IO).launch {
 
                 try {
@@ -1019,6 +1127,74 @@ fun getCurrentLocation(localizedContext: Context,context: Context, onLocationFet
         }
     }
 }
+*/
+
+@SuppressLint("MissingPermission")
+fun getCurrentLocation(localizedContext: Context, context: Context, onLocationFetched: (String, String, String) -> Unit) {
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    // Check if context is an Activity
+    if (context is Activity) {
+        // Handle permission request only if the context is an Activity
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                context,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                100
+            )
+            return
+        }
+    } else {
+        // If context is not an Activity, handle appropriately or show a warning
+        Log.e("LOCATION_ERROR", "Context is not an Activity. Cannot request permissions.")
+        return
+    }
+
+    val cancellationTokenSource = CancellationTokenSource()
+
+    fusedLocationClient.getCurrentLocation(
+        Priority.PRIORITY_HIGH_ACCURACY,
+        cancellationTokenSource.token
+    ).addOnSuccessListener { location ->
+
+        if (location != null) {
+
+            val latitude = location.latitude.toString()
+            val longitude = location.longitude.toString()
+
+            val geocoder = Geocoder(context, Locale.getDefault())
+
+            CoroutineScope(Dispatchers.IO).launch {
+
+                try {
+
+                    val addressList = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                    val addressInfo = addressList?.firstOrNull()
+                    val address = addressInfo?.getAddressLine(0) ?: "Unknown location"
+
+                    withContext(Dispatchers.Main) {
+                        onLocationFetched(latitude, longitude, address)
+                    }
+
+                } catch (e: Exception) {
+                    Log.e("LOCATION", "Geocoder error: ${e.message}")
+                    withContext(Dispatchers.Main) {
+                        onLocationFetched(latitude, longitude, "Address unavailable")
+                    }
+                }
+            }
+
+        } else {
+            Toast.makeText(context,
+                localizedContext.getString(R.string.failed_to_get_location), Toast.LENGTH_SHORT).show()
+        }
+    }
+}
 
 
 @Composable
@@ -1046,7 +1222,7 @@ fun BackupDialogExample(
                 inputStream?.use { input ->
                     tempFile.outputStream().use { output -> input.copyTo(output) }
                 }
-                restoreBackupFromDb(context, tempFile,localizedContext)
+                restoreBackupFromDb(context, tempFile,context)
             } catch (e: Exception) {
                 ToastUtils.showToast(context, "❌ Restore failed: ${e.message}")
             }
@@ -1207,7 +1383,7 @@ fun BackupDialogExample(
                                     ToastUtils.showToast(context,
                                         localizedContext.getString(R.string.sending_backup))
 
-                                    sendBackupEmail(context, scope, inputEmail, onDismiss,localizedContext)
+                                    sendBackupEmail(context, scope, inputEmail, onDismiss,context)
                                 } else {
                                     ToastUtils.showToast(context,
                                         localizedContext.getString(R.string.please_enter_a_valid_email_address))
@@ -1274,7 +1450,7 @@ fun BackupDialogExample(
         ToastUtils.showToast(context, "❌ Restore failed: ${e.message}")
     }
 }*/
-fun restoreBackupFromDb(context: Context, backupFile: File,localizedContext: Context) {
+fun restoreBackupFromDb(localizedContext: Context, backupFile: File,context: Context) {
 
     try {
         if (!backupFile.exists()) {

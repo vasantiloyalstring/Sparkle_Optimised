@@ -24,6 +24,7 @@ import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.model.sampleIn.SampleInFiledDailog
 
 import com.loyalstring.rfid.ui.utils.GradientButtonIcon
+import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.worker.LocaleHelper
 import java.text.SimpleDateFormat
@@ -43,9 +44,11 @@ fun SampleInDetailsDailog(
     var returnDate by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(

@@ -193,9 +193,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
     val isLoadingAllItems by productListViewModel.isLoadingAllItems.collectAsState()
     val allItems by productListViewModel.productList.collectAsState(initial = emptyList())
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     // ✅ Performance logging for initial load
     LaunchedEffect(allItems.size) {
@@ -554,11 +556,11 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
     fun getToolbarTitle(): String {
         return when (selectedMenu) {
-            MENU_MATCHED -> "Matched Items"
-            MENU_UNMATCHED -> "UnMatched Items"
-            MENU_UNLABELLED -> "Unlabelled Items"
-            MENU_RESUME -> "Resume Scan"
-            else -> filterValue ?: "Inventory"
+            MENU_MATCHED ->localizedContext.getString(R.string.matched_items)
+            MENU_UNMATCHED -> localizedContext.getString(R.string.unmatched_items)
+            MENU_UNLABELLED -> localizedContext.getString(R.string.unlabelled_items)
+            MENU_RESUME -> localizedContext.getString(R.string.resume_scan)
+            else -> filterValue ?: localizedContext.getString(R.string.inventory)
         }
     }
     fun handleBackPress() {
@@ -1577,12 +1579,13 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                 color = Color.White
             ) {
                 VerticalMenu(
+                    localizedContext = localizedContext,
                     matchedCount = matchedCount,
                     unmatchedCount = unmatchedCount,
                     totalCount = totalCount
                 ) { menuItem ->
                     when (menuItem.title) {
-                        "UnMatched Items" -> {
+                        localizedContext.getString(R.string.unmatched_items) -> {
                             scope.launch {
                                 /* bulkViewModel.setLoading(true)
                                  delay(1000)
@@ -1638,7 +1641,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
 
                         }
 
-                        "Matched Items" -> {
+                        localizedContext.getString(R.string.matched_items) -> {
                             /* selectedMenu = MENU_MATCHED
                              bulkViewModel.clearStickyUnmatched()
 
@@ -1664,13 +1667,13 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                              selectedDesigns.clear()*/
                         }
 
-                        "Unlabelled Items" -> {
+                        localizedContext.getString(R.string.unlabelled_items) -> {
                             selectedMenu = MENU_UNLABELLED
                             currentLevel = "DesignItems"
                             bulkViewModel.clearStickyUnmatched()
                         }
                         // In ScanDisplayScreen
-                        "Search" -> {
+                        localizedContext.getString(R.string.search) -> {
                             scope.launch {
                                 bulkViewModel.setLoading(true)
                                 // Remove artificial delay
@@ -1719,7 +1722,7 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                                 Toast.LENGTH_SHORT
                             ).show()
                         }*/
-                        "Resume Scan" -> {
+                        localizedContext.getString(R.string.resume_scan) -> {
                             scope.launch {
 
                                 bulkViewModel. restoreScanFromDatabase()
@@ -2436,16 +2439,17 @@ fun StatusIconCell(status: String?, width: Dp) {
 }
 
 @Composable
-fun VerticalMenu( matchedCount: Int,
+fun VerticalMenu(localizedContext:Context,
+                 matchedCount: Int,
                   unmatchedCount: Int,
                   totalCount: Int,
                   onMenuClick: (MenuItem) -> Unit) {
     val menuItems = listOf(
-        MenuItem("Matched Items", R.drawable.ic_list_matched, matchedCount),
-        MenuItem("UnMatched Items", R.drawable.ic_list_unmatched, unmatchedCount),
-        MenuItem("Unlabelled Items", R.drawable.ic_list_unlabelled, totalCount),
-        MenuItem("Resume Scan", R.drawable.ic_resume_scan, null),
-        MenuItem("Search", R.drawable.search_gr_svg, unmatchedCount)
+        MenuItem(localizedContext.getString(R.string.matched_items), R.drawable.ic_list_matched, matchedCount),
+        MenuItem(localizedContext.getString(R.string.unmatched_items), R.drawable.ic_list_unmatched, unmatchedCount),
+        MenuItem(localizedContext.getString(R.string.unlabelled_items), R.drawable.ic_list_unlabelled, totalCount),
+        MenuItem(localizedContext.getString(R.string.resume_scan), R.drawable.ic_resume_scan, null),
+        MenuItem(localizedContext.getString(R.string.search), R.drawable.search_gr_svg, unmatchedCount)
     )
 
     Column(

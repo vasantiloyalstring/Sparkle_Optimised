@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
 import com.loyalstring.rfid.navigation.GradientTopBar
+import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.viewmodel.SettingsViewModel
 import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.launch
@@ -46,10 +47,11 @@ fun LocationListScreen(
     val locations by viewModel.localLocations.collectAsState()
     var isLoading by remember { mutableStateOf(true) }
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
-
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
     // Fetch locations from DB when screen opens
     LaunchedEffect(Unit) {
         isLoading = true

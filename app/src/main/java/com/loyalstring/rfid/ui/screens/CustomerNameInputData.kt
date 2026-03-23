@@ -85,9 +85,11 @@ fun CustomerNameInputData(
     val context: Context = LocalContext.current
 
     val employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-    val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     // ✅ Filter using customerName only (same input)
     val visibleCustomers = remember(customerName, filteredCustomers) {
