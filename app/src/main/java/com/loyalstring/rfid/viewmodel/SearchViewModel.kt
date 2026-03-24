@@ -34,6 +34,8 @@ class SearchViewModel @Inject constructor(
   private val _searchItems = mutableStateListOf<SearchItem>()
     val searchItems: SnapshotStateList<SearchItem> = _searchItems
 
+    private var currentScanPower: Int = 10
+
     init {
         val unmatched = savedStateHandle.get<List<BulkItem>>("unmatchedItems") ?: emptyList()
         Log.d("SearchViewModel", "Received ${unmatched.size} items")
@@ -46,6 +48,8 @@ class SearchViewModel @Inject constructor(
     var lastSoundTime = 0L
 
     fun startSearch(unmatchedItems: List<BulkItem>, power: Int) {
+        stopSearch() // pehle old scan fully stop karo
+        currentScanPower = power
         _searchItems.clear()
         _searchItems.addAll(unmatchedItems.map { item ->
             val epcValue = when {
@@ -54,6 +58,7 @@ class SearchViewModel @Inject constructor(
                 !item.itemCode.isNullOrBlank() -> item.itemCode!!
                 else -> ""
             }
+
             SearchItem(
                 epc = epcValue,
                 itemCode = item.itemCode ?: "",
@@ -68,6 +73,7 @@ class SearchViewModel @Inject constructor(
     }
 
     fun startTagScanning(power: Int) {
+        currentScanPower = power
         readerManager.reader?.apply {
             setTagFocus(false)
             setFastID(false)
@@ -143,13 +149,11 @@ class SearchViewModel @Inject constructor(
                                 }
                             }*/
                             if (epcMatched && proximity >= 40) {
-                                if (lastBlinkEpc != epc) {
-                                    lastBlinkEpc = epc
+                                if (lastBlinkEpc != epc || blinkingJob?.isActive != true) {
                                     startContinuousBlink(epc)
                                 }
-                            } else {
+                            } else if (lastBlinkEpc == epc && proximity < 40) {
                                 stopBlinkingEpc()
-                                lastBlinkEpc = null
                             }
 
                         }
@@ -171,10 +175,15 @@ class SearchViewModel @Inject constructor(
 
     fun stopSearch() {
         scanJob?.cancel()
+        scanJob = null
+
+        blinkingJob?.cancel()
+        blinkingJob = null
+
         readerManager.stopInventory()
+
         lastSoundId?.let { readerManager.stopSound(it) }
         lastSoundId = null
-        stopBlinkingEpc()
         lastBlinkEpc = null
     }
 
@@ -239,7 +248,7 @@ class SearchViewModel @Inject constructor(
             Log.e("RFID", "Error lighting tag: ${e.message}", e)
         } finally {
             // Restart inventory
-            readerManager.startInventoryTag(30, true)
+            readerManager.startInventoryTag(currentScanPower, true)
         }
     }
 
@@ -283,7 +292,10 @@ class SearchViewModel @Inject constructor(
         }
     }*/
   private fun startContinuousBlink(epc: String) {
+      if (lastBlinkEpc == epc && blinkingJob?.isActive == true) return
+
       blinkingJob?.cancel()
+      lastBlinkEpc = epc
 
       blinkingJob = viewModelScope.launch(Dispatchers.IO) {
           val reader = readerManager.reader ?: return@launch
@@ -292,10 +304,8 @@ class SearchViewModel @Inject constructor(
           val filterPtr = 32
           val filterCnt = epc.length * 4
 
-          while (isActive) {
-
+          while (isActive && lastBlinkEpc == epc) {
               try {
-                  // Pause scanning briefly
                   readerManager.stopInventory()
 
                   reader.readData(
@@ -309,16 +319,15 @@ class SearchViewModel @Inject constructor(
                       1
                   )
 
-                  delay(150) // LED ON duration
+                  delay(120) // LED blink visible
 
               } catch (e: Exception) {
-                  Log.e("RFID", "Blink error: ${e.message}")
+                  Log.e("RFID", "Blink error: ${e.message}", e)
               } finally {
-                  readerManager.startInventoryTag(30, true)
+                  readerManager.startInventoryTag(currentScanPower, true)
               }
 
-              // 🔥 IMPORTANT: delay between blinks
-              delay(700)  // adjust for blink speed (500–1000ms ideal)
+              delay(500)
           }
       }
   }
@@ -328,6 +337,7 @@ class SearchViewModel @Inject constructor(
     private fun stopBlinkingEpc() {
         blinkingJob?.cancel()
         blinkingJob = null
+        lastBlinkEpc = null
     }
 
 

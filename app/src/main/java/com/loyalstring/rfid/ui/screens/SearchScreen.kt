@@ -107,70 +107,7 @@ fun SearchScreen(
         }
     }*/
 
-    DisposableEffect(lifecycleOwner, activity) {
 
-        val listener = object : ScanKeyListener {
-            override fun onBarcodeKeyPressed() {}
-
-            override fun onRfidKeyPressed() {
-                if (isScanning) {
-                    searchViewModel.stopSearch()
-                    isScanning = false
-                } else {
-
-                    val itemsToSearch = when {
-                        isUnmatchedList && inputItems.isNotEmpty() -> inputItems
-                        !isUnmatchedList && filteredDbItems.isNotEmpty() -> filteredDbItems
-                        else -> emptyList()
-                    }
-
-                    if (itemsToSearch.isNotEmpty()) {
-                        searchViewModel.startSearch(itemsToSearch, selectedPower)
-                        isScanning = true
-                    }
-                }
-            }
-        }
-
-        val observer = LifecycleEventObserver { _, event ->
-
-            when (event) {
-
-                Lifecycle.Event.ON_RESUME -> {
-
-                    activity?.registerScanKeyListener(listener)
-
-                    // ⭐ AUTO START SCAN HERE
-                    if (isUnmatchedList && inputItems.isNotEmpty()) {
-
-                        searchViewModel.startSearch(inputItems, selectedPower)
-                        isScanning = true
-
-                        Log.d("AUTO_SCAN", "RFID auto started on resume")
-                    }
-                }
-
-                Lifecycle.Event.ON_PAUSE -> {
-
-                    activity?.unregisterScanKeyListener()
-
-                    if (isScanning) {
-                        searchViewModel.stopSearch()
-                        isScanning = false
-                    }
-                }
-
-                else -> {}
-            }
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            activity?.unregisterScanKeyListener()
-        }
-    }
 
 
     val searchItems = searchViewModel.searchItems
@@ -307,9 +244,10 @@ fun SearchScreen(
 
 
     // ✅ RFID key listener
-    DisposableEffect(lifecycleOwner, activity) {
+    DisposableEffect(lifecycleOwner, activity, isScanning, filteredDbItems, inputItems, isUnmatchedList, selectedPower) {
         val listener = object : ScanKeyListener {
             override fun onBarcodeKeyPressed() {}
+
             override fun onRfidKeyPressed() {
                 if (isScanning) {
                     searchViewModel.stopSearch()
@@ -327,7 +265,7 @@ fun SearchScreen(
                         isScanning = true
                         Log.d("SEARCH", "RFID STARTED scanning ${itemsToSearch.size} items")
                     } else {
-                        Log.d("SEARCH", "⚠️ No items to scan (maybe type a query?)")
+                        Log.d("SEARCH", "No items to scan")
                     }
                 }
             }
@@ -335,7 +273,16 @@ fun SearchScreen(
 
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> activity?.registerScanKeyListener(listener)
+                Lifecycle.Event.ON_RESUME -> {
+                    activity?.registerScanKeyListener(listener)
+
+                    if (isUnmatchedList && inputItems.isNotEmpty() && !isScanning) {
+                        searchViewModel.startSearch(inputItems, selectedPower)
+                        isScanning = true
+                        Log.d("AUTO_SCAN", "RFID auto started on resume")
+                    }
+                }
+
                 Lifecycle.Event.ON_PAUSE -> {
                     activity?.unregisterScanKeyListener()
                     if (isScanning) {
@@ -343,11 +290,13 @@ fun SearchScreen(
                         isScanning = false
                     }
                 }
+
                 else -> {}
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
+
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             activity?.unregisterScanKeyListener()
