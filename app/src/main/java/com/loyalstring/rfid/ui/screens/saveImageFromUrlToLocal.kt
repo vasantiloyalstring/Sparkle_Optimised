@@ -14,7 +14,7 @@ fun saveImageFromUrlToLocal(
     itemCode: String
 ): File? {
     return try {
-        val imageDir = File(context.filesDir, "product_images")
+        val imageDir = File(context.getExternalFilesDir(null), "product_images")
         if (!imageDir.exists()) {
             imageDir.mkdirs()
         }

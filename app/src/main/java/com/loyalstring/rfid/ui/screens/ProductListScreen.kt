@@ -1,6 +1,7 @@
 package com.loyalstring.rfid.ui.screens
 
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -90,6 +91,7 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import kotlinx.coroutines.withContext
 import java.io.File
 
 
@@ -119,7 +121,9 @@ fun ProductListScreen(
     var shouldNavigateBack by remember { mutableStateOf(false) }
 
     val isLoading by viewModel.isLoading.collectAsState()
-
+    LaunchedEffect(Unit) {
+        ensureProductImagesFolder(context)
+    }
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
             kotlinx.coroutines.delay(50)
@@ -127,7 +131,7 @@ fun ProductListScreen(
         }
     }
 
- //   val allItems by viewModel.productList.collectAsState(initial = emptyList())
+    //   val allItems by viewModel.productList.collectAsState(initial = emptyList())
     val allItems by viewModel.productList.collectAsStateWithLifecycle()
     val filteredItems = remember(searchQuery.value, allItems) {
         allItems.filter { item ->
@@ -143,10 +147,10 @@ fun ProductListScreen(
         when (deleteResponse) {
             is Resource.Success -> {
 
-                   // singleproductViewModel.insertLabelledStock(request)
-                   // singleproductViewModel.deleteItem(id) // ✅ local delete with cached id
-                    Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
-                 //  viewModel.refrshProductList()
+                // singleproductViewModel.insertLabelledStock(request)
+                // singleproductViewModel.deleteItem(id) // ✅ local delete with cached id
+                Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
+                //  viewModel.refrshProductList()
 
 
             }
@@ -156,20 +160,20 @@ fun ProductListScreen(
             else -> Unit
         }
     }
-/*    val deleteResult by singleproductViewModel.deleteResult.collectAsState()
-    LaunchedEffect(deleteResult) {
-        when {
-            deleteResult == null -> Unit
-            deleteResult ?: 0 > 0 -> {
-                Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
-                showConfirmDelete = false
-                selectedItem = null
+    /*    val deleteResult by singleproductViewModel.deleteResult.collectAsState()
+        LaunchedEffect(deleteResult) {
+            when {
+                deleteResult == null -> Unit
+                deleteResult ?: 0 > 0 -> {
+                    Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
+                    showConfirmDelete = false
+                    selectedItem = null
+                }
+                else -> {
+                    Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show()
+                }
             }
-            else -> {
-                Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }*/
+        }*/
 
 
 
@@ -331,7 +335,15 @@ fun ProductListScreen(
                                         .fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(4.dp) // Less vertical spacing
                                 ) {
-                                    if (!item.imageUrl.isNullOrEmpty()) {
+
+                                    ProductImageWithFallback(
+                                        item = item,
+                                        baseUrl = baseUrl,
+                                        modifier = Modifier
+                                            .size(72.dp)
+                                            .align(Alignment.CenterHorizontally)
+                                    )
+                                    /*if (!item.imageUrl.isNullOrEmpty()) {
                                         val stored = item.imageUrl.trim()
                                             .trimEnd(',') // remove any trailing commas/spaces
                                         if (stored.startsWith("/")) {
@@ -364,7 +376,7 @@ fun ProductListScreen(
                                                 .size(72.dp)
                                                 .align(Alignment.CenterHorizontally)
                                         )
-                                    }
+                                    }*/
 
                                     // Row: RFID & Item Code
                                     Row(
@@ -657,6 +669,25 @@ fun ProductListScreen(
     }
 }
 
+
+fun ensureProductImagesFolder(context: Context): File? {
+    return try {
+        val imageDir = File(context.getExternalFilesDir(null), "product_images")
+
+        if (!imageDir.exists()) {
+            val created = imageDir.mkdirs()
+            Log.d("ProductImageFolder", "Folder created: $created, path=${imageDir.absolutePath}")
+        } else {
+            Log.d("ProductImageFolder", "Folder already exists: ${imageDir.absolutePath}")
+        }
+
+        imageDir
+    } catch (e: Exception) {
+        Log.e("ProductImageFolder", "Folder create failed: ${e.message}", e)
+        null
+    }
+}
+
 @Composable
 fun ConfirmDeleteDialog(
     visible: Boolean,
@@ -680,7 +711,7 @@ fun ConfirmDeleteDialog(
             )
         },
         confirmButton = {
-           // TextButton(onClick = onConfirm) { Text("Yes") }
+            // TextButton(onClick = onConfirm) { Text("Yes") }
             GradientButton(text = "Yes", onClick = onConfirm)
         },
         dismissButton = {
@@ -745,10 +776,44 @@ fun ItemDetailsDialog(
     onDismiss: () -> Unit
 ) {
     val baseUrl = "https://rrgold.loyalstring.co.in/"
-    val imageUrl = item.imageUrl?.split(",")
-        ?.lastOrNull()
-        ?.trim()
-        ?.let { "$baseUrl$it" }
+    /* val imageUrl = item.imageUrl?.split(",")
+         ?.lastOrNull()
+         ?.trim()
+         ?.let { "$baseUrl$it" }*/
+
+    val context = LocalContext.current
+    val localItemImage = remember(item.itemCode) {
+        getLocalImageFileForItem(context, item.itemCode)
+    }
+
+    val directLocalPath = remember(item.imageUrl) {
+        item.imageUrl
+            ?.trim()
+            ?.trimEnd(',')
+            ?.takeIf { it.startsWith("/") }
+            ?.let { File(it) }
+            ?.takeIf { it.exists() }
+    }
+
+    val remoteUrl = remember(item.imageUrl) {
+        item.imageUrl
+            ?.trim()
+            ?.trimEnd(',')
+            ?.takeIf { it.isNotBlank() && !it.startsWith("/") }
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.lastOrNull()
+            ?.let { "$baseUrl$it" }
+    }
+
+    var loadError by remember(item.itemCode, item.imageUrl) { mutableStateOf(false) }
+    val finalImageModel: Any? = when {
+        directLocalPath != null -> directLocalPath
+        localItemImage != null -> localItemImage
+        !loadError && !remoteUrl.isNullOrBlank() -> remoteUrl
+        else -> null
+    }
 
     var scale by remember { mutableStateOf(1f) }
 
@@ -782,9 +847,12 @@ fun ItemDetailsDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (!imageUrl.isNullOrBlank()) {
+                if (finalImageModel != null) {
                     Image(
-                        painter = rememberAsyncImagePainter(imageUrl),
+                        painter = rememberAsyncImagePainter(
+                            model = finalImageModel,
+                            onError = { loadError = true }
+                        ),
                         contentDescription = "Zoomable Image",
                         modifier = Modifier
                             .fillMaxWidth()
@@ -833,4 +901,100 @@ fun InfoRow(label: String, value: String?) {
     }
 }
 
+/*for local image*/
+fun getLocalImageFileForItem(context: android.content.Context, itemCode: String?): File? {
+    if (itemCode.isNullOrBlank()) return null
 
+    val cleanItemCode = itemCode.trim()
+
+    val possibleDirs = listOf(
+        File(context.filesDir, "product_images"),
+        File(context.getExternalFilesDir(null), "product_images")
+    )
+
+    possibleDirs.forEach { dir ->
+        if (dir.exists()) {
+            val file = listOf(
+                File(dir, "$cleanItemCode.jpg"),
+                File(dir, "$cleanItemCode.jpeg"),
+                File(dir, "$cleanItemCode.png"),
+                File(dir, "$cleanItemCode.webp")
+            ).firstOrNull { it.exists() }
+
+            if (file != null) return file
+        }
+    }
+
+    return null
+}
+
+@Composable
+fun ProductImageWithFallback(
+    item: BulkItem,
+    baseUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    var loadError by remember(item.itemCode, item.imageUrl) { mutableStateOf(false) }
+    var localImageFile by remember(item.itemCode, item.imageUrl) {
+        mutableStateOf<File?>(getLocalImageFileForItem(context, item.itemCode))
+    }
+
+    val directLocalPath = remember(item.imageUrl) {
+        item.imageUrl
+            ?.trim()
+            ?.trimEnd(',')
+            ?.takeIf { it.startsWith("/") }
+            ?.let { File(it) }
+            ?.takeIf { it.exists() }
+    }
+
+    val remoteUrl = remember(item.imageUrl) {
+        item.imageUrl
+            ?.trim()
+            ?.trimEnd(',')
+            ?.takeIf { it.isNotBlank() && !it.startsWith("/") }
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.lastOrNull()
+            ?.let { baseUrl + it }
+    }
+
+    LaunchedEffect(remoteUrl, item.itemCode) {
+        if (localImageFile == null && !remoteUrl.isNullOrBlank() && !item.itemCode.isNullOrBlank()) {
+            val savedFile = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                saveImageFromUrlToLocal(context, remoteUrl, item.itemCode!!)
+            }
+            if (savedFile != null) {
+                localImageFile = savedFile
+            }
+        }
+    }
+
+    val finalModel: Any? = when {
+        directLocalPath != null -> directLocalPath
+        localImageFile != null -> localImageFile
+        !loadError && !remoteUrl.isNullOrBlank() -> remoteUrl
+        else -> null
+    }
+
+    if (finalModel != null) {
+        AsyncImage(
+            model = finalModel,
+            contentDescription = item.itemCode,
+            modifier = modifier,
+            onError = {
+                loadError = true
+            }
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.Photo,
+            contentDescription = item.itemCode,
+            tint = Color.Gray,
+            modifier = modifier
+        )
+    }
+}

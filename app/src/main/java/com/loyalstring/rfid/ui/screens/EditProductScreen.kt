@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -202,6 +203,14 @@ fun EditProductScreen(
     var epc by remember { mutableStateOf(item.epc.orEmpty()) }
     var vendor by remember { mutableStateOf(item.vendor.orEmpty()) }
 
+    var branchId by remember { mutableStateOf(item.branchId ?: 0) }
+    var branchName by remember { mutableStateOf(item.branchName.orEmpty()) }
+    var productId by remember { mutableStateOf(item.productId ?: 0) }
+    var designId by remember { mutableStateOf(item.designId ?: 0) }
+    var productCode by remember { mutableStateOf(item.productCode.orEmpty()) }
+    var productNameState by remember { mutableStateOf(item.productName.orEmpty()) }
+    var imageUrlState by remember { mutableStateOf(item.imageUrl.orEmpty()) }
+
     Scaffold(
         topBar = {
             GradientTopBar(
@@ -249,11 +258,11 @@ fun EditProductScreen(
                         ItemCode = itemCode,
                         HSNCode = "",
                         Description = "",
-                        ProductCode = item.productCode,
+                        ProductCode = productCode,
                         MetalName = "",
                         CategoryId = categoryId,
-                        ProductId = item.productId,
-                        DesignId = item.designId,
+                        ProductId = productId,
+                        DesignId =designId,
                         PurityId = 0,
                         Colour = "",
                         Size = "",
@@ -281,7 +290,7 @@ fun EditProductScreen(
                         VendorId = 0,
                         FirmName = "",
                         BoxId = 0,
-                        TIDNumber = item.tid,
+                        TIDNumber = item.epc,
                         RFIDCode = rfid,
                         FinePercent = "",
                         WastagePercent = "",
@@ -300,7 +309,7 @@ fun EditProductScreen(
                         DeptId = 0,
                         PurchaseCost = "",
                         Margin = "",
-                        BranchName = "",
+                        BranchName =branchName,
                         BranchType = "",
                         BoxName = "",
                         EstimatedDays = "",
@@ -308,7 +317,7 @@ fun EditProductScreen(
                         Rating = "",
                         Ranking = "",
                         CompanyId = 0,
-                        BranchId = item.branchId,
+                        BranchId = branchId,
                         EmployeeId = employee?.employeeId,
                         Status = "Active",
                         ClientCode = employee?.clientCode,
@@ -327,7 +336,7 @@ fun EditProductScreen(
                         CategoryName = category,
                         PurityName = purity,
                         TodaysRate = "",
-                        ProductName = item.productName,
+                        ProductName = productName,
                         DesignName = design,
                         DiamondSize = "",
                         DiamondWeight = "",
@@ -413,30 +422,37 @@ fun EditProductScreen(
 
             // Build your displayImageSource:
             val baseUrl = "https://rrgold.loyalstring.co.in/"
+            val localItemImage = remember(item.itemCode, localPath) {
+                getProductImageFile(context, item.itemCode)
+            }
 
-// Safely resolve display image source
             val displayImageSource: Any? = when {
                 !localPath.isNullOrBlank() -> {
                     val file = File(localPath!!)
-                    if (file.exists()) file else null
+                    if (file.exists()) file else localItemImage
                 }
 
                 !daoState.value.isNullOrBlank() -> {
-                    val stored =
-                        daoState.value!!.trim().trimEnd(',') // remove any trailing commas/spaces
-                    if (stored.startsWith("/")) {
-                        val file = File(stored)
-                        if (file.exists()) file else null
-                    } else {
-                        stored.split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                            .lastOrNull()
-                            ?.let { "$baseUrl$it" }
+                    val stored = daoState.value!!.trim().trimEnd(',')
+
+                    when {
+                        stored.startsWith("/") -> {
+                            val file = File(stored)
+                            if (file.exists()) file else localItemImage
+                        }
+
+                        else -> {
+                            stored.split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() }
+                                .lastOrNull()
+                                ?.let { "$baseUrl$it" }
+                                ?: localItemImage
+                        }
                     }
                 }
 
-                else -> null
+                else -> localItemImage
             }
 
 
@@ -587,7 +603,7 @@ fun showImageChooser(
         .show()
 }
 
-fun compressAndSetImage(
+/*fun compressAndSetImage(
     uri: Uri,
     context: Context,
     cacheDir: File,
@@ -617,6 +633,42 @@ fun compressAndSetImage(
     } catch (e: Exception) {
         e.printStackTrace()
     }
+}*/
+
+fun compressAndSetImage(
+    uri: Uri,
+    context: Context,
+    cacheDir: File,
+    fileName: String,
+    onCompressed: (File) -> Unit
+) {
+    try {
+        val originalBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source)
+        } else {
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
+
+        // temp compressed file for upload
+        val cacheFile = File(cacheDir, "$fileName.jpg")
+        var quality = 90
+
+        while (true) {
+            FileOutputStream(cacheFile).use { out ->
+                originalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+            }
+            if (cacheFile.length() < 200 * 1024 || quality <= 10) break
+            quality -= 10
+        }
+
+        // permanent local file for display fallback
+        val localFile = saveBitmapToProductImages(context, originalBitmap, fileName)
+
+        onCompressed(localFile ?: cacheFile)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }
 
 @Composable
@@ -641,6 +693,52 @@ fun InputField(
             KeyboardOptions.Default
         }
     )
+}
+
+fun getProductImageFile(context: Context, itemCode: String?): File? {
+    if (itemCode.isNullOrBlank()) return null
+
+    val imageDir = File(context.getExternalFilesDir(null), "product_images")
+    if (!imageDir.exists()) {
+        imageDir.mkdirs()
+    }
+
+    val cleanItemCode = itemCode.trim()
+
+    return listOf(
+        File(imageDir, "$cleanItemCode.jpg"),
+        File(imageDir, "$cleanItemCode.jpeg"),
+        File(imageDir, "$cleanItemCode.png"),
+        File(imageDir, "$cleanItemCode.webp")
+    ).firstOrNull { it.exists() }
+}
+
+fun saveBitmapToProductImages(
+    context: Context,
+    bitmap: Bitmap,
+    itemCode: String
+): File? {
+
+
+    return try {
+        val imageDir = File(context.getExternalFilesDir(null), "product_images")
+        if (!imageDir.exists()) {
+            imageDir.mkdirs()
+        }
+
+        val file = File(imageDir, "${itemCode.trim()}.jpg")
+
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            out.flush()
+        }
+
+        Log.d("EditProductScreen", "Saved local image: ${file.absolutePath}")
+        file
+    } catch (e: Exception) {
+        Log.e("EditProductScreen", "Failed to save local image: ${e.message}", e)
+        null
+    }
 }
 
 
