@@ -340,22 +340,22 @@ fun ProductManagementScreen(
                 titleTextSize = 20.sp
             )
         },
-        bottomBar = {
+       /* bottomBar = {
             ScanBottomBar(
-                onSave = { /* TODO */ },
+                onSave = { *//* TODO *//* },
                 onList = { 
                     viewModel.ensureFiltersLoaded() // Ensure data is loaded before navigating
                     navController.navigate(Screens.ProductListScreen.route) 
                 },
-                onScan = { /* TODO */ },
-                onGscan = { /* TODO */ },
-                onReset = { /* TODO */ },
+                onScan = { *//* TODO *//* },
+                onGscan = { *//* TODO *//* },
+                onReset = { *//* TODO *//* },
                 isScanning = isScanning,
                 isEditMode=isEditMode,
                 isScreen=false,
                 isBulkScanning = false
             )
-        }
+        }*/
 
 
     ) { innerPadding ->
@@ -387,7 +387,7 @@ fun ProductManagementScreen(
 
 
 
-        BoxWithConstraints(
+     /*   BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
@@ -479,6 +479,139 @@ fun ProductManagementScreen(
                         }
                     )
                 }
+            }
+        }*/
+
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(innerPadding)
+        ) {
+            val columns = 2
+            val spacing = 16.dp
+            val buttonHeight = 52.dp
+            val buttonSpacing = 12.dp
+
+            val itemCount = productItems.size
+            val rows = (itemCount + 1) / 2
+
+            val totalVerticalSpacing = spacing * (rows + 1)
+            val totalHorizontalSpacing = spacing * (columns + 1)
+
+            // ✅ button ke liye space minus kiya
+            val availableGridHeight = maxHeight - buttonHeight - buttonSpacing
+
+            val itemWidth = (maxWidth - totalHorizontalSpacing) / columns
+            val itemHeight = (availableGridHeight - totalVerticalSpacing) / rows
+
+            val coroutineScope = rememberCoroutineScope()
+
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    contentPadding = PaddingValues(spacing),
+                    verticalArrangement = Arrangement.spacedBy(spacing),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(productItems) { item ->
+                        ProductGridCard(
+                            item = item,
+                            width = itemWidth,
+                            height = itemHeight,
+                            onClick = { selectedItem ->
+                                when (selectedItem.label) {
+                                    localizedContext.getString(R.string.sync_data) -> {
+                                        coroutineScope.launch {
+                                            viewModel.syncItems(context)
+                                        }
+                                    }
+
+                                    localizedContext.getString(R.string.export_excel) -> {
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            viewModel.getAllItems(context)
+                                        }
+                                    }
+
+                                    localizedContext.getString(R.string.sync_sheet_data) -> {
+                                        val sheetId = UserPreferences.getInstance(context).getSheetUrl()
+                                        Log.d("@@", "sheetId$sheetId")
+
+                                        if (sheetId.isNullOrEmpty()) {
+                                            ToastUtils.showToast(
+                                                context,
+                                                localizedContext.getString(R.string.please_add_a_valid_sheet_url_in_settings)
+                                            )
+                                            return@ProductGridCard
+                                        }
+
+                                        val sheetUrl =
+                                            "https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv"
+
+                                        if (!isSheetProcessed) {
+                                            coroutineScope.launch(Dispatchers.IO) {
+                                                val headers = viewModel.parseGoogleSheetHeaders(sheetUrl)
+                                                if (headers.isNotEmpty()) {
+                                                    launch(Dispatchers.Main) {
+                                                        excelColumns = headers
+                                                        showMappingDialog = true
+                                                        isSheetProcessed = true
+                                                    }
+                                                } else {
+                                                    launch(Dispatchers.Main) {
+                                                        ToastUtils.showToast(
+                                                            context,
+                                                            localizedContext.getString(R.string.failed_to_fetch_or_parse_sheet_headers)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    else -> {
+                                        if (selectedItem.route.isNotBlank()) {
+                                            navController.navigate(selectedItem.route)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(buttonSpacing))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(buttonHeight)
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF3053F0), Color(0xFFE82E5A))
+                            )
+                        )
+                        .clickable {
+                            viewModel.ensureFiltersLoaded()
+                            navController.navigate(Screens.ProductListScreen.route)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Open Product List",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = poppins
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
