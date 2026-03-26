@@ -1,8 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 
 
-
-
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.Priority
 
@@ -24,6 +22,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.location.Geocoder
+import android.net.Uri
 
 import android.os.Build
 import android.os.Environment
@@ -182,10 +181,10 @@ fun SettingsScreen(
 
 
     var showLanguageDialog by remember { mutableStateOf(false) }
-   /* val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
-   // val context = LocaleHelper.applyLocale(context, currentLang ?: "en")
-*/
+    /* val currentLocales = AppCompatDelegate.getApplicationLocales()
+     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
+    // val context = LocaleHelper.applyLocale(context, currentLang ?: "en")
+ */
     /*val currentLocales = AppCompatDelegate.getApplicationLocales()
     val currentLang = if (currentLocales.isEmpty) "en" else currentLocales[0]?.language
     val localizedContext = LocaleHelper.applyLocale(context, currentLang ?: "en")*/
@@ -195,7 +194,7 @@ fun SettingsScreen(
     val currentLang = currentLocales[0]?.language ?: savedLang
     val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
-   // val savedLang = userPreferences.getAppLanguage()
+    // val savedLang = userPreferences.getAppLanguage()
     val delegateLang = currentLocales[0]?.language
     val delegateTags = currentLocales.toLanguageTags()
     val configLocales = ConfigurationCompat.getLocales(localizedContext.resources.configuration)
@@ -219,10 +218,10 @@ fun SettingsScreen(
         // Wrap Compose context using your LocaleHelper
         //val context = LocaleHelper.applyLocale(context, currentLang.toString())
 
-       // val cfg = context.resources.configuration
+        // val cfg = context.resources.configuration
 
 
-       // Log.d("LangCheck", "SettingsScreen cfg.locales[0] = ${cfg.locales[0].toLanguageTag()}")
+        // Log.d("LangCheck", "SettingsScreen cfg.locales[0] = ${cfg.locales[0].toLanguageTag()}")
 
         val s = localizedContext.getString(R.string.menu_rates_title)
         Log.d("LangCheck", "menu_rates_title = $s")
@@ -251,7 +250,10 @@ fun SettingsScreen(
     LaunchedEffect(updateState.value) {
         when (val s = updateState.value) {
             is UiState1.Success -> {
-                ToastUtils.showToast(context, localizedContext.getString(R.string.toast_rate_updated))
+                ToastUtils.showToast(
+                    context,
+                    localizedContext.getString(R.string.toast_rate_updated)
+                )
                 // refresh list
                 val emp = UserPreferences.getInstance(context)
                     .getEmployee(Employee::class.java)
@@ -291,7 +293,7 @@ fun SettingsScreen(
             val activity = context as Activity
             checkLocationSettings(activity)
 
-            getCurrentLocation(context,context) { latitude, longitude, address ->
+            getCurrentLocation(context, context) { latitude, longitude, address ->
 
                 val locationData = Data.Builder()
                     .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
@@ -321,19 +323,19 @@ fun SettingsScreen(
             cancelPeriodicSync(context, LOCATION_SYNC_DATA_WORKER)
         }
     }
-   /* LaunchedEffect(locationAutoSyncEnabled) {
-        Log.d("WORKER_TEST", "Scheduling worker1")
-        if (locationAutoSyncEnabled) {
-            Log.d("WORKER_TEST", "Scheduling worker2")
-            getCurrentLocation(context) { latitude, longitude, address ->
-                val locationData = Data.Builder()
-                    .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
-                    .putString("latitude", latitude)
-                    .putString("longitude", longitude)
-                    .putString("address", address)
-                    .build()
+    /* LaunchedEffect(locationAutoSyncEnabled) {
+         Log.d("WORKER_TEST", "Scheduling worker1")
+         if (locationAutoSyncEnabled) {
+             Log.d("WORKER_TEST", "Scheduling worker2")
+             getCurrentLocation(context) { latitude, longitude, address ->
+                 val locationData = Data.Builder()
+                     .putString("task_type", SyncDataWorker.LOCATION_SYNC_DATA_WORKER)
+                     .putString("latitude", latitude)
+                     .putString("longitude", longitude)
+                     .putString("address", address)
+                     .build()
 
-                *//*  schedulePeriodicSync(
+                 *//*  schedulePeriodicSync(
                   context,
                   SyncDataWorker.LOCATION_SYNC_DATA_WORKER,
                   2,
@@ -360,9 +362,6 @@ fun SettingsScreen(
     }*/
 
 
-
-
-
     val menuItems = listOf(
         // Counters (first 5)
         SettingsMenuItem(
@@ -379,8 +378,20 @@ fun SettingsScreen(
             SettingType.Counter,
             30
         ),
-        SettingsMenuItem(UserPreferences.KEY_SEARCH_COUNT,  localizedContext.getString(R.string.search), Icons.Default.Settings, SettingType.Counter, 30),
-        SettingsMenuItem(UserPreferences.KEY_ORDER_COUNT,  localizedContext.getString(R.string.order), Icons.Default.Settings, SettingType.Counter, 10),
+        SettingsMenuItem(
+            UserPreferences.KEY_SEARCH_COUNT,
+            localizedContext.getString(R.string.search),
+            Icons.Default.Settings,
+            SettingType.Counter,
+            30
+        ),
+        SettingsMenuItem(
+            UserPreferences.KEY_ORDER_COUNT,
+            localizedContext.getString(R.string.order),
+            Icons.Default.Settings,
+            SettingType.Counter,
+            10
+        ),
         SettingsMenuItem(
             UserPreferences.KEY_STOCK_TRANSFER_COUNT,
             localizedContext.getString(R.string.stock_transfer),
@@ -474,7 +485,7 @@ fun SettingsScreen(
         ),
         SettingsMenuItem(
             key = "apis",
-            title = localizedContext.getString( R.string.menu_apis_title),
+            title = localizedContext.getString(R.string.menu_apis_title),
             icon = Icons.Default.Settings,
             type = SettingType.Action,
             subtitle = localizedContext.getString(R.string.menu_apis_subtitle)
@@ -483,37 +494,38 @@ fun SettingsScreen(
         }*/,
         SettingsMenuItem(
             "sheet_url",
-            localizedContext.getString( R.string.sheet_url),
+            localizedContext.getString(R.string.sheet_url),
             Icons.Default.Settings,
             SettingType.Action,
-            subtitle =localizedContext.getString(R.string.set_google_sheet_url)
+            subtitle = localizedContext.getString(R.string.set_google_sheet_url)
         ),
         SettingsMenuItem(
             "stock_transfer_url",
-            localizedContext.getString( R.string.stock_transfer_url),
+            localizedContext.getString(R.string.stock_transfer_url),
             Icons.Default.Settings,
             SettingType.Action,
-            subtitle =localizedContext.getString(R.string.stock_transfer_api_url)
+            subtitle = localizedContext.getString(R.string.stock_transfer_api_url)
         ),
         SettingsMenuItem(
             "clear_data",
-            localizedContext.getString( R.string.clear_data),
+            localizedContext.getString(R.string.clear_data),
             Icons.Default.Settings,
             SettingType.Action,
             subtitle = localizedContext.getString(R.string.clear_data)
         ),
         SettingsMenuItem(
             key = "language",
-            localizedContext.getString( R.string.language),
+            localizedContext.getString(R.string.language),
             icon = Icons.Default.Settings,
             type = SettingType.Action,
-           /* subtitle = when (AppCompatDelegate.getApplicationLocales()[0]?.language
-                ?: userPreferences.getAppLanguage().ifBlank { "en" }) {
-                "hi" -> "Hindi"
-                "ar" -> "Arabic"
-                else -> "English"
-            },*/
-           subtitle = userPreferences.getAppLanguage().uppercase(Locale.getDefault()), // show selected
+            /* subtitle = when (AppCompatDelegate.getApplicationLocales()[0]?.language
+                 ?: userPreferences.getAppLanguage().ifBlank { "en" }) {
+                 "hi" -> "Hindi"
+                 "ar" -> "Arabic"
+                 else -> "English"
+             },*/
+            subtitle = userPreferences.getAppLanguage()
+                .uppercase(Locale.getDefault()), // show selected
             onClick = { /* will handle in MenuItemRow */ }
         ),
         SettingsMenuItem(
@@ -526,21 +538,32 @@ fun SettingsScreen(
             onToggleChange = { newValue ->
                 locationAutoSyncEnabled = newValue
                 userPreferences.setAutoSyncEnabled(newValue)
-               // ToastUtils.showToast(context, if (newValue) "Auto Sync Enabled" else "Auto Sync Disabled")
+                // ToastUtils.showToast(context, if (newValue) "Auto Sync Enabled" else "Auto Sync Disabled")
             },
-            onClick = {  navController.navigate(Screens.LocationListScreen.route) }
+            onClick = { navController.navigate(Screens.LocationListScreen.route) }
+        ),
+        SettingsMenuItem(
+            key = "privacy_policy",
+            title = "Privacy Policy",
+            icon = Icons.Default.Settings,
+            type = SettingType.Action,
+            subtitle = "View our privacy policy",
+            onClick = {
+                Log.d("PRIVACY_POLICY", "Navigating to privacy_policy")
+                navController.navigate(Screens.PrivacyPolicyScreen.route)
+            }
         )
     )
 
     Scaffold(
         topBar = {
             GradientTopBar(
-                title =  localizedContext.getString( R.string.settings),
+                title = localizedContext.getString(R.string.settings),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription =  localizedContext.getString( R.string.back),
+                            contentDescription = localizedContext.getString(R.string.back),
                             tint = Color.White
                         )
                     }
@@ -564,9 +587,9 @@ fun SettingsScreen(
                     onSheetUrlClick = { showSheetInput = true },
                     onCustomApiClick = { showCustomApiDialog = true },
                     onClearDataClick = { showClearDataConfirm = true },
-                    onRatesClick={showRatesEditor=true},
+                    onRatesClick = { showRatesEditor = true },
                     onLanguageClick = { showLanguageDialog = true },
-                    onBackupClick={showBackupDialog=true}
+                    onBackupClick = { showBackupDialog = true }
                 )
             }
         }
@@ -575,7 +598,7 @@ fun SettingsScreen(
     if (showSheetInput) {
         sheetUrl?.let {
             SheetInputDialog(
-                localizedContext=context,
+                localizedContext = context,
                 sheetUrl = it,
                 onValueChange = { sheetUrl = it },
                 onDismiss = { showSheetInput = false },
@@ -583,7 +606,10 @@ fun SettingsScreen(
                     viewModel.updateSheetUrl(sheetUrl!!)
                     userPreferences.saveSheetUrl(sheetUrl!!)
                     showSheetInput = false
-                    ToastUtils.showToast(context,  localizedContext.getString( R.string.toast_sheet_url_updated))
+                    ToastUtils.showToast(
+                        context,
+                        localizedContext.getString(R.string.toast_sheet_url_updated)
+                    )
                 }
             )
         }
@@ -595,12 +621,12 @@ fun SettingsScreen(
     if (showCustomApiDialog) {
 
         CustomApiDialog(
-            localizedContext=context,
+            localizedContext = context,
             onDismiss = { showCustomApiDialog = false },
             onSave = { newApi ->
                 customApi = newApi
                 userPreferences.saveCustomApi(newApi)
-                ToastUtils.showToast(context, localizedContext.getString( R.string.custom_api_saved))
+                ToastUtils.showToast(context, localizedContext.getString(R.string.custom_api_saved))
                 showCustomApiDialog = false
             }
         )
@@ -610,8 +636,8 @@ fun SettingsScreen(
         BackupDialogExample(
             onDismiss = { showBackupDialog = false },
             scope = scope,
-            userPreferences=userPreferences,
-            localizedContext=localizedContext
+            userPreferences = userPreferences,
+            localizedContext = localizedContext
         )
     }
 
@@ -631,16 +657,21 @@ fun SettingsScreen(
     if (showClearDataConfirm) {
         AlertDialog(
             onDismissRequest = { showClearDataConfirm = false },
-            title = { Text(localizedContext.getString( R.string.confirm_clear_data), fontFamily = poppins) },
+            title = {
+                Text(
+                    localizedContext.getString(R.string.confirm_clear_data),
+                    fontFamily = poppins
+                )
+            },
             text = {
                 Text(
-                    localizedContext.getString( R.string.this_will_permanently_delete_all_app_data_from_this_device_continue),
+                    localizedContext.getString(R.string.this_will_permanently_delete_all_app_data_from_this_device_continue),
                     fontFamily = poppins
                 )
             },
             confirmButton = {
                 GradientButton(
-                    text = localizedContext.getString( R.string.yes_clear_data),
+                    text = localizedContext.getString(R.string.yes_clear_data),
                     onClick = {
                         showClearDataConfirm = false
                         showPasswordDialog = true
@@ -649,7 +680,7 @@ fun SettingsScreen(
             },
             dismissButton = {
                 GradientButton(
-                    text =localizedContext.getString( R.string.cancel),
+                    text = localizedContext.getString(R.string.cancel),
                     onClick = {
                         showClearDataConfirm = false
                     },
@@ -675,7 +706,7 @@ fun SettingsScreen(
                         label = { Text("Password", fontFamily = poppins) },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                                trailingIcon = {
+                        trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     painter = painterResource(id = if (passwordVisible) R.drawable.ic_action_eye else R.drawable.ic_action_eye_off),
@@ -699,14 +730,18 @@ fun SettingsScreen(
                 })
             },
             dismissButton = {
-                GradientButton(localizedContext.getString(R.string.cancel), onClick = { showPasswordDialog = false })
+                GradientButton(
+                    localizedContext.getString(R.string.cancel),
+                    onClick = { showPasswordDialog = false })
             }
         )
     }
 
     if (showLanguageDialog) {
         AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },  // Dismiss the dialog when clicked outside
+            onDismissRequest = {
+                showLanguageDialog = false
+            },  // Dismiss the dialog when clicked outside
             title = { Text("Select Language") },
             text = {
                 Column {
@@ -715,8 +750,8 @@ fun SettingsScreen(
                         label = "English",
                         selected = userPreferences.getAppLanguage() == "en",
                         onSelect = {
-                           // userPreferences.saveAppLanguage("en")
-                            applyLocaleAndRestart(context, "en",userPreferences)
+                            // userPreferences.saveAppLanguage("en")
+                            applyLocaleAndRestart(context, "en", userPreferences)
                             showLanguageDialog = false  // Close the dialog after selection
                         }
                     )
@@ -729,7 +764,7 @@ fun SettingsScreen(
                         selected = userPreferences.getAppLanguage() == "hi",
                         onSelect = {
                             //userPreferences.saveAppLanguage("hi")
-                            applyLocaleAndRestart(context, "hi",userPreferences)
+                            applyLocaleAndRestart(context, "hi", userPreferences)
                             showLanguageDialog = false  // Close the dialog after selection
                         }
                     )
@@ -742,7 +777,7 @@ fun SettingsScreen(
                         selected = userPreferences.getAppLanguage() == "ar",
                         onSelect = {
                             //userPreferences.saveAppLanguage("ar")
-                            applyLocaleAndRestart(context, "ar",userPreferences)
+                            applyLocaleAndRestart(context, "ar", userPreferences)
                             showLanguageDialog = false  // Close the dialog after selection
                         }
                     )
@@ -754,78 +789,77 @@ fun SettingsScreen(
             }
         )
     }
-      /*  AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },
-            title = { Text(localizedContext.getString( R.string.select_lagauge), fontFamily = poppins) },
-            text = {
-                Column(Modifier.fillMaxWidth()) {
-                    LanguageOption(
-                        label = "English",
-                        selected = userPreferences.getAppLanguage() == "en",
-                        onSelect = {
-                            userPreferences.saveAppLanguage("en")
+    /*  AlertDialog(
+          onDismissRequest = { showLanguageDialog = false },
+          title = { Text(localizedContext.getString( R.string.select_lagauge), fontFamily = poppins) },
+          text = {
+              Column(Modifier.fillMaxWidth()) {
+                  LanguageOption(
+                      label = "English",
+                      selected = userPreferences.getAppLanguage() == "en",
+                      onSelect = {
+                          userPreferences.saveAppLanguage("en")
 
-                            val appLocale = LocaleListCompat.forLanguageTags("en")
-                            AppCompatDelegate.setApplicationLocales(appLocale)
+                          val appLocale = LocaleListCompat.forLanguageTags("en")
+                          AppCompatDelegate.setApplicationLocales(appLocale)
 
-                            ToastUtils.showToast(context, "Language changed to English")
-                            showLanguageDialog = false
-                            scope.launch {
-                                delay(300)
-                                restartApp(context)
-                            }
-                          //  restartApp(context)   // optional but tu already use kar raha hai
-                        }
-                    )
+                          ToastUtils.showToast(context, "Language changed to English")
+                          showLanguageDialog = false
+                          scope.launch {
+                              delay(300)
+                              restartApp(context)
+                          }
+                        //  restartApp(context)   // optional but tu already use kar raha hai
+                      }
+                  )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                  Spacer(modifier = Modifier.height(8.dp))
 
-                    LanguageOption(
-                        label = "Hindi (हिन्दी)",
-                        selected = userPreferences.getAppLanguage() == "hi",
-                        onSelect = {
-                            userPreferences.saveAppLanguage("hi")
+                  LanguageOption(
+                      label = "Hindi (हिन्दी)",
+                      selected = userPreferences.getAppLanguage() == "hi",
+                      onSelect = {
+                          userPreferences.saveAppLanguage("hi")
 
-                            val appLocale = LocaleListCompat.forLanguageTags("hi")
-                            AppCompatDelegate.setApplicationLocales(appLocale)
+                          val appLocale = LocaleListCompat.forLanguageTags("hi")
+                          AppCompatDelegate.setApplicationLocales(appLocale)
 
-                            ToastUtils.showToast(context, "भाषा हिंदी में बदल दी गई है")
-                            showLanguageDialog = false
-                            scope.launch {
-                                delay(300)
-                                restartApp(context)
-                            }
-                           // restartApp(context)   // optional but safe
-                        }
-                    )
+                          ToastUtils.showToast(context, "भाषा हिंदी में बदल दी गई है")
+                          showLanguageDialog = false
+                          scope.launch {
+                              delay(300)
+                              restartApp(context)
+                          }
+                         // restartApp(context)   // optional but safe
+                      }
+                  )
 
-                    // Arabic
-                    LanguageOption(
-                        label = "Arabic (العربية)",
-                        selected = userPreferences.getAppLanguage() == "ar",
-                        onSelect = {
-                            userPreferences.saveAppLanguage("ar")
+                  // Arabic
+                  LanguageOption(
+                      label = "Arabic (العربية)",
+                      selected = userPreferences.getAppLanguage() == "ar",
+                      onSelect = {
+                          userPreferences.saveAppLanguage("ar")
 
-                            val appLocale = LocaleListCompat.forLanguageTags("ar")
-                            AppCompatDelegate.setApplicationLocales(appLocale)
+                          val appLocale = LocaleListCompat.forLanguageTags("ar")
+                          AppCompatDelegate.setApplicationLocales(appLocale)
 
-                            ToastUtils.showToast(context, "تم تغيير اللغة إلى العربية")
-                            showLanguageDialog = false
+                          ToastUtils.showToast(context, "تم تغيير اللغة إلى العربية")
+                          showLanguageDialog = false
 
-                            scope.launch {
-                                delay(300)
-                                restartApp(context)
-                            }
-                        }
-                    )
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showLanguageDialog = false }) { Text(localizedContext.getString(R.string.cancel)) }
-            }
-        )*/
-
+                          scope.launch {
+                              delay(300)
+                              restartApp(context)
+                          }
+                      }
+                  )
+              }
+          },
+          confirmButton = {},
+          dismissButton = {
+              TextButton(onClick = { showLanguageDialog = false }) { Text(localizedContext.getString(R.string.cancel)) }
+          }
+      )*/
 
 
 }
@@ -1130,14 +1164,24 @@ fun getCurrentLocation(context: Context,context: Context, onLocationFetched: (St
 */
 
 @SuppressLint("MissingPermission")
-fun getCurrentLocation(localizedContext: Context, context: Context, onLocationFetched: (String, String, String) -> Unit) {
+fun getCurrentLocation(
+    localizedContext: Context,
+    context: Context,
+    onLocationFetched: (String, String, String) -> Unit
+) {
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
     // Check if context is an Activity
     if (context is Activity) {
         // Handle permission request only if the context is an Activity
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
                 context,
@@ -1173,7 +1217,8 @@ fun getCurrentLocation(localizedContext: Context, context: Context, onLocationFe
 
                 try {
 
-                    val addressList = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                    val addressList =
+                        geocoder.getFromLocation(location.latitude, location.longitude, 1)
                     val addressInfo = addressList?.firstOrNull()
                     val address = addressInfo?.getAddressLine(0) ?: "Unknown location"
 
@@ -1190,8 +1235,10 @@ fun getCurrentLocation(localizedContext: Context, context: Context, onLocationFe
             }
 
         } else {
-            Toast.makeText(context,
-                localizedContext.getString(R.string.failed_to_get_location), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                localizedContext.getString(R.string.failed_to_get_location), Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
@@ -1222,13 +1269,12 @@ fun BackupDialogExample(
                 inputStream?.use { input ->
                     tempFile.outputStream().use { output -> input.copyTo(output) }
                 }
-                restoreBackupFromDb(context, tempFile,context)
+                restoreBackupFromDb(context, tempFile, context)
             } catch (e: Exception) {
                 ToastUtils.showToast(context, "❌ Restore failed: ${e.message}")
             }
         }
     }
-
 
 
     // ----------------------------------------
@@ -1239,7 +1285,7 @@ fun BackupDialogExample(
         scope: CoroutineScope,
         recipientEmail: String,
         onDismiss: () -> Unit,
-        localizedContext:Context
+        localizedContext: Context
     ) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -1253,7 +1299,11 @@ fun BackupDialogExample(
                 // 2️⃣ Export CSV
                 val csvFile = File(exportDir, "Backup_All.csv")
                 val dbFile = context.getDatabasePath("app_db")
-                val db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+                val db = SQLiteDatabase.openDatabase(
+                    dbFile.absolutePath,
+                    null,
+                    SQLiteDatabase.OPEN_READONLY
+                )
                 BackupUtils.exportRoomDatabaseToCsv(context, db)
                 db.close()
 
@@ -1281,7 +1331,13 @@ fun BackupDialogExample(
                 )
 
                 withContext(Dispatchers.Main) {
-                    ToastUtils.showToast(context,localizedContext.getString(R.string.backup_email_sent_success, recipientEmail))
+                    ToastUtils.showToast(
+                        context,
+                        localizedContext.getString(
+                            R.string.backup_email_sent_success,
+                            recipientEmail
+                        )
+                    )
                 }
 
             } catch (e: Exception) {
@@ -1321,11 +1377,16 @@ fun BackupDialogExample(
 
                                 ToastUtils.showToast(
                                     context,
-                                    localizedContext.getString(R.string.database_backup_saved, backupFile.absolutePath)
+                                    localizedContext.getString(
+                                        R.string.database_backup_saved,
+                                        backupFile.absolutePath
+                                    )
                                 )
                             } catch (e: Exception) {
-                                ToastUtils.showToast(context,
-                                    localizedContext.getString(R.string.backup_failed, e.message))
+                                ToastUtils.showToast(
+                                    context,
+                                    localizedContext.getString(R.string.backup_failed, e.message)
+                                )
                             } finally {
                                 onDismiss()
                             }
@@ -1334,13 +1395,14 @@ fun BackupDialogExample(
                 ) { Text(localizedContext.getString(R.string.save_to_device)) }
 
 
-
                 // 📧 Send via Email
                 TextButton(onClick = {
                     val activity = context.findActivity() ?: return@TextButton
                     if (!ensureStoragePermission(context, activity)) {
-                        ToastUtils.showToast(context,
-                            localizedContext.getString(R.string.please_grant_storage_permission_to_send_backup))
+                        ToastUtils.showToast(
+                            context,
+                            localizedContext.getString(R.string.please_grant_storage_permission_to_send_backup)
+                        )
                         return@TextButton
                     }
 
@@ -1374,24 +1436,34 @@ fun BackupDialogExample(
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                if (android.util.Patterns.EMAIL_ADDRESS.matcher(inputEmail).matches()) {
+                                if (android.util.Patterns.EMAIL_ADDRESS.matcher(inputEmail)
+                                        .matches()
+                                ) {
                                     val userPreferences = UserPreferences.getInstance(context)
                                     userPreferences.saveBackupEmail(inputEmail) // ✅ Save using your preference helper
 
                                     savedEmail = inputEmail
                                     showEmailDialog = false
-                                    ToastUtils.showToast(context,
-                                        localizedContext.getString(R.string.sending_backup))
+                                    ToastUtils.showToast(
+                                        context,
+                                        localizedContext.getString(R.string.sending_backup)
+                                    )
 
-                                    sendBackupEmail(context, scope, inputEmail, onDismiss,context)
+                                    sendBackupEmail(context, scope, inputEmail, onDismiss, context)
                                 } else {
-                                    ToastUtils.showToast(context,
-                                        localizedContext.getString(R.string.please_enter_a_valid_email_address))
+                                    ToastUtils.showToast(
+                                        context,
+                                        localizedContext.getString(R.string.please_enter_a_valid_email_address)
+                                    )
                                 }
                             }) { Text(localizedContext.getString(R.string.save_send)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showEmailDialog = false }) { Text(localizedContext.getString(R.string.cancel)) }
+                            TextButton(onClick = { showEmailDialog = false }) {
+                                Text(
+                                    localizedContext.getString(R.string.cancel)
+                                )
+                            }
                         }
                     )
                 }
@@ -1450,11 +1522,14 @@ fun BackupDialogExample(
         ToastUtils.showToast(context, "❌ Restore failed: ${e.message}")
     }
 }*/
-fun restoreBackupFromDb(localizedContext: Context, backupFile: File,context: Context) {
+fun restoreBackupFromDb(localizedContext: Context, backupFile: File, context: Context) {
 
     try {
         if (!backupFile.exists()) {
-            ToastUtils.showToast(context,localizedContext.getString(R.string.backup_file_not_found))
+            ToastUtils.showToast(
+                context,
+                localizedContext.getString(R.string.backup_file_not_found)
+            )
             return
         }
 
@@ -1469,8 +1544,10 @@ fun restoreBackupFromDb(localizedContext: Context, backupFile: File,context: Con
         // Copy backup into place
         backupFile.copyTo(dbFile, overwrite = true)
 
-        ToastUtils.showToast(context,
-            localizedContext.getString(R.string.database_restored_successfully))
+        ToastUtils.showToast(
+            context,
+            localizedContext.getString(R.string.database_restored_successfully)
+        )
 
         // Restart app to reload DB
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -1480,19 +1557,12 @@ fun restoreBackupFromDb(localizedContext: Context, backupFile: File,context: Con
 
     } catch (e: Exception) {
         Log.e("DB_RESTORE", "Restore failed", e)
-        ToastUtils.showToast(context, localizedContext.getString(R.string.restore_failed, e.message))
+        ToastUtils.showToast(
+            context,
+            localizedContext.getString(R.string.restore_failed, e.message)
+        )
     }
 }
-
-
-
-
-
-
-
-
-
-
 
 
 private fun ensureStoragePermission(context: Context, activity: Activity): Boolean {
@@ -1537,7 +1607,7 @@ fun CustomApiDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 
-) {
+    ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences.getInstance(context) }
 
@@ -1591,9 +1661,6 @@ fun CustomApiDialog(
 }
 
 
-
-
-
 // ---------------- MENU ROW ----------------
 @Composable
 fun MenuItemRow(
@@ -1607,7 +1674,7 @@ fun MenuItemRow(
     onLanguageClick: () -> Unit,
     onBackupClick: () -> Unit,
 
-) {
+    ) {
     var expanded by remember { mutableStateOf(false) }
     var selectedValue by remember {
         mutableIntStateOf(
@@ -1621,6 +1688,7 @@ fun MenuItemRow(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clickable {
+                Log.d("SETTINGS_CLICK", "Clicked key = ${item.key}")
                 when (item.key) {
                     "autosync" -> onAutoSyncClick()
                     "sheet_url" -> onSheetUrlClick()
@@ -1686,7 +1754,10 @@ fun MenuItemRow(
                             modifier = Modifier
                                 .width(70.dp)
                                 .background(Color.White),
-                            offset = DpOffset(x = (-20).dp, y = 0.dp) // small tweak to match alignment
+                            offset = DpOffset(
+                                x = (-20).dp,
+                                y = 0.dp
+                            ) // small tweak to match alignment
                         ) {
                             (1..30).forEach { count ->
                                 DropdownMenuItem(
@@ -1722,7 +1793,7 @@ fun MenuItemRow(
 // ---------------- SHEET URL DIALOG ----------------
 @Composable
 fun SheetInputDialog(
-    localizedContext:Context,
+    localizedContext: Context,
     sheetUrl: String,
     onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -1731,7 +1802,13 @@ fun SheetInputDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        title = { Text(localizedContext.getString(R.string.set_sheet_url), fontFamily = poppins, fontSize = 14.sp) },
+        title = {
+            Text(
+                localizedContext.getString(R.string.set_sheet_url),
+                fontFamily = poppins,
+                fontSize = 14.sp
+            )
+        },
         text = {
             Column(
                 Modifier
@@ -1741,7 +1818,13 @@ fun SheetInputDialog(
                 OutlinedTextField(
                     value = sheetUrl,
                     onValueChange = onValueChange,
-                    label = { Text(localizedContext.getString(R.string.enter_sheet_url), fontFamily = poppins, fontSize = 12.sp) },
+                    label = {
+                        Text(
+                            localizedContext.getString(R.string.enter_sheet_url),
+                            fontFamily = poppins,
+                            fontSize = 12.sp
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -1755,7 +1838,6 @@ fun SheetInputDialog(
             }
         }
     )
-
 
 
 }

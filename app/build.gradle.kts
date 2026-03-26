@@ -20,8 +20,8 @@ android {
         targetSdk = 36
        /* versionCode = 76
         versionName = "1.75"*/
-        versionCode = 6
-        versionName = "1.6"
+        versionCode = 8
+        versionName = "1.8"
 
         resConfigs("en", "hi","ar")
 

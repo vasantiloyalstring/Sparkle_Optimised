@@ -448,6 +448,12 @@ fun AppNavigation(
                 )
             }
 
+            composable(Screens.PrivacyPolicyScreen.route) {
+                PrivacyPolicyScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
 
 
         }

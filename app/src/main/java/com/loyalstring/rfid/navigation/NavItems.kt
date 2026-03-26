@@ -43,7 +43,8 @@ enum class Screens(val route: String) {
     QuotationListScreen("quotation_list"),
     StockVerificationReport("stockverification_report"),
     BatchDetailsScreen("batch_details_screen"),
-    StockTransferPreviewScreen("stock_transfer_preview")
+    StockTransferPreviewScreen("stock_transfer_preview"),
+    PrivacyPolicyScreen("privacy_policy")
 }
 
 data class NavItems(
