@@ -1,9 +1,11 @@
 package com.loyalstring.rfid.ui.screens
 
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -66,6 +68,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,10 +94,12 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.withContext
 import java.io.File
 
 
+@SuppressLint("StringFormatInvalid")
 @Composable
 fun ProductListScreen(
     onBack: () -> Unit,
@@ -119,6 +124,12 @@ fun ProductListScreen(
     var isEditMode by remember { mutableStateOf(false) }
     val deleteResponse by singleproductViewModel.productDeleetResponse.observeAsState()
     var shouldNavigateBack by remember { mutableStateOf(false) }
+
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     val isLoading by viewModel.isLoading.collectAsState()
     LaunchedEffect(Unit) {
@@ -149,13 +160,14 @@ fun ProductListScreen(
 
                 // singleproductViewModel.insertLabelledStock(request)
                 // singleproductViewModel.deleteItem(id) // ✅ local delete with cached id
-                Toast.makeText(context, "Item deleted successfully", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context,
+                    localizedContext.getString(R.string.item_deleted_successfully), Toast.LENGTH_SHORT).show()
                 //  viewModel.refrshProductList()
 
 
             }
             is Resource.Error -> {
-                Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context,   localizedContext.getString(R.string.delete_failed), Toast.LENGTH_SHORT).show()
             }
             else -> Unit
         }
@@ -182,12 +194,12 @@ fun ProductListScreen(
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Product List",
+                title =   localizedContext.getString(R.string.product_list),
                 navigationIcon = {
                     IconButton(onClick = { shouldNavigateBack = true }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription =   localizedContext.getString(R.string.back),
                             tint = Color.White
                         )
                     }
@@ -240,7 +252,7 @@ fun ProductListScreen(
                     onValueChange = { searchQuery.value = it },
                     placeholder = {
                         Text(
-                            "Enter RFID / Item code / Product",
+                            localizedContext.getString(R.string.enter_rfid_item_code_product),
                             fontFamily = poppins
                         )
                     },
@@ -270,7 +282,8 @@ fun ProductListScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp) // adds spacing between buttons
                 ) {
                     ActionButton(
-                        text = if (isGridView) "List View" else "Grid View",
+                        text = if (isGridView)   localizedContext.getString(R.string.list_view) else   localizedContext.getString(R.string.grid_view
+                        ),
                         onClick = { isGridView = !isGridView },
                         gradient = Brush.horizontalGradient(
                             colors = listOf(
@@ -286,7 +299,7 @@ fun ProductListScreen(
                         }
                     )
                     ActionButton(
-                        text = "Filter",
+                        text =   localizedContext.getString(R.string.filter),
                         onClick = { },
                         gradient = Brush.horizontalGradient(
                             colors = listOf(Color(0xFFD32940), Color(0xFF5231A7)) // red to purple
@@ -294,7 +307,7 @@ fun ProductListScreen(
                         icon = painterResource(id = R.drawable.filter_svg)
                     )
                     ActionButton(
-                        text = "Export Pdf",
+                        text =   localizedContext.getString(R.string.export_pdf),
                         onClick = { },
                         modifier = Modifier.defaultMinSize(minWidth = 120.dp),
                         gradient = Brush.horizontalGradient(
@@ -384,16 +397,14 @@ fun ProductListScreen(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp) // Better spacing between the two
                                     ) {
                                         Text(
-                                            text = "RFID: ${item.rfid}",
-                                            fontFamily = poppins,
+                                            text = localizedContext.getString(R.string.rfid_text, item.rfid?.takeIf { it.isNotBlank() } ?: "-"),
                                             fontSize = 9.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.weight(1f)
                                         )
                                         Text(
-                                            text = "Item: ${item.itemCode}",
-                                            fontFamily = poppins,
+                                            text = localizedContext.getString(R.string.itemcode, item.itemCode?.takeIf { it.isNotBlank() } ?: "-"),
                                             fontSize = 9.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -408,14 +419,14 @@ fun ProductListScreen(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Text(
-                                            text = "G.Wt: ${item.grossWeight}",
+                                            text = localizedContext.getString(R.string.gross_wt, item.grossWeight?.takeIf { it.isNotBlank() } ?: "-"),
                                             fontFamily = poppins,
                                             fontSize = 9.sp,
                                             maxLines = 1,
                                             modifier = Modifier.weight(1f)
                                         )
                                         Text(
-                                            text = "N.Wt: ${item.netWeight}",
+                                            text = localizedContext.getString(R.string.net_weight, item.netWeight?.takeIf { it.isNotBlank() } ?: "-"),
                                             fontFamily = poppins,
                                             fontSize = 9.sp,
                                             maxLines = 1,
@@ -437,7 +448,7 @@ fun ProductListScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "S.No",
+                            localizedContext.getString(R.string.sr_header),
                             Modifier.width(40.dp),
                             color = Color.White,
                             textAlign = TextAlign.Start,
@@ -452,25 +463,25 @@ fun ProductListScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             listOf(
-                                "Product Name" to 120.dp,
-                                "Item code" to 70.dp,
-                                "RFID" to 60.dp,
-                                "G.wt" to 60.dp,
-                                "S.wt" to 60.dp,
-                                "D.wt" to 60.dp,
-                                "N.wt" to 60.dp,
-                                "Category" to 70.dp,
-                                "Design" to 60.dp,
-                                "Purity" to 60.dp,
-                                "Making/g" to 80.dp,
-                                "Making%" to 80.dp,
-                                "Fix Making" to 80.dp,
-                                "Fix Wastage" to 80.dp,
-                                "S Amt" to 60.dp,
-                                "D Amt" to 60.dp,
-                                "SKU" to 70.dp,
-                                "EPC" to 160.dp,
-                                "Vendor" to 80.dp
+                                localizedContext.getString(R.string.product_name) to 120.dp,
+                                localizedContext.getString(R.string.itemcode) to 70.dp,
+                                localizedContext.getString(R.string.rfid)to 60.dp,
+                                localizedContext.getString(R.string.gross_wt_header) to 60.dp,
+                                localizedContext.getString(R.string.stone_weight) to 60.dp,
+                                localizedContext.getString(R.string.diamond_weight) to 60.dp,
+                                localizedContext.getString(R.string.net_weight)to 60.dp,
+                                localizedContext.getString(R.string.category_header) to 70.dp,
+                                localizedContext.getString(R.string.design) to 60.dp,
+                                localizedContext.getString(R.string.purity) to 60.dp,
+                                localizedContext.getString(R.string.lbl_making_per_gram) to 80.dp,
+                                localizedContext.getString(R.string.lbl_making_percent) to 80.dp,
+                                localizedContext.getString(R.string.lbl_fix_making) to 80.dp,
+                                localizedContext.getString(R.string.lbl_fix_wastage) to 80.dp,
+                                localizedContext.getString(R.string.s_amt) to 60.dp,
+                                localizedContext.getString(R.string.d_amt) to 60.dp,
+                                localizedContext.getString(R.string.sku) to 70.dp,
+                                localizedContext.getString(R.string.lbl_epc) to 160.dp,
+                                localizedContext.getString(R.string.lbl_vendor) to 80.dp
                                 // "TID" to 90.dp
                             ).forEach { (label, width) ->
                                 Text(
@@ -485,7 +496,7 @@ fun ProductListScreen(
                             }
                         }
                         Text(
-                            "Edit",
+                            localizedContext.getString(R.string.edit),
                             Modifier.width(35.dp),
                             color = Color.White,
                             textAlign = TextAlign.Start,
@@ -493,7 +504,7 @@ fun ProductListScreen(
                             fontSize = 12.sp
                         )
                         Text(
-                            "Delete",
+                            localizedContext.getString(R.string.delete),
                             Modifier.width(55.dp),
                             color = Color.White,
                             textAlign = TextAlign.Start,

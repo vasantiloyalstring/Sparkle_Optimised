@@ -743,4 +743,28 @@
     <string name="m_qty">मात्रा</string>
     <string name="m_wt">वजन</string>
 
+
+        <string name="print_options">प्रिंट विकल्प</string>
+        <string name="view_pdf">पीडीएफ देखें</string>
+        <string name="bluetooth_printer">ब्लूटूथ प्रिंटर</string>
+        <string name="connect_bluetooth_printer">ब्लूटूथ प्रिंटर कनेक्ट करें</string>
+        <string name="activity_not_found">एक्टिविटी नहीं मिली</string>
+        <string name="grant_bluetooth_permissions">कृपया ब्लूटूथ अनुमति दें</string>
+        <string name="print_challan">चालान प्रिंट करें</string>
+        <string name="no_print_data_found">प्रिंट डेटा नहीं मिला</string>
+        <string name="not_connected">कनेक्ट नहीं है</string>
+        <string name="pdf_not_generated">पीडीएफ जनरेट नहीं हुई</string>
+    <string name="item_deleted_successfully">आइटम सफलतापूर्वक हटाया गया</string>
+    <string name="product_list">प्रोडक्ट सूची</string>
+
+
+    <string name="rfid_text">आरएफआईडी: %1$s</string>
+
+    <string name="enter_rfid_item_code_product">RFID / आइटम कोड / प्रोडक्ट दर्ज करें</string>
+    <string name="list_view">सूची दृश्य</string>
+    <string name="grid_view">ग्रिड दृश्य</string>
+    <string name="export_pdf">पीडीएफ निर्यात करें</string>
+    <string name="open_product_list">प्रोडक्ट सूची खोलें</string>
+
+
 </resources>

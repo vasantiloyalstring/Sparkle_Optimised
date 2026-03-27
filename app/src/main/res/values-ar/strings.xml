@@ -738,4 +738,24 @@
     <string name="m_qty">الكمية</string>
     <string name="m_wt">الوزن</string>
 
+    <string name="print_options">خيارات الطباعة</string>
+    <string name="view_pdf">عرض PDF</string>
+    <string name="bluetooth_printer">طابعة بلوتوث</string>
+    <string name="connect_bluetooth_printer">اتصال بطابعة بلوتوث</string>
+    <string name="activity_not_found">لم يتم العثور على النشاط</string>
+    <string name="grant_bluetooth_permissions">يرجى منح أذونات البلوتوث</string>
+    <string name="print_challan">طباعة الإيصال</string>
+    <string name="no_print_data_found">لم يتم العثور على بيانات الطباعة</string>
+    <string name="not_connected">غير متصل</string>
+    <string name="pdf_not_generated">لم يتم إنشاء ملف PDF</string>
+    <string name="item_deleted_successfully">تم حذف العنصر بنجاح</string>
+    <string name="product_list">قائمة المنتجات</string>
+    <string name="enter_rfid_item_code_product">أدخل RFID / رمز الصنف / المنتج</string>
+    <string name="list_view">عرض القائمة</string>
+    <string name="grid_view">عرض الشبكة</string>
+    <string name="export_pdf">تصدير PDF</string>
+
+    <string name="rfid_text">معرّف RFID: %1$s</string>
+    <string name="open_product_list">افتح قائمة المنتجات</string>
+
 </resources>

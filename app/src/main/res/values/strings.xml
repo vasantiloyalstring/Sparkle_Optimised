@@ -780,5 +780,25 @@
     <string name="m_qty">M.Qty</string>
     <string name="m_wt">M.Wt</string>
 
+    <string name="print_options">Print Options</string>
+    <string name="view_pdf">View PDF</string>
+    <string name="bluetooth_printer">Bluetooth Printer</string>
+    <string name="connect_bluetooth_printer">Connect Bluetooth Printer</string>
+    <string name="activity_not_found">Activity not found</string>
+    <string name="grant_bluetooth_permissions">Please grant Bluetooth permissions</string>
+    <string name="print_challan">Print Challan</string>
+    <string name="no_print_data_found">No print data found</string>
+    <string name="not_connected">Not connected</string>
+    <string name="pdf_not_generated">PDF not generated</string>
+    <string name="item_deleted_successfully">Item deleted successfully</string>
+    <string name="product_list">Product List</string>
+    <string name="enter_rfid_item_code_product">Enter RFID / Item code / Product</string>
+    <string name="list_view">List View</string>
+    <string name="grid_view">Grid View</string>
+    <string name="export_pdf">Export Pdf</string>
+
+    <string name="rfid_text">RFID: %1$s</string>
+    <string name="open_product_list">Open Product List</string>
+
 
 </resources>

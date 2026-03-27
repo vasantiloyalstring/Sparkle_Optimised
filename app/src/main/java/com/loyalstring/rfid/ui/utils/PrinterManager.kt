@@ -95,8 +95,8 @@ class PrinterManager(private val context: Context) {
         return if (clean.length > length) clean.take(length) else clean
     }
 
-    private fun divider(length: Int = 29): String {
-        return "-".repeat(length)
+    private fun divider(): String {
+        return "━".repeat(24)
     }
 
     /**
@@ -112,8 +112,8 @@ class PrinterManager(private val context: Context) {
         netWt: String
     ): String {
         return buildString {
-            append(padRight(sno, 5))
-            append(padRight(fitItemName(itemName, 18), 18))
+            append(padRight(sno, 7))
+            append(padRight(fitItemName(itemName, 16), 16))
             append(padLeft(pcs, 4))
             append(padLeft(grossWt, 10))
             append(padLeft(netWt, 10))
@@ -125,15 +125,15 @@ class PrinterManager(private val context: Context) {
      * Item(8) + T.P(5) + T.G.W(8) + T.N.W(8)
      */
     private fun summaryRow(
-
+        sno: String,
         itemName: String,
         totalPcs: String,
         totalGrossWt: String,
         totalNetWt: String
     ): String {
         return buildString {
-
-            append(padRight(fitItemName(itemName, 20), 20))
+            append(padRight(sno, 7))
+            append(padRight(fitItemName(itemName, 16), 16))
             append(padLeft(totalPcs, 4))
             append(padLeft(totalGrossWt, 10))
             append(padLeft(totalNetWt, 10))
@@ -183,6 +183,7 @@ class PrinterManager(private val context: Context) {
         val summaryList = buildSummary(items)
         val dateText = formatDate(data.createdDateTime)
         val phoneText = safe(data.phone, "-")
+        val nameText = safe(data.customerName, "-")
 
         try {
             var chain = printer.initializePrinter()
@@ -190,7 +191,7 @@ class PrinterManager(private val context: Context) {
             // Header
             chain = chain
                 .printText(
-                    "Run\n",
+                    "Name: $nameText\n",
                     POSConst.ALIGNMENT_LEFT,
                     POSConst.TXT_1WIDTH,
                     POSConst.TXT_1HEIGHT
@@ -263,7 +264,7 @@ class PrinterManager(private val context: Context) {
             // Summary header
             chain = chain
                 .printText(
-                    summaryRow("Item Name", "T.P", "T.G.W", "T.N.W") + "\n",
+                    summaryRow("Sr No", "Item Name", "T.P", "T.G.W", "T.N.W")+ "\n",
                     POSConst.ALIGNMENT_LEFT,
                     POSConst.TXT_1WIDTH,
                     POSConst.TXT_1HEIGHT
@@ -276,10 +277,10 @@ class PrinterManager(private val context: Context) {
                 )
 
             // Summary rows
-            summaryList.forEach { summary ->
+            summaryList.forEachIndexed { index, summary ->
                 chain = chain.printText(
                     summaryRow(
-
+                        sno = (index + 1).toString(),
                         itemName = summary.itemName,
                         totalPcs = summary.totalPcs.toString(),
                         totalGrossWt = String.format(Locale.US, "%.3f", summary.totalGrossWt),

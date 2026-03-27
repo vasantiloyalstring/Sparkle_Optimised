@@ -77,6 +77,7 @@ import androidx.compose.foundation.lazy.items
 import com.loyalstring.rfid.worker.LocaleHelper
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.res.stringResource
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -603,7 +604,7 @@ fun ProductManagementScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Open Product List",
+                        text =  localizedContext.getString(R.string.open_product_list),
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
