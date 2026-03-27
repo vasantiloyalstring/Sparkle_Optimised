@@ -18,10 +18,10 @@ android {
         applicationId = "com.loyalstring.rfid"
         minSdk = 26
         targetSdk = 36
-       /* versionCode = 76
-        versionName = "1.75"*/
-        versionCode = 8
-        versionName = "1.8"
+       versionCode = 77
+        versionName = "1.76"
+        /*versionCode = 8
+        versionName = "1.8"*/
 
         resConfigs("en", "hi","ar")
 
@@ -65,6 +65,7 @@ android {
 
 dependencies {
     implementation(files("libs/DeviceAPI_ver20250209_release.aar"))
+    implementation (files("libs/printer-lib-3.2.0.aar"))
 
     // Core + Lifecycle
     implementation(libs.androidx.core.ktx)

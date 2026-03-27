@@ -39,6 +39,7 @@ import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.navigation.GradientTopBar
+import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
@@ -73,7 +74,8 @@ fun DeliveryChallanListScreen(
 
     var visibleItems by remember { mutableStateOf(10) }
     var searchQuery by remember { mutableStateOf("") }
-
+    var showPrintDialog by remember { mutableStateOf(false) }
+    var selectedPrintData by remember { mutableStateOf<DeliveryChallanPrintData?>(null) }
     // Fetch Challans once
     LaunchedEffect(Unit) {
         employee?.let {
@@ -160,7 +162,11 @@ fun DeliveryChallanListScreen(
             },
             isLoading = isLoading,
             context = context,
-            localizedContext=localizedContext
+            localizedContext=localizedContext,
+            selectedPrintData = selectedPrintData,
+            onSelectedPrintDataChange = { selectedPrintData = it },
+            showPrintDialog = showPrintDialog,
+            onShowPrintDialogChange = { showPrintDialog = it }
         )
 
         if (error != null) {
@@ -182,7 +188,11 @@ fun DeliveryChallanTable(
     onLoadMore: () -> Unit,
     isLoading: Boolean,
     context: Context,
-    localizedContext: Context
+    localizedContext: Context,
+    selectedPrintData: DeliveryChallanPrintData?,
+    onSelectedPrintDataChange: (DeliveryChallanPrintData?) -> Unit,
+    showPrintDialog: Boolean,
+    onShowPrintDialogChange: (Boolean) -> Unit
 ) {
     val sharedScrollState = rememberScrollState()
     val viewModel: DeliveryChallanViewModel = hiltViewModel()
@@ -325,7 +335,76 @@ fun DeliveryChallanTable(
                             }
 
                             // ✏️ Print Button (right icon)
+
                             IconButton(onClick = {
+                                onSelectedPrintDataChange(challan.toDeliveryChallanPrintData(context))
+                                onShowPrintDialogChange(true)
+                            }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.print_svg),
+                                    contentDescription = localizedContext.getString(R.string.cd_print_challan),
+                                    tint = Color(0xFF37474F),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            if (showPrintDialog && selectedPrintData != null) {
+                                AlertDialog(
+                                    onDismissRequest = {
+                                        onShowPrintDialogChange(false)
+                                        onSelectedPrintDataChange(null)
+                                    },
+                                    title = {
+                                        Text("Print Options", fontFamily = poppins)
+                                    },
+                                    text = {
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    val uri = generateDeliveryChallanPdf(context, selectedPrintData!!)
+                                                    if (uri != null) {
+                                                        openPdfPreview(context, uri)
+                                                    } else {
+                                                        Toast.makeText(context, "PDF not generated", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    onShowPrintDialogChange(false)
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("View PDF")
+                                            }
+
+                                            Button(
+                                                onClick = {
+                                                    navController.currentBackStackEntry
+                                                        ?.savedStateHandle
+                                                        ?.set("printer_print_data", selectedPrintData)
+
+                                                    navController.navigate(Screens.PrinterScreen.route)
+                                                    onShowPrintDialogChange(false)
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Bluetooth Printer")
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {},
+                                    dismissButton = {
+                                        TextButton(
+                                            onClick = {
+                                                onShowPrintDialogChange(false)
+                                                onSelectedPrintDataChange(null)
+                                            }
+                                        ) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
+                         /*   IconButton(onClick = {
                                 val printData: DeliveryChallanPrintData = challan.toDeliveryChallanPrintData(context)
 
                                 val uri = generateDeliveryChallanPdf(context, printData)
@@ -339,7 +418,7 @@ fun DeliveryChallanTable(
                                     tint = Color(0xFF37474F),
                                     modifier = Modifier.size(18.dp)
                                 )
-                            }
+                            }*/
                         }
                     }
 

@@ -2226,7 +2226,9 @@ MakingPerGram=${touchMatch.MakingPerGram}
                         deliveryChallanViewModel.fetchLastChallanNo(clientCode, branchId)
                     }
                 },
-                onList = { navController.navigate(Screens.DeliveryChallanListScreen.route) },
+                onList = { navController.navigate(Screens.DeliveryChallanListScreen.route,)
+                  //  navController.navigate(Screens.PrinterScreen.route)
+                    },
                 onScan = {
                     viewModel.startSingleScan(20)
                 },

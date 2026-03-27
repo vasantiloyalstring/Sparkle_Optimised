@@ -38,7 +38,9 @@ import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.SearchViewModel
+import com.rscja.deviceapi.RFIDWithUHFUART
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 @Composable
 fun SearchScreen(
@@ -57,12 +59,9 @@ fun SearchScreen(
     var allDbItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
     var filteredDbItems by remember { mutableStateOf<List<BulkItem>>(emptyList()) }
 
-    var selectedPower by remember { mutableIntStateOf(10) }
-    LaunchedEffect(Unit) {
-        selectedPower = UserPreferences.getInstance(context).getInt(
-            UserPreferences.KEY_SEARCH_COUNT,
-            10
-        )
+    var selectedPower by remember {
+        mutableIntStateOf(UserPreferences.getInstance(context).getInt(
+            UserPreferences.KEY_SEARCH_COUNT))
     }
 
     // ✅ Explicit unmatched flag
@@ -95,7 +94,7 @@ fun SearchScreen(
     }
 
     // ✅ For unmatched — start search immediately
- /*   LaunchedEffect(isUnmatchedList, inputItems) {
+    LaunchedEffect(isUnmatchedList, inputItems) {
         if (isUnmatchedList && inputItems.isNotEmpty()) {
             delay(300)
             searchViewModel.startSearch(inputItems, selectedPower)
@@ -105,24 +104,22 @@ fun SearchScreen(
             searchViewModel.clearSearchItems()
             isScanning = false
         }
-    }*/
-
-
+    }
 
 
     val searchItems = searchViewModel.searchItems
 
     // ✅ Update filtered list when query changes (normal mode only)
- /*   LaunchedEffect(searchQuery) {
-        if (searchQuery.isNotBlank() && !isUnmatchedList) {
-            filteredDbItems = allDbItems.filter {
-                it.rfid?.contains(searchQuery, true) == true ||
-                        it.itemCode?.contains(searchQuery, true) == true
-            }
-        } else {
-            filteredDbItems = emptyList()
-        }
-    }*/
+    /*   LaunchedEffect(searchQuery) {
+           if (searchQuery.isNotBlank() && !isUnmatchedList) {
+               filteredDbItems = allDbItems.filter {
+                   it.rfid?.contains(searchQuery, true) == true ||
+                           it.itemCode?.contains(searchQuery, true) == true
+               }
+           } else {
+               filteredDbItems = emptyList()
+           }
+       }*/
 
 
     LaunchedEffect(searchQuery, allDbItems) {
@@ -244,10 +241,9 @@ fun SearchScreen(
 
 
     // ✅ RFID key listener
-    DisposableEffect(lifecycleOwner, activity, isScanning, filteredDbItems, inputItems, isUnmatchedList, selectedPower) {
+    DisposableEffect(lifecycleOwner, activity) {
         val listener = object : ScanKeyListener {
             override fun onBarcodeKeyPressed() {}
-
             override fun onRfidKeyPressed() {
                 if (isScanning) {
                     searchViewModel.stopSearch()
@@ -265,7 +261,7 @@ fun SearchScreen(
                         isScanning = true
                         Log.d("SEARCH", "RFID STARTED scanning ${itemsToSearch.size} items")
                     } else {
-                        Log.d("SEARCH", "No items to scan")
+                        Log.d("SEARCH", "⚠️ No items to scan (maybe type a query?)")
                     }
                 }
             }
@@ -273,16 +269,7 @@ fun SearchScreen(
 
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    activity?.registerScanKeyListener(listener)
-
-                    if (isUnmatchedList && inputItems.isNotEmpty() && !isScanning) {
-                        searchViewModel.startSearch(inputItems, selectedPower)
-                        isScanning = true
-                        Log.d("AUTO_SCAN", "RFID auto started on resume")
-                    }
-                }
-
+                Lifecycle.Event.ON_RESUME -> activity?.registerScanKeyListener(listener)
                 Lifecycle.Event.ON_PAUSE -> {
                     activity?.unregisterScanKeyListener()
                     if (isScanning) {
@@ -290,13 +277,11 @@ fun SearchScreen(
                         isScanning = false
                     }
                 }
-
                 else -> {}
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
-
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             activity?.unregisterScanKeyListener()

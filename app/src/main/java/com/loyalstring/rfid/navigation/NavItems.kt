@@ -44,7 +44,8 @@ enum class Screens(val route: String) {
     StockVerificationReport("stockverification_report"),
     BatchDetailsScreen("batch_details_screen"),
     StockTransferPreviewScreen("stock_transfer_preview"),
-    PrivacyPolicyScreen("privacy_policy")
+    PrivacyPolicyScreen("privacy_policy"),
+    PrinterScreen("printer_screen")
 }
 
 data class NavItems(

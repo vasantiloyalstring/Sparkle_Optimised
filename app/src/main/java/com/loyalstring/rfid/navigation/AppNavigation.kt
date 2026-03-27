@@ -455,6 +455,11 @@ fun AppNavigation(
             }
 
 
+            composable(Screens.PrinterScreen.route) {
+                PrinterScreen(navController = navController)
+            }
+
+
 
         }
     }

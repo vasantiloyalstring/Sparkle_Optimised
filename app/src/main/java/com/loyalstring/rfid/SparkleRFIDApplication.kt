@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import net.posprinter.POSConnect
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -56,6 +57,7 @@ class SparkleRFIDApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        POSConnect.init(this)
       //  LocaleHelper.applySavedLocale(this)
         Log.d("StartupTrace", "Application.onCreate start")
 

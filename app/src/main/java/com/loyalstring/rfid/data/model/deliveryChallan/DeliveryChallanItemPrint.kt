@@ -1,4 +1,5 @@
 package com.loyalstring.rfid.data.model.deliveryChallan
+import java.io.Serializable
 
 data class DeliveryChallanItemPrint(  val itemName: String,
                                       val purity: String,
@@ -8,7 +9,7 @@ data class DeliveryChallanItemPrint(  val itemName: String,
                                       val netWt: String,
                                       val ratePerGram: String,
                                       val wastage: String,
-                                      val itemAmount: String)
+                                      val itemAmount: String): Serializable
 
 data class DeliveryChallanPrintData(
     val branchName: String,
@@ -24,4 +25,4 @@ data class DeliveryChallanPrintData(
     val sgstPercent: Double,
     val sgstAmount: String,
     val totalNetAmount: String
-)
+): Serializable
