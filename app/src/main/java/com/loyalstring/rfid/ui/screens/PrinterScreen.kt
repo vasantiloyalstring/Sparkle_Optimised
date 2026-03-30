@@ -57,7 +57,7 @@ fun PrinterScreen(navController: NavHostController) {
         Button(
             onClick = {
                 if (printData != null) {
-                    printerManager.printDeliveryChallanCompact(printData) { success, msg ->
+                    printerManager.printDeliveryChallanCompact(printData,"") { success, msg ->
                         status = msg
                     }
                 } else {

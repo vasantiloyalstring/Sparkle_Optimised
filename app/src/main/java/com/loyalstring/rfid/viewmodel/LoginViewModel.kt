@@ -14,6 +14,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.core.content.edit
+import com.loyalstring.rfid.data.model.ClientCodeRequest
+import com.loyalstring.rfid.data.remote.data.CompanyDetails
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,6 +28,9 @@ class LoginViewModel @Inject constructor(
 
     private val _loginResponse = MutableLiveData<Resource<LoginResponse>>()
     val loginResponse: LiveData<Resource<LoginResponse>> = _loginResponse
+
+    private val _companyDetailsResponse = MutableLiveData<Resource<List<CompanyDetails>>>()
+    val companyDetailsResponse: LiveData<Resource<List<CompanyDetails>>> = _companyDetailsResponse
 
     fun login(request: LoginRequest, rememberMe: Boolean) {
         viewModelScope.launch {
@@ -63,5 +68,27 @@ class LoginViewModel @Inject constructor(
     fun clearRememberMe() {
         val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
         prefs.edit() { clear() }
+    }
+
+/*company details*/
+    fun getCompanyDetails(request: ClientCodeRequest) {
+        viewModelScope.launch {
+            _companyDetailsResponse.value = Resource.Loading()
+
+            try {
+                val response = repository.getCompanyDetails(request)
+                val body = response.body()
+
+                if (response.isSuccessful && body != null) {
+                    _companyDetailsResponse.value = Resource.Success(body)
+                } else {
+                    _companyDetailsResponse.value =
+                        Resource.Error(response.message() ?: "Failed to fetch company details")
+                }
+            } catch (e: Exception) {
+                _companyDetailsResponse.value =
+                    Resource.Error("Exception: ${e.message}")
+            }
+        }
     }
 }

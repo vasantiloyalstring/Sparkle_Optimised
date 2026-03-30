@@ -16,6 +16,7 @@ class PrinterManager(private val context: Context) {
 
     private var deviceConnection: IDeviceConnection? = null
     private var posPrinter: POSPrinter? = null
+    private var companyName: String = ""
 
     fun connectBluetooth(macAddress: String, onResult: (Boolean, String) -> Unit) {
         deviceConnection = POSConnect.createDevice(POSConnect.DEVICE_TYPE_BLUETOOTH)
@@ -166,6 +167,7 @@ class PrinterManager(private val context: Context) {
 
     fun printDeliveryChallanCompact(
         data: DeliveryChallanPrintData,
+        companyName: String,
         onResult: ((Boolean, String) -> Unit)? = null
     ) {
         val printer = posPrinter
@@ -187,9 +189,21 @@ class PrinterManager(private val context: Context) {
 
         try {
             var chain = printer.initializePrinter()
+            val companyText = safe(companyName, "Company")
 
-            // Header
             chain = chain
+                .printText(
+                    "$companyText\n",
+                    POSConst.ALIGNMENT_CENTER,
+                    POSConst.FNT_DEFAULT,
+                    POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT
+                )
+                .printText(
+                    divider() + "\n",
+                    POSConst.ALIGNMENT_LEFT,
+                    POSConst.FNT_DEFAULT,
+                    POSConst.TXT_1WIDTH or POSConst.TXT_1HEIGHT
+                )
                 .printText(
                     "Name: $nameText\n",
                     POSConst.ALIGNMENT_LEFT,

@@ -2,6 +2,7 @@ package com.loyalstring.rfid.ui.screens
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,16 +40,20 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.remote.data.CompanyDetails
+import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.PrinterManager
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
+import com.loyalstring.rfid.viewmodel.LoginViewModel
 import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +68,7 @@ fun DeliveryChallanListScreen(
     navController: NavHostController,
 ) {
     val viewModel: DeliveryChallanViewModel = hiltViewModel()
+    val loginViewModel: LoginViewModel = hiltViewModel()
     val context = LocalContext.current
     val employee = remember {
         UserPreferences.getInstance(context).getEmployee(Employee::class.java)
@@ -77,6 +85,7 @@ fun DeliveryChallanListScreen(
     val challanList by viewModel.challanList.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
+    var companyName by rememberSaveable { mutableStateOf("") }
 
     var visibleItems by remember { mutableStateOf(10) }
     var searchQuery by remember { mutableStateOf("") }
@@ -132,6 +141,39 @@ fun DeliveryChallanListScreen(
         100.dp, // Branch
         90.dp   // Actions
     )
+   // val companyDetailsState by loginViewModel.companyDetailsResponse.observeAsState()
+
+    LaunchedEffect(employee?.clientCode) {
+        employee?.clientCode?.takeIf { it.isNotBlank() }?.let { code ->
+            loginViewModel.getCompanyDetails(ClientCodeRequest(code))
+        }
+    }
+
+    val companyDetailsState: Resource<List<CompanyDetails>>? by
+    loginViewModel.companyDetailsResponse.observeAsState()
+    when (val result = companyDetailsState) {
+        is Resource.Loading<*> -> {
+            Log.d("COMPANY_DEBUG", "Loading")
+        }
+
+        is Resource.Success<*> -> {
+            Log.d("COMPANY_DEBUG", "Success hit")
+            Log.d("COMPANY_DEBUG", "raw data = ${result.data}")
+
+            companyName = result.data?.get(0)?.compName.orEmpty()
+
+            Log.d("COMPANY_DEBUG", "companyName = $companyName")
+        }
+
+        is Resource.Error<*> -> {
+            Log.d("COMPANY_DEBUG", "Error = ${result.message}")
+            companyName = ""
+        }
+
+        null -> {
+            Log.d("COMPANY_DEBUG", "State is null")
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         GradientTopBar(
@@ -159,6 +201,7 @@ fun DeliveryChallanListScreen(
         )
 
         DeliveryChallanTable(
+            companyName= companyName,
             navController = navController,
             headerTitles = headerTitles,
             columnWidths = columnWidths,
@@ -188,6 +231,7 @@ fun DeliveryChallanListScreen(
 
 @Composable
 fun DeliveryChallanTable(
+    companyName: String,
     navController: NavHostController,
     headerTitles: List<String>,
     columnWidths: List<Dp>,
@@ -424,7 +468,8 @@ fun DeliveryChallanTable(
                                                     text =  localizedContext.getString(R.string.print_challan),
                                                     onClick = {
                                                         if (selectedPrintData != null) {
-                                                            printerManager.printDeliveryChallanCompact(selectedPrintData) { _, msg ->
+                                                            Log.d("@@","companyName22"+companyName)
+                                                            printerManager.printDeliveryChallanCompact(selectedPrintData,companyName) { _, msg ->
                                                                 bluetoothStatus = msg
                                                             }
                                                         } else {
