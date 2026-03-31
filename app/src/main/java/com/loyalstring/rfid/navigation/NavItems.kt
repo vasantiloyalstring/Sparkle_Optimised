@@ -23,7 +23,7 @@ enum class Screens(val route: String) {
     InventoryMenuScreen("inventory"),
     EditProductScreen("edit_screen"),
     OrderScreen("order"),
-    InvoiceScreen("invoiceScreen"),
+    //InvoiceScreen("invoiceScreen"),
     StockTransferScreenNew("stock_transfer"),
     OrderListScreen("order_list"),
     DailyRatesEditorScreen("daily_rates_editor"),
@@ -111,10 +111,10 @@ val listOfNavItems = listOf(
         route = Screens.DeliveryChalan.route
     ),
     NavItems(
-        titleResId = R.string.invoice,
+        titleResId = R.string.label_today_rate,
         unselectedIcon = Icons.Outlined.FavoriteBorder,
         selectedIcon = R.drawable.invoice_gr_svg,
-        route = ""
+        route = Screens.DailyRatesEditorScreen.route
     ),
     NavItems(
         titleResId = R.string.sample_in,

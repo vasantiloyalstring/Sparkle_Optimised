@@ -3,10 +3,12 @@ package com.loyalstring.rfid.ui.screens
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,8 +53,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -172,13 +178,35 @@ fun StockVerificationReportScreen(
 
             Column {
 
-                ReportRadioButtons(
+
+              /*  ReportRadioButtons(
                     selectedReportType = selectedReportType,
                     onSelectionChange = { selectedReportType = it },
-                    localizedContext=localizedContext
+                    localizedContext = localizedContext,
+                    showFilter = selectedReportType == "INVENTORY",
+                    onFilterClick = { showBatchFilter = true }
+                )*/
+            /*    ReportRadioButtons(
+                    selectedReportType = selectedReportType,
+                    onSelectionChange = { selectedReportType = it },
+                    localizedContext = localizedContext,
+                    showFilter = selectedReportType == "INVENTORY",
+                    onFilterClick = { showBatchFilter = true },
+                    showDateIcon = selectedReportType == "SCAN",
+                    onDateClick = { showDatePicker = true }
+                )*/
+                ReportRadioButtons(
+                    selectedReportType = selectedReportType,
+                    selectedDate = selectedDate,
+                    onSelectionChange = { selectedReportType = it },
+                    localizedContext = localizedContext,
+                    showFilter = selectedReportType == "INVENTORY",
+                    onFilterClick = { showBatchFilter = true },
+                    showDateIcon = selectedReportType == "SCAN",
+                    onDateClick = { showDatePicker = true }
                 )
 
-                if (selectedReportType == "SCAN") {
+              /*  if (selectedReportType == "SCAN") {
 
                     DateSelector(
                         selectedDate = selectedDate,
@@ -186,26 +214,7 @@ fun StockVerificationReportScreen(
                         localizedContext = localizedContext
                     )
 
-                } else {
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-
-                        Text(
-                            text = localizedContext.getString(R.string.filter),
-                            modifier = Modifier
-                                .background(Color.Black, RoundedCornerShape(6.dp))
-                                .clickable { showBatchFilter = true }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            color = Color.White
-                        )
-                    }
-
-                }
+                }*/
 
                 if (selectedReportType == "SCAN") {
 
@@ -923,46 +932,360 @@ fun QtyBadge(value: Int, color: Color, modifier: Modifier) {
     }
 }
 
-@Composable
+
+/*@Composable
 fun ReportRadioButtons(
     selectedReportType: String,
     onSelectionChange: (String) -> Unit,
     localizedContext: Context
 ) {
+    val selectedBrush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF5231A7),
+            Color(0xFFD32940)
+        )
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    brush = if (selectedReportType == "INVENTORY") selectedBrush
+                    else androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(Color(0xFFF1F1F1), Color(0xFFF1F1F1))
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { onSelectionChange("INVENTORY") }
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
         ) {
-
-            RadioButton(
-                selected = selectedReportType == "INVENTORY",
-                onClick = { onSelectionChange("INVENTORY") }
+            Text(
+                text = localizedContext.getString(R.string.batchwise),
+                color = if (selectedReportType == "INVENTORY") Color.White else Color.Black
             )
-
-            Text(localizedContext.getString(R.string.batchwise))
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    brush = if (selectedReportType == "SCAN") selectedBrush
+                    else androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(Color(0xFFF1F1F1), Color(0xFFF1F1F1))
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { onSelectionChange("SCAN") }
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
         ) {
-
-            RadioButton(
-                selected = selectedReportType == "SCAN",
-                onClick = { onSelectionChange("SCAN") }
+            Text(
+                text = localizedContext.getString(R.string.consolidated),
+                color = if (selectedReportType == "SCAN") Color.White else Color.Black
             )
-            Text(localizedContext.getString(R.string.consolidated))
+        }
+    }
+}*/
+
+/*@Composable
+fun ReportRadioButtons(
+    selectedReportType: String,
+    onSelectionChange: (String) -> Unit,
+    localizedContext: Context,
+    showFilter: Boolean = false,
+    onFilterClick: () -> Unit = {}
+) {
+    val selectedBrush = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF5231A7),
+            Color(0xFFD32940)
+        )
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    brush = if (selectedReportType == "INVENTORY") selectedBrush
+                    else Brush.horizontalGradient(
+                        colors = listOf(Color(0xFFF1F1F1), Color(0xFFF1F1F1))
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { onSelectionChange("INVENTORY") }
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = localizedContext.getString(R.string.batchwise),
+                color = if (selectedReportType == "INVENTORY") Color.White else Color.Black
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    brush = if (selectedReportType == "SCAN") selectedBrush
+                    else Brush.horizontalGradient(
+                        colors = listOf(Color(0xFFF1F1F1), Color(0xFFF1F1F1))
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { onSelectionChange("SCAN") }
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = localizedContext.getString(R.string.consolidated),
+                color = if (selectedReportType == "SCAN") Color.White else Color.Black
+            )
+        }
+
+        if (showFilter) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(
+                        brush = selectedBrush,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .clickable { onFilterClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.filter_gary),
+                    contentDescription = localizedContext.getString(R.string.filter),
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}*/
+
+@Composable
+fun ReportRadioButtons(
+    selectedReportType: String,
+    selectedDate: String,
+    onSelectionChange: (String) -> Unit,
+    localizedContext: Context,
+    showFilter: Boolean = false,
+    onFilterClick: () -> Unit = {},
+    showDateIcon: Boolean = false,
+    onDateClick: () -> Unit = {}
+) {
+    val selectedBrush = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF5231A7),
+            Color(0xFFD32940)
+        )
+    )
+
+    val unselectedBg = Color(0xFFF4F4F4)
+    val borderColor = Color(0xFFD9D9D9)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SelectableTopButton(
+                text = localizedContext.getString(R.string.batchwise),
+                selected = selectedReportType == "INVENTORY",
+                selectedBrush = selectedBrush,
+                unselectedColor = unselectedBg,
+                borderColor = borderColor,
+                onClick = { onSelectionChange("INVENTORY") },
+                modifier = Modifier.weight(1f, fill = true)
+            )
+
+            SelectableTopButton(
+                text = localizedContext.getString(R.string.consolidated),
+                selected = selectedReportType == "SCAN",
+                selectedBrush = selectedBrush,
+                unselectedColor = unselectedBg,
+                borderColor = borderColor,
+                onClick = { onSelectionChange("SCAN") },
+                modifier = Modifier.weight(1f, fill = true)
+            )
+        }
+
+        if (showFilter) {
+            SmallActionButton(
+                selectedBrush = selectedBrush,
+                onClick = onFilterClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = localizedContext.getString(R.string.filter),
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        if (showDateIcon) {
+            DateActionButton(
+                dateText = formatDisplayDate(selectedDate),
+                borderColor = borderColor,
+                onClick = onDateClick
+            )
         }
     }
 }
+@Composable
+fun DateActionButton(
+    dateText: String,
+    borderColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF4F4F4), RoundedCornerShape(10.dp))
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable { onClick() }
+            .padding(start = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = dateText,
+            color = Color(0xFF222222),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
+        )
 
+        Icon(
+            imageVector = Icons.Default.DateRange,
+            contentDescription = null,
+            tint = Color(0xFF666666),
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+fun formatDisplayDate(date: String): String {
+    return try {
+        val input = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val output = java.text.SimpleDateFormat("dd-MM-yy", java.util.Locale.getDefault())
+        output.format(input.parse(date)!!)
+    } catch (e: Exception) {
+        date
+    }
+}
+
+@Composable
+fun SmallActionButton(
+    selectedBrush: Brush,
+    onClick: () -> Unit,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(selectedBrush)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+        content = content
+    )
+}
+
+@Composable
+fun DateChip(
+    dateText: String,
+    borderColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White)
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = dateText,
+            color = Color(0xFF222222),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun SelectableTopButton(
+    text: String,
+    selected: Boolean,
+    selectedBrush: Brush,
+    unselectedColor: Color,
+    borderColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .then(
+                if (selected) {
+                    Modifier.background(selectedBrush, RoundedCornerShape(10.dp))
+                } else {
+                    Modifier
+                        .background(unselectedColor, RoundedCornerShape(10.dp))
+                        .border(
+                            width = 1.dp,
+                            color = borderColor,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                }
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (selected) Color.White else Color(0xFF222222),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
+        )
+    }
+}
 fun formatDateTime(dateTime: String?): String {
 
     if (dateTime.isNullOrEmpty()) return "-"

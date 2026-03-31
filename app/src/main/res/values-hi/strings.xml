@@ -766,5 +766,7 @@
     <string name="export_pdf">पीडीएफ निर्यात करें</string>
     <string name="open_product_list">प्रोडक्ट सूची खोलें</string>
 
+    <string name="label_today_rate">आज का रेट</string>
+
 
 </resources>

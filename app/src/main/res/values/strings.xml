@@ -800,5 +800,7 @@
     <string name="rfid_text">RFID: %1$s</string>
     <string name="open_product_list">Open Product List</string>
 
+    <string name="label_today_rate">Today\'s Rate</string>
+
 
 </resources>

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -260,34 +261,35 @@ private fun SetupNavigation(
                         // Header
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(0.8f)
-                                .background(BackgroundGradient)
+                                .fillMaxWidth(0.7f)
+                                .height(64.dp)
+                                .background(BackgroundGradient),
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Image(
                                     painter = painterResource(R.drawable.ic_user),
                                     contentDescription = "User Icon",
-                                    modifier = Modifier
-                                        .size(50.dp)
-                                        .padding(8.dp)
+                                    modifier = Modifier.size(36.dp)
                                 )
-                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
                                 Text(
                                     text = employee?.username ?: "User",
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontWeight = FontWeight.Normal,
-                                        color = Color.White
-                                    ),
-                                    fontFamily = poppins
+                                    color = Color.White,
+                                    fontFamily = poppins,
+                                    fontSize = 15.sp
                                 )
                             }
                         }
 
+                    //    Most likely 72.dp will loo
                         // Scrollable Drawer List
                         val scrollState = rememberScrollState()
                         Column(

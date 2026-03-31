@@ -176,7 +176,7 @@ fun AppNavigation(
                 )
             }
 
-            composable(Screens.InvoiceScreen.route) {
+         /*   composable(Screens.InvoiceScreen.route) {
                 val item =
                     navController.previousBackStackEntry?.savedStateHandle?.get<CustomOrderResponse>("customerOrderResponse")
                 item?.let {
@@ -186,7 +186,7 @@ fun AppNavigation(
                         item = it
                     )
                 }
-            }
+            }*/
 
             composable(Screens.OrderListScreen.route) {
                 OrderLisrScreen(
