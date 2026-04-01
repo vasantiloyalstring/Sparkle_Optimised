@@ -159,7 +159,7 @@ class OrderViewModel @Inject constructor(
                         } else if (body?.Id != null) {
                             // ✅ real success
                             _addEmpResponse.value =
-                                Resource.Success(body, "Employee added successfully")
+                                Resource.Success(body, "Customer added successfully")
                         } else {
                             _addEmpResponse.value =
                                 Resource.Error("Unknown server response")

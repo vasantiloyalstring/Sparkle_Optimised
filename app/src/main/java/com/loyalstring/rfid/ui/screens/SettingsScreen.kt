@@ -552,7 +552,17 @@ fun SettingsScreen(
                 Log.d("PRIVACY_POLICY", "Navigating to privacy_policy")
                 navController.navigate(Screens.PrivacyPolicyScreen.route)
             }
-        )
+        ),
+                SettingsMenuItem(
+                key = "face_data",
+        title = "Face Data",
+        icon = Icons.Default.Settings,
+        type = SettingType.Action,
+        subtitle = "Add / View face login data",
+        onClick = {
+            navController.navigate(Screens.FaceManagement.route)
+        }
+    )
     )
 
     Scaffold(

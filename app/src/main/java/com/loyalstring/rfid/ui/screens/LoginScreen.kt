@@ -73,6 +73,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
     val scanDisplayViewModel: ScanDisplayViewModel = hiltViewModel()
     val userPermissionViewModel: UserPermissionViewModel = hiltViewModel()
     val userPrefs = remember { UserPreferences(context) }
+    var selectedLoginMode by remember { mutableStateOf("password") }
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }

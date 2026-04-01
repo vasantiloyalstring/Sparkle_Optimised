@@ -1173,15 +1173,18 @@ fun QuotationScreen(
         // ✅ Sab validation pass → abhi hi number generate karo + API call
         val lastNoStr = lastQuotationNo ?: return@LaunchedEffect
 
-        val lastNoInt = lastNoStr.toString().toIntOrNull() ?: 0   // "66" -> 66
-        val newLastQuotationNo = lastNoInt + 1                    // 67
-        Log.d("@@", "newLastQuotationNo=$newLastQuotationNo")
-        Log.d("@@","newLastSampleOutNO"+newLastQuotationNo   )
+
+        val lastNoInt = lastNo.lastQuotationNo?.toIntOrNull() ?: 0
+        val newLastQuotationNo = lastNoInt + 1
+
+        Log.d("@@", "lastNoInt = $lastNoInt")
+        Log.d("@@", "newLastQuotationNo = $newLastQuotationNo")
 
         val request = AddQuotationRequest(
             ClientCode = clientCode,
             BranchId = branchId,
             CustomerId = custId.toString(),
+            QuotationNo=newLastQuotationNo.toString(),
           //  SampleOutNo = newLastSampleOutNO,
             //ReturnDate = productList.get(0).ReturnDate,
           //  Description =  productList.get(0).Description,
