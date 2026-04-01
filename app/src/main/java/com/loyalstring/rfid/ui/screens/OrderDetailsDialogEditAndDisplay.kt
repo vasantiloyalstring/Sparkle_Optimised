@@ -167,6 +167,7 @@ fun OrderDetailsDialogEditAndDisplay(
     var wastage by rememberSaveable(initKey) { mutableStateOf("") }
     var orderDate by rememberSaveable(initKey) { mutableStateOf("") }
     var deliverDate by rememberSaveable(initKey) { mutableStateOf("") }
+    var categoryId by remember { mutableStateOf(0) }
 
     var productName by rememberSaveable(initKey) { mutableStateOf("") }
     var itemCode by rememberSaveable(initKey) { mutableStateOf("") }
@@ -248,7 +249,7 @@ fun OrderDetailsDialogEditAndDisplay(
        ============================ */
     LaunchedEffect(initKey) {
         if (stableItem == null) return@LaunchedEffect
-
+        categoryId=stableItem.categoryId?:0
         selectedBranchId = stableItem.branchId ?: ""
         branch = stableItem.branchName?.takeIf { !it.equals("null", true) } ?: ""
 
@@ -327,17 +328,25 @@ fun OrderDetailsDialogEditAndDisplay(
        ============================ */
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
     Log.d("@@ purity","purity"+purity)
-    LaunchedEffect(purityList) {
+    LaunchedEffect(purityList, categoryId) {
         if (purity.isNotBlank()) {
 
-            Log.d("@@ purity","purity"+purity)
+            Log.d("@@ purity", "purity = $purity")
+            Log.d("@@ categoryId", "categoryId = $categoryId")
+
             val match = purityList.firstOrNull {
-                it.PurityName.equals(purity, ignoreCase = true)
+                it.PurityName.equals(purity, ignoreCase = true) &&
+                        (it.CategoryId ?: 0) == categoryId
             }
+
             if (match != null) {
-                purity = match.PurityName
+                purity = match.PurityName ?: ""
             }
         }
+    }
+
+    val filteredPurityList = purityList.filter {
+        (it.CategoryId ?: 0) == categoryId
     }
     val skuList by singleProductViewModel.skuResponse1.collectAsState()
 
@@ -602,7 +611,7 @@ fun OrderDetailsDialogEditAndDisplay(
                         ) {
                             DropdownMenuFieldDisplay(
                                 label = localizedContext.getString(R.string.purity),
-                                options = purityList,
+                                options = filteredPurityList,
                                 selectedValue = purity,
                                 expanded = expandedPurity,
                                 onValueChange = { purity = it },

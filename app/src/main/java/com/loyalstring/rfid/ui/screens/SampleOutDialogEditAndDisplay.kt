@@ -130,6 +130,7 @@ fun SampleOutDialogEditAndDisplay(
     var hallMarkAmt by remember { mutableStateOf("") }
     var mrp by remember { mutableStateOf("") }
     var itemAmt by remember { mutableStateOf("") }
+    var categoryId by remember { mutableStateOf(0) }
 
     // Calculated
     var finePlusWt by remember { mutableStateOf("") }
@@ -213,6 +214,7 @@ fun SampleOutDialogEditAndDisplay(
         purity = cleanStr(s.Purity)
         size = cleanStr(s.Size)
         length = ""
+        categoryId = s.CategoryId?:0
 
         typeOfColors = cleanStr(s.DiamondColour)
         screwType = ""
@@ -256,7 +258,10 @@ fun SampleOutDialogEditAndDisplay(
 
     // purity list from vm
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
-    val purityNames = purityList.map { it.PurityName ?: "" }
+    val purityNames = purityList
+        .filter { (it.CategoryId ?: 0) == categoryId }
+        .mapNotNull { it.PurityName }
+        .distinct()
 
     // dropdown states
     var expandedPurity by remember { mutableStateOf(false) }

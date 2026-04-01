@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
@@ -93,6 +94,7 @@ fun DeliveryChallanDialogEditAndDisplay(
     var branch by remember { mutableStateOf("") }
     var exhibition by remember { mutableStateOf("") }
     var remark by remember { mutableStateOf("") }
+    var categoryId by remember { mutableStateOf(0) }
 
     var purity by remember { mutableStateOf("") }
     var size by remember { mutableStateOf("") }
@@ -222,6 +224,7 @@ fun DeliveryChallanDialogEditAndDisplay(
         mrp = s.MRP.orEmpty()
         ratePerGRam = s.totayRate.orEmpty()
         stoneAmt = s.StoneAmount.orEmpty()
+        categoryId = s.CategoryId ?: 0
 
         // initial calc
         recalcAll()
@@ -244,7 +247,12 @@ fun DeliveryChallanDialogEditAndDisplay(
 
     // purity list from vm
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
-    val purityNames = purityList.map { it.PurityName ?: "" }
+   // val purityNames = purityList.map { it.PurityName ?: "" }
+
+    val purityNames = purityList
+        .filter { (it.CategoryId ?: 0) == categoryId }
+        .mapNotNull { it.PurityName }
+        .distinct()
 
     // dropdown states
     var expandedPurity by remember { mutableStateOf(false) }
@@ -382,6 +390,12 @@ fun DeliveryChallanDialogEditAndDisplay(
                     }
 
                     Spacer(Modifier.height(4.dp))
+
+                    Spacer(Modifier.height(4.dp))
+
+                    FieldRow(localizedContext.getString(R.string.stone_amount), stoneAmt, enabled = true) { newVal ->
+                        stoneAmt = newVal
+                    }
 
                     // NetWt display
                     Row(
@@ -615,7 +629,10 @@ fun DeliveryChallanDialogEditAndDisplay(
                                 DiamondColour = typeOfColors,
                                 Description = remark,
                                 Quantity = qty,
-                                qty = qty.toIntOrNull() ?: s.qty
+                                qty = qty.toIntOrNull() ?: s.qty,
+                                StoneAmount = stoneAmt,
+                                StoneAmt = stoneAmt,
+                                TotalStoneAmount = stoneAmt,
                             )
 
                             onSave(updated)

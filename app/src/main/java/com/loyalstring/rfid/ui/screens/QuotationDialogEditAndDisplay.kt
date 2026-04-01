@@ -114,6 +114,7 @@ fun QuotationDialogEditAndDisplay(
     var stoneWt by remember { mutableStateOf("") }
     var dimondWt by remember { mutableStateOf("") }
     var netWt by remember { mutableStateOf("") }
+    var categoryId by remember { mutableStateOf(0) }
 
     // Pricing
     var ratePerGRam by remember { mutableStateOf("") }
@@ -203,7 +204,7 @@ fun QuotationDialogEditAndDisplay(
         stoneWt = cleanStr(s.TotalStoneWeight)
         dimondWt = cleanStr(s.DiamondWeight)
         netWt = cleanStr(s.NetWt)
-
+        categoryId= s.CategoryId?: 0
         purity = cleanStr(s.Purity)
         size = cleanStr(s.Size)
         length = ""
@@ -246,7 +247,10 @@ fun QuotationDialogEditAndDisplay(
 
     // purity list from vm
     val purityList by singleProductViewModel.purityResponse1.collectAsState()
-    val purityNames = purityList.map { it.PurityName ?: "" }
+    val purityNames = purityList
+        .filter { (it.CategoryId ?: 0) == categoryId }
+        .mapNotNull { it.PurityName }
+        .distinct()
 
     // dropdown states
     var expandedPurity by remember { mutableStateOf(false) }

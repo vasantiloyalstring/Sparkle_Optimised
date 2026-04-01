@@ -758,5 +758,6 @@
     <string name="rfid_text">معرّف RFID: %1$s</string>
     <string name="open_product_list">افتح قائمة المنتجات</string>
     <string name="label_today_rate">سعر اليوم</string>
+    <string name="stone_amount">قيمة الحجر</string>
 
 </resources>
