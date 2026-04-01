@@ -459,6 +459,14 @@ fun AppNavigation(
                 PrinterScreen(navController = navController)
             }
 
+            composable(Screens.RecogniseFaceLogin.route) {
+                RecogniseFaceLogin(navController = navController)
+            }
+
+            composable(Screens.FaceManagement.route) {
+                FaceManagement(navController = navController)
+            }
+
 
 
         }

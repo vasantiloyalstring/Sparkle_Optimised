@@ -117,7 +117,7 @@ data class FormField(
 )
 
 private val sampleFields = listOf(
-    FormField("EPC", false),
+     FormField("EPC", false),
     FormField("Vendor", true),
     FormField("SKU", true),
     //FormField("Item Code", false),

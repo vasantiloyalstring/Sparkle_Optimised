@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -155,6 +156,48 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedLoginMode == "password") Color(0xFF1976D2) else Color.LightGray)
+                        .clickable { selectedLoginMode = "password" }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Password Login",
+                        color = if (selectedLoginMode == "password") Color.White else Color.Black,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedLoginMode == "face") Color(0xFF1976D2) else Color.LightGray)
+                        .clickable { selectedLoginMode = "face" }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Face Login",
+                        color = if (selectedLoginMode == "face") Color.White else Color.Black,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            if (selectedLoginMode == "password") {
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -205,6 +248,28 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+                }
+            if (selectedLoginMode == "face") {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Use face detection to continue login",
+                    fontSize = 15.sp,
+                    color = Color.Gray,
+                    fontFamily = poppins
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Icon(
+                    painter = painterResource(id = R.drawable.scan_counter),
+                    contentDescription = "Face Login",
+                    tint = Color(0xFF1976D2),
+                    modifier = Modifier.size(72.dp)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
             Box(
                 modifier = Modifier
@@ -214,14 +279,6 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     .clip(RoundedCornerShape(12.dp))
                     .background(BackgroundGradient)
                     .clickable(enabled = !isLoading) {
-                        if (username.isBlank() || password.isBlank()) {
-                            Toast.makeText(
-                                context,
-                                "Please enter username and password",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            return@clickable
-                        }
                         if (!NetworkUtils.isNetworkAvailable(context)) {
                             Toast.makeText(
                                 context,
@@ -231,8 +288,22 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                             return@clickable
                         }
 
-                        viewModel.login(LoginRequest(username, password), rememberMe)
-                        userPrefs.saveLoginCredentials(username, password, rememberMe,"",0,0,"")
+                        if (selectedLoginMode == "password") {
+                            if (username.isBlank() || password.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Please enter username and password",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@clickable
+                            }
+
+                            viewModel.login(LoginRequest(username, password), rememberMe)
+                            userPrefs.saveLoginCredentials(username, password, rememberMe, "", 0, 0, "")
+                        } else {
+                            navController.navigate(Screens.RecogniseFaceLogin.route)
+                        }
+
 
                     },
                 contentAlignment = Alignment.Center
@@ -241,7 +312,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
-                        "Login",
+                        text = if (selectedLoginMode == "password") "Login" else "Login with Face",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,

@@ -22,4 +22,6 @@ data class FaceInfo(   @PrimaryKey(autoGenerate = true)
                        val leftEyeOpenProbability: Float = 0f,
                        val rightEyeOpenProbability: Float = 0f,
                        val timestamp: String = "",
-                       val time: Long = System.currentTimeMillis())
+                       val time: Long = System.currentTimeMillis(),
+                       val embedding: String? = null
+    )
