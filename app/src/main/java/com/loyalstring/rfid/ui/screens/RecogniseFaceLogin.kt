@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -34,11 +36,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.FaceRecognizerHelper
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.viewmodel.FaceLoginViewModel
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import java.util.concurrent.Executors
 
 @Composable
@@ -52,8 +56,14 @@ fun RecogniseFaceLogin(
     val faceRecognizer = remember { FaceRecognizerHelper(context) }
     val permissionViewModel: UserPermissionViewModel = hiltViewModel()
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
+
     val matchedFace by viewModel.matchedFace.observeAsState()
-    val message by viewModel.message.observeAsState("Scanning face...")
+    val message by viewModel.message.observeAsState(localizedContext.getString(R.string.scanning_face))
 
     var hasPermission by remember {
         mutableStateOf(
@@ -81,7 +91,7 @@ fun RecogniseFaceLogin(
         if (!faceRecognizer.isModelLoaded()) {
             Toast.makeText(
                 context,
-                "mobile_face_net.tflite file missing in assets",
+                context.getString(R.string.mobile_face_net_tflite_file_missing_in_assets),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -118,7 +128,7 @@ fun RecogniseFaceLogin(
                     }
                 }
 
-                Toast.makeText(context, "Face matched successfully", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, localizedContext.getString(R.string.face_matched_successfully), Toast.LENGTH_SHORT).show()
 
                 navController.navigate(Screens.HomeScreen.route) {
                     popUpTo(Screens.LoginScreen.route) { inclusive = true }
@@ -203,7 +213,7 @@ fun RecogniseFaceLogin(
                             e.printStackTrace()
                             Toast.makeText(
                                 ctx,
-                                "Unable to start camera",
+                                localizedContext.getString(R.string.unable_to_start_camera),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -222,7 +232,7 @@ fun RecogniseFaceLogin(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Camera permission required")
+                Text(localizedContext.getString(R.string.camera_permission_required))
             }
         }
 

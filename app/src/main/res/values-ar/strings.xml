@@ -759,5 +759,34 @@
     <string name="open_product_list">افتح قائمة المنتجات</string>
     <string name="label_today_rate">سعر اليوم</string>
     <string name="stone_amount">قيمة الحجر</string>
+    <string name="add_face_login_data">إضافة بيانات تسجيل الدخول بالوجه</string>
+    <string name="face_data">بيانات الوجه</string>
+    <string name="face_saved_successfully">تم حفظ الوجه بنجاح</string>
+    <string name="failed_to_save_face">فشل في حفظ الوجه</string>
+    <string name="no_saved_face_data_found">لم يتم العثور على بيانات وجه محفوظة</string>
+    <string name="face_matched_successfully">تم التعرف على الوجه بنجاح</string>
+    <string name="face_not_recognised">لم يتم التعرف على الوجه</string>
+    <string name="face_recognition_failed">فشل التعرف على الوجه</string>
+    <string name="password_login">تسجيل الدخول بكلمة المرور</string>
+    <string name="face_login">تسجيل الدخول بالوجه</string>
+    <string name="username">اسم المستخدم</string>
+    <string name="password">كلمة المرور</string>
+    <string name="remember_me">تذكرني</string>
+    <string name="forgot_password">هل نسيت كلمة المرور؟</string>
+    <string name="use_face_detection_to_continue_login">استخدم التعرف على الوجه لمتابعة تسجيل الدخول</string>
+    <string name="please_check_your_internet_connection">يرجى التحقق من اتصال الإنترنت</string>
+    <string name="please_enter_username_and_password">يرجى إدخال اسم المستخدم وكلمة المرور</string>
+    <string name="login">تسجيل الدخول</string>
+    <string name="login_with_face">تسجيل الدخول بالوجه</string>
+    <string name="contact_us_clicked">تم الضغط على اتصل بنا</string>
+    <string name="welcome_to">مرحبًا بك في</string>
+    <string name="sparkle_rfid">Sparkle RFID</string>
+    <string name="please_log_in_to_continue">يرجى تسجيل الدخول للمتابعة</string>
+    <string name="scanning_face">جارٍ مسح الوجه...</string>
+    <string name="mobile_face_net_tflite_file_missing_in_assets">ملف mobile_face_net.tflite غير موجود في مجلد assets</string>
+    <string name="unable_to_start_camera">تعذر تشغيل الكاميرا</string>
+    <string name="camera_permission_required">مطلوب إذن الكاميرا</string>
+    <string name="trouble_login">هل تواجه مشكلة في تسجيل الدخول؟</string>
+    <string name="contact_us">اتصل بنا</string>
 
 </resources>

@@ -802,5 +802,34 @@
 
     <string name="label_today_rate">Today\'s Rate</string>
     <string name="stone_amount">Stone Amt</string>
+    <string name="add_face_login_data">Add face login data</string>
+    <string name="face_data">Face Data</string>
+    <string name="face_saved_successfully">Face saved successfully</string>
+    <string name="failed_to_save_face">Failed to save face</string>
+    <string name="no_saved_face_data_found">No saved face data found</string>
+    <string name="face_matched_successfully">Face matched successfully</string>
+    <string name="face_not_recognised">Face not recognised</string>
+    <string name="face_recognition_failed">Face recognition failed</string>
+    <string name="password_login">Password Login</string>
+    <string name="face_login">Face Login</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="remember_me">Remember Me</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="use_face_detection_to_continue_login">Use face detection to continue login</string>
+    <string name="please_check_your_internet_connection">Please Check Your Internet Connection</string>
+    <string name="please_enter_username_and_password">Please enter username and password</string>
+    <string name="login">Login</string>
+    <string name="login_with_face">Login with Face</string>
+    <string name="contact_us_clicked">Contact Us clicked</string>
+    <string name="welcome_to">Welcome to</string>
+    <string name="sparkle_rfid">Sparkle RFID</string>
+    <string name="please_log_in_to_continue">Please log in to continue</string>
+    <string name="scanning_face">Scanning face...</string>
+    <string name="mobile_face_net_tflite_file_missing_in_assets">mobile_face_net.tflite file missing in assets</string>
+    <string name="unable_to_start_camera">Unable to start camera</string>
+    <string name="camera_permission_required">Camera permission required</string>
+    <string name="trouble_login">"Trouble login? "</string>
+    <string name="contact_us">Contact US</string>
 
 </resources>

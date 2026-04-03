@@ -1,6 +1,8 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.content.Context
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -65,6 +68,7 @@ import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.LoginViewModel
 import com.loyalstring.rfid.viewmodel.ScanDisplayViewModel
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.launch
 
 @Composable
@@ -87,6 +91,11 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
     val loginSuccess = loginResponse is Resource.Success
     val permissionResponse by userPermissionViewModel.permissionResponse.observeAsState()
 
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     LaunchedEffect(permissionResponse) {
         when (permissionResponse) {
@@ -152,7 +161,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CurvedGradientHeader()
+            CurvedGradientHeader(localizedContext=localizedContext)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -177,7 +186,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Password Login",
+                        text = localizedContext.getString(R.string.password_login),
                         color = if (selectedLoginMode == "password") Color.White else Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
@@ -200,7 +209,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Face Login",
+                        text = localizedContext.getString(R.string.face_login),
                         color = if (selectedLoginMode == "face") Color.White else Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
@@ -215,7 +224,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Username") },
+                label = { Text(localizedContext.getString(R.string.username)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -227,7 +236,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(localizedContext.getString(R.string.password)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -255,10 +264,10 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
-                    Text("Remember Me", fontSize = 14.sp)
+                    Text(localizedContext.getString(R.string.remember_me), fontSize = 14.sp)
                 }
 
-                Text("Forgot Password?", color = Color.Blue, fontWeight = FontWeight.Medium)
+                Text(localizedContext.getString(R.string.forgot_password), color = Color.Blue, fontWeight = FontWeight.Medium)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -267,7 +276,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Use face detection to continue login",
+                    text = localizedContext.getString(R.string.use_face_detection_to_continue_login),
                     fontSize = 15.sp,
                     color = Color.Gray,
                     fontFamily = poppins
@@ -296,7 +305,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                         if (!NetworkUtils.isNetworkAvailable(context)) {
                             Toast.makeText(
                                 context,
-                                "Please Check Your Internet Connection",
+                                localizedContext.getString(R.string.please_check_your_internet_connection),
                                 Toast.LENGTH_SHORT
                             ).show()
                             return@clickable
@@ -306,14 +315,22 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                             if (username.isBlank() || password.isBlank()) {
                                 Toast.makeText(
                                     context,
-                                    "Please enter username and password",
+                                    localizedContext.getString(R.string.please_enter_username_and_password),
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 return@clickable
                             }
 
                             viewModel.login(LoginRequest(username, password), rememberMe)
-                            userPrefs.saveLoginCredentials(username, password, rememberMe, "", 0, 0, "")
+                            userPrefs.saveLoginCredentials(
+                                username,
+                                password,
+                                rememberMe,
+                                "",
+                                0,
+                                0,
+                                ""
+                            )
                         } else {
                             navController.navigate(Screens.RecogniseFaceLogin.route)
                         }
@@ -326,7 +343,9 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
-                        text = if (selectedLoginMode == "password") "Login" else "Login with Face",
+                        text = if (selectedLoginMode == "password") localizedContext.getString(R.string.login) else localizedContext.getString(
+                            R.string.login_with_face
+                        ),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
@@ -338,7 +357,8 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             Spacer(modifier = Modifier.height(24.dp))
 
             TroubleLoginText {
-                Toast.makeText(context, "Contact Us clicked", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context,
+                    localizedContext.getString(R.string.contact_us_clicked), Toast.LENGTH_SHORT).show()
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -347,7 +367,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
 }
 
 @Composable
-fun CurvedGradientHeader() {
+fun CurvedGradientHeader(localizedContext: Context) {
     val headerHeight = 250.dp
 
     Box(
@@ -386,14 +406,14 @@ fun CurvedGradientHeader() {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                "Welcome to",
+                localizedContext.getString(R.string.welcome_to),
                 color = Color.White,
                 fontSize = 35.sp,
                 fontFamily = poppins,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Sparkle RFID",
+                localizedContext.getString(R.string.sparkle_rfid),
                 color = Color.White,
                 fontSize = 35.sp,
                 fontFamily = poppins,
@@ -401,7 +421,7 @@ fun CurvedGradientHeader() {
             )
             Spacer(modifier = Modifier.height(40.dp))
             Text(
-                "Please log in to continue",
+                localizedContext.getString(R.string.please_log_in_to_continue),
                 color = Color.White,
                 fontSize = 14.sp,
                 fontFamily = poppins,
@@ -413,11 +433,17 @@ fun CurvedGradientHeader() {
 
 @Composable
 fun TroubleLoginText(onContactClick: () -> Unit) {
+    val context = LocalContext.current
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
     val annotatedText = buildAnnotatedString {
-        append("Trouble login? ")
+        append(localizedContext.getString(R.string.trouble_login))
         pushStringAnnotation(tag = "contact", annotation = "contact")
         withStyle(style = SpanStyle(color = Color.Blue, fontWeight = FontWeight.Bold)) {
-            append("Contact US")
+            append(localizedContext.getString(R.string.contact_us))
         }
         pop()
     }

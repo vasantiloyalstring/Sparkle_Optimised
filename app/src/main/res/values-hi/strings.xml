@@ -769,6 +769,35 @@
     <string name="label_today_rate">आज का रेट</string>
 
     <string name="stone_amount">पत्थर राशि</string>
+    <string name="add_face_login_data">फेस लॉगिन डेटा जोड़ें</string>
+    <string name="face_data">फेस डेटा</string>
+    <string name="face_saved_successfully">फेस सफलतापूर्वक सेव हो गया</string>
+    <string name="failed_to_save_face">फेस सेव करने में विफल</string>
+    <string name="no_saved_face_data_found">कोई सेव किया गया फेस डेटा नहीं मिला</string>
+    <string name="face_matched_successfully">फेस सफलतापूर्वक मैच हुआ</string>
+    <string name="face_not_recognised">फेस पहचाना नहीं गया</string>
+    <string name="face_recognition_failed">फेस पहचान असफल रही</string>
+    <string name="password_login">पासवर्ड लॉगिन</string>
+    <string name="face_login">फेस लॉगिन</string>
+    <string name="username">यूज़रनेम</string>
+    <string name="password">पासवर्ड</string>
+    <string name="remember_me">मुझे याद रखें</string>
+    <string name="forgot_password">पासवर्ड भूल गए?</string>
+    <string name="use_face_detection_to_continue_login">लॉगिन जारी रखने के लिए फेस डिटेक्शन का उपयोग करें</string>
+    <string name="please_check_your_internet_connection">कृपया अपना इंटरनेट कनेक्शन जांचें</string>
+    <string name="please_enter_username_and_password">कृपया यूज़रनेम और पासवर्ड दर्ज करें</string>
+    <string name="login">लॉगिन</string>
+    <string name="login_with_face">फेस से लॉगिन करें</string>
+    <string name="contact_us_clicked">हमसे संपर्क करें क्लिक किया गया</string>
+    <string name="welcome_to">आपका स्वागत है</string>
+    <string name="sparkle_rfid">स्पार्कल RFID</string>
+    <string name="please_log_in_to_continue">जारी रखने के लिए कृपया लॉगिन करें</string>
+    <string name="scanning_face">चेहरा स्कैन किया जा रहा है...</string>
+    <string name="mobile_face_net_tflite_file_missing_in_assets">mobile_face_net.tflite फ़ाइल assets में उपलब्ध नहीं है</string>
+    <string name="unable_to_start_camera">कैमरा शुरू नहीं किया जा सका</string>
+    <string name="camera_permission_required">कैमरा अनुमति आवश्यक है</string>
+    <string name="trouble_login">लॉगिन में समस्या?</string>
+    <string name="contact_us">हमसे संपर्क करें</string>
 
 
 </resources>
