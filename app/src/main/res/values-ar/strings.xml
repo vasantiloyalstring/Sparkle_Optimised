@@ -788,5 +788,7 @@
     <string name="camera_permission_required">مطلوب إذن الكاميرا</string>
     <string name="trouble_login">هل تواجه مشكلة في تسجيل الدخول؟</string>
     <string name="contact_us">اتصل بنا</string>
+    <string name="privacy_policy">سياسة الخصوصية</string>
+    <string name="view_our_privacy_policy">عرض سياسة الخصوصية الخاصة بنا</string>
 
 </resources>

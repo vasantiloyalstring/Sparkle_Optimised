@@ -545,10 +545,10 @@ fun SettingsScreen(
         ),
         SettingsMenuItem(
             key = "privacy_policy",
-            title = "Privacy Policy",
+            title = localizedContext.getString(R.string.privacy_policy),
             icon = Icons.Default.Settings,
             type = SettingType.Action,
-            subtitle = "View our privacy policy",
+            subtitle = localizedContext.getString(R.string.view_our_privacy_policy),
             onClick = {
                 Log.d("PRIVACY_POLICY", "Navigating to privacy_policy")
                 navController.navigate(Screens.PrivacyPolicyScreen.route)

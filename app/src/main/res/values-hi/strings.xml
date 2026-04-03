@@ -798,6 +798,8 @@
     <string name="camera_permission_required">कैमरा अनुमति आवश्यक है</string>
     <string name="trouble_login">लॉगिन में समस्या?</string>
     <string name="contact_us">हमसे संपर्क करें</string>
+    <string name="privacy_policy">गोपनीयता नीति</string>
+    <string name="view_our_privacy_policy">हमारी गोपनीयता नीति देखें</string>
 
 
 </resources>

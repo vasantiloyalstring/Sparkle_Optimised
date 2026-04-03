@@ -95,13 +95,20 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var userPreferences: UserPreferences
     private var scanKeyListener: ScanKeyListener? = null
-   /* override fun attachBaseContext(newBase: Context) {
+    override fun attachBaseContext(newBase: Context) {
         val prefs = UserPreferences.getInstance(newBase)
         val langCode = prefs.getAppLanguage().ifBlank { "en" }
-        Log.d("@@ langCode","langCode"+langCode)
-        val localizedContext = LocaleHelper.applyLocale(newBase, langCode)
+
+        val locale = java.util.Locale(langCode)
+        java.util.Locale.setDefault(locale)
+
+        val config = android.content.res.Configuration(newBase.resources.configuration)
+        config.setLocale(locale)
+      //  config.setLayoutDirection(locale)
+        config.setLayoutDirection(java.util.Locale.ENGLISH)
+        val localizedContext = newBase.createConfigurationContext(config)
         super.attachBaseContext(localizedContext)
-    }*/
+    }
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
        val prefs = UserPreferences.getInstance(this)
@@ -138,7 +145,7 @@ class MainActivity : ComponentActivity() {
                 Log.d("LocaleDebug", "menu_rates_title from Compose ctx = $s")
             }
             SparkleRFIDTheme {
-                SetupNavigation(this, userPreferences, startDestination)
+                SetupNavigation( userPreferences, startDestination)
             }
         }
 
@@ -189,10 +196,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun SetupNavigation(
-    context: Context,
+   // context: Context,
     userPreferences: UserPreferences,
     startDestination: String,
 ) {
+    val context = LocalContext.current
     val orderViewModel1: OrderViewModel = hiltViewModel()
     val viewModel: BulkViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
@@ -304,7 +312,7 @@ private fun SetupNavigation(
                                         Text(
                                             text = stringResource(navigationItem.titleResId),
                                             fontSize = 16.sp,
-                                            fontFamily = poppins,
+                                           // fontFamily = poppins,
                                             color = Color.DarkGray
                                         )
                                     },
@@ -414,7 +422,13 @@ private fun SetupNavigation(
 @Composable
 fun ProductTopBar(navController: NavHostController) {
     TopAppBar(
-        title = { Text("Product", color = Color.White, fontFamily = poppins) },
+        title = {
+            Text(
+                text = stringResource(R.string.product),
+                color = Color.White,
+                fontFamily = poppins
+            )
+        },
         navigationIcon = {
             IconButton(onClick = {
                 navController.navigate(Screens.HomeScreen.route) {
@@ -422,7 +436,11 @@ fun ProductTopBar(navController: NavHostController) {
                     launchSingleTop = true
                 }
             }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
@@ -440,7 +458,13 @@ fun ProductTopBar(navController: NavHostController) {
 @Composable
 fun HomeTopBar(onNavigationClick: () -> Unit) {
     TopAppBar(
-        title = { Text("Home", color = Color.White, fontFamily = poppins) },
+        title = {
+            Text(
+                text = stringResource(R.string.home),
+                color = Color.White,
+                fontFamily = poppins
+            )
+        },
         navigationIcon = {
             IconButton(onClick = { onNavigationClick() }) {
                 Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = Color.White)

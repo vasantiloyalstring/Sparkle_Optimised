@@ -2101,7 +2101,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
     Scaffold(
         topBar = {
             GradientTopBar(
-                title = "Delivery Chalan",
+                title = localizedContext.getString(R.string.delivery_challan),
                 navigationIcon = {
                     IconButton(
                         onClick = { shouldNavigateBack = true },
