@@ -38,6 +38,11 @@ android {
         }
     }
 
+    android {
+        aaptOptions {
+            noCompress += "tflite"
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -158,10 +163,20 @@ dependencies {
     //LiveData
     implementation(libs.androidx.lifecycle.livedata.ktx)// or latest
 
+    //Face detection
+    implementation("com.google.mlkit:face-detection:16.1.7")
+
     //Excel Read/Writw
     implementation(libs.poi)           // For .xls files
     implementation(libs.poi.ooxml)     // For .xlsx files
     implementation(kotlin("reflect"))
 
+    //camera
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+
+    implementation ("org.tensorflow:tensorflow-lite:2.14.0")
 
 }

@@ -160,37 +160,51 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selectedLoginMode == "password") Color(0xFF1976D2) else Color.LightGray)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selectedLoginMode == "password") BackgroundGradient
+                            else androidx.compose.ui.graphics.Brush.linearGradient(
+                                listOf(Color(0xFFE0E0E0), Color(0xFFCCCCCC))
+                            )
+                        )
                         .clickable { selectedLoginMode = "password" }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Password Login",
+                        text = "Password Login",
                         color = if (selectedLoginMode == "password") Color.White else Color.Black,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        fontFamily = poppins
                     )
                 }
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selectedLoginMode == "face") Color(0xFF1976D2) else Color.LightGray)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selectedLoginMode == "face") BackgroundGradient
+                            else androidx.compose.ui.graphics.Brush.linearGradient(
+                                listOf(Color(0xFFE0E0E0), Color(0xFFCCCCCC))
+                            )
+                        )
                         .clickable { selectedLoginMode = "face" }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Face Login",
+                        text = "Face Login",
                         color = if (selectedLoginMode == "face") Color.White else Color.Black,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        fontFamily = poppins
                     )
                 }
             }

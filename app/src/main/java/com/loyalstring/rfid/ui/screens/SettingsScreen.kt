@@ -558,9 +558,10 @@ fun SettingsScreen(
         title = "Face Data",
         icon = Icons.Default.Settings,
         type = SettingType.Action,
-        subtitle = "Add / View face login data",
+        subtitle = "Add face login data",
         onClick = {
-            navController.navigate(Screens.FaceManagement.route)
+            navController.navigate(Screens.AddFaceScreen.route)
+            //navController.navigate(Screens.FaceManagement.route)
         }
     )
     )

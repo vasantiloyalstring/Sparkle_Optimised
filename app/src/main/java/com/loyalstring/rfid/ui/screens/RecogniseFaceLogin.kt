@@ -1,23 +1,45 @@
 package com.loyalstring.rfid.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-
 import androidx.navigation.NavController
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.loyalstring.rfid.navigation.Screens
+import com.loyalstring.rfid.ui.utils.FaceRecognizerHelper
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.viewmodel.FaceLoginViewModel
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
+import java.util.concurrent.Executors
 
 @Composable
 fun RecogniseFaceLogin(
@@ -25,33 +47,192 @@ fun RecogniseFaceLogin(
     viewModel: FaceLoginViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val userPrefs = remember { UserPreferences(context) }
+    val faceRecognizer = remember { FaceRecognizerHelper(context) }
     val permissionViewModel: UserPermissionViewModel = hiltViewModel()
 
     val matchedFace by viewModel.matchedFace.observeAsState()
+    val message by viewModel.message.observeAsState("Scanning face...")
+
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var isProcessing by remember { mutableStateOf(false) }
+    var isFaceMatched by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasPermission = granted
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+
+        if (!faceRecognizer.isModelLoaded()) {
+            Toast.makeText(
+                context,
+                "mobile_face_net.tflite file missing in assets",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     LaunchedEffect(matchedFace) {
         matchedFace?.let { face ->
-            userPrefs.saveUserName(face.username ?: "")
-            userPrefs.setLoggedIn(true)
-            userPrefs.saveBranchId(face.branchId ?: 0)
+            if (!isFaceMatched) {
+                isFaceMatched = true
+                isProcessing = false
 
-            face.clientCode?.let { clientCode ->
-                face.employeeId?.let { empId ->
-                    permissionViewModel.loadPermissions(clientCode, empId)
+                userPrefs.saveUserName(face.username ?: "")
+                userPrefs.setLoggedIn(true)
+                userPrefs.saveBranchId(face.branchId ?: 0)
+                userPrefs.saveEmployee(face.employee?: 0)
+              //  userPrefs.sav(face.clientCode ?: "")
+
+
+
+                    // optional: last login credentials/meta
+                    userPrefs.saveLoginCredentials(
+                        face.username ?: "",
+                        "",
+                        true,
+                        "",
+                        face.employeeId ?: 0,
+                        face.branchId ?: 0,
+                        ""
+                    )
+
+                face.clientCode?.let { clientCode ->
+                    face.employeeId?.let { empId ->
+                        permissionViewModel.loadPermissions(clientCode, empId)
+                    }
                 }
-            }
 
-            navController.navigate(Screens.HomeScreen.route) {
-                popUpTo(Screens.LoginScreen.route) { inclusive = true }
+                Toast.makeText(context, "Face matched successfully", Toast.LENGTH_SHORT).show()
+
+                navController.navigate(Screens.HomeScreen.route) {
+                    popUpTo(Screens.LoginScreen.route) { inclusive = true }
+                    launchSingleTop = true
+                }
             }
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Scanning face...")
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (hasPermission) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+                    cameraProviderFuture.addListener({
+                        val cameraProvider = cameraProviderFuture.get()
+
+                        val preview = Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+
+                        val detectorOptions = FaceDetectorOptions.Builder()
+                            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                            .build()
+
+                        val faceDetector = FaceDetection.getClient(detectorOptions)
+
+                        imageAnalysis.setAnalyzer(
+                            Executors.newSingleThreadExecutor()
+                        ) { imageProxy ->
+
+                            if (isFaceMatched) {
+                                imageProxy.close()
+                                return@setAnalyzer
+                            }
+
+                            processFaceFrame(
+                                imageProxy = imageProxy,
+                                detector = faceDetector,
+                                faceRecognizer = faceRecognizer,
+                                onFaceDetected = { embedding ->
+                                    if (!isProcessing && !isFaceMatched) {
+                                        isProcessing = true
+                                        try {
+                                            viewModel.recogniseFace(embedding)
+                                        } catch (e: Exception) {
+                                            isProcessing = false
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                },
+                                onNoFace = {
+                                    if (!isFaceMatched) {
+                                        isProcessing = false
+                                    }
+                                },
+                                onComplete = {
+                                    if (!isFaceMatched) {
+                                        isProcessing = false
+                                    }
+                                }
+                            )
+                        }
+
+                        try {
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                CameraSelector.DEFAULT_FRONT_CAMERA,
+                                preview,
+                                imageAnalysis
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            Toast.makeText(
+                                ctx,
+                                "Unable to start camera",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }, ContextCompat.getMainExecutor(ctx))
+
+                    previewView
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Camera permission required")
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = message)
+        }
     }
 }

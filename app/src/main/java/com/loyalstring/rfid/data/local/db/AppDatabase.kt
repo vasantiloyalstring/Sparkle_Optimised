@@ -11,6 +11,7 @@ import com.loyalstring.rfid.data.local.dao.BulkItemDao
 import com.loyalstring.rfid.data.local.dao.CustomerEmailDao
 import com.loyalstring.rfid.data.local.dao.DropdownDao
 import com.loyalstring.rfid.data.local.dao.EpcDao
+import com.loyalstring.rfid.data.local.dao.FaceDao
 import com.loyalstring.rfid.data.local.dao.LocationDao
 import com.loyalstring.rfid.data.local.dao.OrderItemDao
 import com.loyalstring.rfid.data.local.dao.PendingEmployeeDao
@@ -23,6 +24,7 @@ import com.loyalstring.rfid.data.local.entity.Category
 import com.loyalstring.rfid.data.local.entity.CustomerEmailEntity
 import com.loyalstring.rfid.data.local.entity.Design
 import com.loyalstring.rfid.data.local.entity.EpcDto
+import com.loyalstring.rfid.data.local.entity.FaceInfo
 import com.loyalstring.rfid.data.local.entity.ModuleEntity
 import com.loyalstring.rfid.data.local.entity.OrderItem
 import com.loyalstring.rfid.data.local.entity.OrderListCacheEntity
@@ -71,7 +73,8 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         PendingEmployeeEntity::class,
         OrderListCacheEntity::class,
         Stone::class,
-        Diamond::class
+        Diamond::class,
+        FaceInfo::class
 
     ],
     version = 2
@@ -88,6 +91,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userPermissionDao(): UserPermissionDao
     abstract fun pendingOrderDao(): PendingOrderDao
     abstract fun pendingEmployeeDao(): PendingEmployeeDao
+    abstract fun faceDao(): FaceDao
 
     companion object {
         @Volatile

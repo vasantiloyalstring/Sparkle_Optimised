@@ -24,9 +24,5 @@ fun FaceManagement(navController: NavController) {
         Button(onClick = { navController.navigate(Screens.AddFaceScreen.route) }) {
             Text("Add Face")
         }
-
-        Button(onClick = { navController.navigate(Screens.RecogniseFaceLogin.route) }) {
-            Text("Test Face Login")
-        }
     }
 }
