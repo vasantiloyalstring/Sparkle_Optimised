@@ -5,6 +5,7 @@ import com.example.sparklepos.models.loginclasses.customerBill.AddEmployeeReques
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeResponse
 import com.loyalstring.rfid.data.local.entity.EpcDto
+import com.loyalstring.rfid.data.local.entity.FaceInfo
 import com.loyalstring.rfid.data.local.entity.TransferTypeEntity
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.addSingleItem.BoxModel
@@ -27,6 +28,9 @@ import com.loyalstring.rfid.data.model.deliveryChallan.CustomerTunchResponse
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanRequestList
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
+import com.loyalstring.rfid.data.model.face.AllFaceResponse
+import com.loyalstring.rfid.data.model.face.FaceRequest
+import com.loyalstring.rfid.data.model.face.FaceResponse
 import com.loyalstring.rfid.data.model.login.LoginRequest
 import com.loyalstring.rfid.data.model.login.LoginResponse
 import com.loyalstring.rfid.data.model.order.CustomOrderRequest
@@ -86,6 +90,7 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -351,6 +356,12 @@ interface RetrofitInterface {
     @POST("api/ClientOnboarding/GetAllCompanyDetails")
     suspend fun getCompanyDetails(@Body req: ClientCodeRequest): Response<List<CompanyDetails>>
 
+
+    @POST("api/FaceLogin/AddFace")
+    suspend fun saveFace(@Body request: FaceInfo): Response<FaceResponse>
+
+    @POST("api/FaceLogin/GetAllFaceLogin")
+    suspend fun getAllFaceData(@Body request: FaceRequest): Response<AllFaceResponse>
 
 
 }

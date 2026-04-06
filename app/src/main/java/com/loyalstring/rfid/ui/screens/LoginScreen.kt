@@ -186,7 +186,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = localizedContext.getString(R.string.password_login),
+                        text = localizedContext.getString(R.string.login),
                         color = if (selectedLoginMode == "password") Color.White else Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
@@ -194,7 +194,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     )
                 }
 
-                Box(
+           /*     Box(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
@@ -215,7 +215,28 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                         fontSize = 15.sp,
                         fontFamily = poppins
                     )
+                }*/
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selectedLoginMode == "face") BackgroundGradient
+                            else androidx.compose.ui.graphics.Brush.linearGradient(
+                                listOf(Color(0xFFE0E0E0), Color(0xFFCCCCCC))
+                            )
+                        )
+                        .clickable { selectedLoginMode = "face" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.face_icon),
+                        contentDescription = localizedContext.getString(R.string.face_login),
+                        tint = if (selectedLoginMode == "face") Color.White else Color.DarkGray,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
+
             }
             if (selectedLoginMode == "password") {
 

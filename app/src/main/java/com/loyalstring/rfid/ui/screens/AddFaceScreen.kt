@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,10 +39,13 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.loyalstring.rfid.R
 import com.loyalstring.rfid.data.local.entity.FaceInfo
+import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.ui.utils.FaceRecognizerHelper
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.viewmodel.FaceLoginViewModel
+import com.loyalstring.rfid.worker.LocaleHelper
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
@@ -70,6 +75,31 @@ fun AddFaceScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission = granted
+    }
+
+    val userPreferences = UserPreferences.getInstance(context)
+    val savedLang = userPreferences.getAppLanguage().ifBlank { "en" }
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLang = currentLocales[0]?.language ?: savedLang
+    val localizedContext = LocaleHelper.applyLocale(context, currentLang)
+
+    val saveFaceResponse by viewModel.saveFaceResponse.observeAsState()
+
+    LaunchedEffect(saveFaceResponse) {
+        when (saveFaceResponse) {
+            is Resource.Success -> {
+                Toast.makeText(context, localizedContext.getString(R.string.camera_permission_denied), Toast.LENGTH_SHORT).show()
+                navController.popBackStack()
+            }
+            is Resource.Error -> {
+                Toast.makeText(
+                    context,
+                    (saveFaceResponse as Resource.Error).message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            else -> {}
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -186,7 +216,7 @@ fun AddFaceScreen(
                     return@Button
                 }
 
-                viewModel.saveFace(
+              /*  viewModel.saveFace(
                     FaceInfo(
                         name = employee?.username ?: "User",
                         employeeId = employee?.id,
@@ -196,9 +226,21 @@ fun AddFaceScreen(
                         branchId = employee?.defaultBranchId,
                         embedding = embedding.joinToString(",")
                     )
+                )*/
+                viewModel.saveFaceToApi(
+                    FaceInfo(
+                        name = employee?.username ?: "User",
+                        employeeId = employee?.employeeId,
+                        employeeJson = employee?.let { com.google.gson.Gson().toJson(it) },
+                        username = employee?.username,
+                        clientCode = employee?.clientCode,
+                        branchId = employee?.defaultBranchId,
+                        embedding = embedding.joinToString(","),
+                        UserId=employee?.id
+                    )
                 )
 
-                Toast.makeText(context, "Face saved locally", Toast.LENGTH_SHORT).show()
+               // Toast.makeText(context, "Face saved locally", Toast.LENGTH_SHORT).show()
                 navController.popBackStack()
             },
             enabled = faceDetected && faceRecognizer.isModelLoaded(),

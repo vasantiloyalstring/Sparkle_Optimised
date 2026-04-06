@@ -1,0 +1,30 @@
+package com.loyalstring.rfid.data.model.face
+
+data class FaceData(
+    val Id: Int,
+    val UserId: Int,
+    val EmployeeId: Int,
+    val ClientCode: String,
+    val Name: String,
+    val Username: String,
+    val BranchId: Int,
+    val UserType: String,
+    val EmployeeJson: String,
+    val Width: Int,
+    val Height: Int,
+    val FaceWidth: Int,
+    val FaceHeight: Int,
+    val Top: Int,
+    val Left: Int,
+    val Right: Int,
+    val Bottom: Int,
+    val SmilingProbability: Double,
+    val LeftEyeOpenProbability: Double,
+    val RightEyeOpenProbability: Double,
+    val FaceTimestamp: String,
+    val FaceTimeMs: Long,
+    val Embedding: String,
+    val CreatedOn: String,
+    val LastUpdated: String,
+    val StatusType: Boolean
+)

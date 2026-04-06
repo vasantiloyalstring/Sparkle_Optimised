@@ -11,6 +11,7 @@ data class FaceInfo(
     @PrimaryKey(autoGenerate = true)
     val id: Int? = null,
     val name: String,
+    val UserId : Int?=null,
     val employeeId: Int? = null,
 
     // this is what Room will save

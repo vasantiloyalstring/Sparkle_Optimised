@@ -2120,7 +2120,7 @@ class BulkViewModel @Inject constructor(
                     )
                 )
             }
-            return null
+           return null
         }
 
         val missingReason = when {
@@ -2140,14 +2140,13 @@ class BulkViewModel @Inject constructor(
             if (skippedItems.size < 10_000) {
                 skippedItems.add(
                     SyncSkippedItem(
-                        itemCode = "${serverItem.itemCode ?: "UNKNOWN"} - ${missingReason}",
+                        itemCode = serverItem.itemCode  +" - "+missingReason?: "UNKNOWN",
                         rfid = serverItem.rfidCode,
                         tid = serverItem.tidNumber,
                         reason = missingReason
                     )
                 )
             }
-
             return null
         }
 
@@ -2190,13 +2189,14 @@ class BulkViewModel @Inject constructor(
                             )
                         )
                     }
+
                     null
                 } else {
                     // ✅ If RFID present but EPC missing → generate EPC
                     if (!item.rfid.isNullOrBlank() && item.epc.isNullOrBlank()) {
                         item.epc = syncAndMapRow(item.rfid!!)
                     }
-
+                    item.epc = syncAndMapRow(item.rfid!!)
 
                     // 🔥 DUPLICATE EPC CHECK
                     /* val epcKey = item.epc?.trim()?.uppercase()
@@ -2291,6 +2291,7 @@ class BulkViewModel @Inject constructor(
                                     )
                                 )
                             }
+
                             return null
                         }
 
@@ -2302,6 +2303,7 @@ class BulkViewModel @Inject constructor(
 
                     // usedEpcSet.add(epcKey.toString())
                     // ✅ VALID ITEM → ADD
+
                     item
                 }
 

@@ -28,15 +28,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.gson.Gson
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.loyalstring.rfid.R
+import com.loyalstring.rfid.data.model.login.Employee
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.FaceRecognizerHelper
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -103,27 +104,36 @@ fun RecogniseFaceLogin(
                 isFaceMatched = true
                 isProcessing = false
 
-                userPrefs.saveUserName(face.username ?: "")
+                userPrefs.saveUserName(face.Username ?: "")
                 userPrefs.setLoggedIn(true)
-                userPrefs.saveBranchId(face.branchId ?: 0)
-                userPrefs.saveEmployee(face.employee?: 0)
+                userPrefs.saveBranchId(face.BranchId ?: 0)
+               // userPrefs.saveEmployee(face.EmployeeJson?: 0)
               //  userPrefs.sav(face.clientCode ?: "")
 
+                val employeeObj: Employee? = try {
+                    Gson().fromJson(face.EmployeeJson, Employee::class.java)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
 
+                employeeObj?.let {
+                    userPrefs.saveEmployee(it)
+                }
 
                     // optional: last login credentials/meta
                     userPrefs.saveLoginCredentials(
-                        face.username ?: "",
+                        face.Username ?: "",
                         "",
                         true,
                         "",
-                        face.employeeId ?: 0,
-                        face.branchId ?: 0,
+                        face.EmployeeId ?: 0,
+                        face.BranchId ?: 0,
                         ""
                     )
 
-                face.clientCode?.let { clientCode ->
-                    face.employeeId?.let { empId ->
+                face.ClientCode?.let { clientCode ->
+                    face.EmployeeId?.let { empId ->
                         permissionViewModel.loadPermissions(clientCode, empId)
                     }
                 }
@@ -181,7 +191,7 @@ fun RecogniseFaceLogin(
                                     if (!isProcessing && !isFaceMatched) {
                                         isProcessing = true
                                         try {
-                                            viewModel.recogniseFace(embedding)
+                                            viewModel.getAllFaceData(embedding)
                                         } catch (e: Exception) {
                                             isProcessing = false
                                             e.printStackTrace()
