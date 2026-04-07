@@ -1358,7 +1358,8 @@ class BulkViewModel @Inject constructor(
                     totalWt = 0.0,
                     CategoryWt = "",
                     SKUId = 0,
-                    bulkItemId = 0
+                    bulkItemId = 0,
+                    purityId = 0
 
                 ).apply {
                     uhfTagInfo = tag
@@ -2120,7 +2121,7 @@ class BulkViewModel @Inject constructor(
                     )
                 )
             }
-           return null
+            return null
         }
 
         val missingReason = when {
@@ -2147,6 +2148,7 @@ class BulkViewModel @Inject constructor(
                     )
                 )
             }
+
             return null
         }
 
@@ -2189,14 +2191,13 @@ class BulkViewModel @Inject constructor(
                             )
                         )
                     }
-
                     null
                 } else {
                     // ✅ If RFID present but EPC missing → generate EPC
                     if (!item.rfid.isNullOrBlank() && item.epc.isNullOrBlank()) {
                         item.epc = syncAndMapRow(item.rfid!!)
                     }
-                    item.epc = syncAndMapRow(item.rfid!!)
+                 // vasanti   item.epc = syncAndMapRow(item.rfid!!)
 
                     // 🔥 DUPLICATE EPC CHECK
                     /* val epcKey = item.epc?.trim()?.uppercase()
@@ -2284,14 +2285,13 @@ class BulkViewModel @Inject constructor(
                             if (skippedItems.size < 10_000) {
                                 skippedItems.add(
                                     SyncSkippedItem(
-                                        itemCode = item.itemCode ?: "UNKNOWN",
+                                        itemCode = item.itemCode +" -"+"Duplicate EPC" ?: "UNKNOWN",
                                         rfid = item.rfid,
                                         tid = item.tid,
                                         reason = "Duplicate EPC"
                                     )
                                 )
                             }
-
                             return null
                         }
 
@@ -2303,7 +2303,6 @@ class BulkViewModel @Inject constructor(
 
                     // usedEpcSet.add(epcKey.toString())
                     // ✅ VALID ITEM → ADD
-
                     item
                 }
 

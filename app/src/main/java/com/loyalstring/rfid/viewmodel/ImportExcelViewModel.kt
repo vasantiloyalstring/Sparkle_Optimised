@@ -271,7 +271,8 @@ class ImportExcelViewModel @Inject constructor(
                             branchType = "",
                             totalWt = 0.0,
                             CategoryWt = "",
-                            SKUId = 0
+                            SKUId = 0,
+                            purityId = 0
 
                         )
                         items.add(item)
@@ -444,7 +445,8 @@ class ImportExcelViewModel @Inject constructor(
             branchType = "",
             totalWt = 0.0,
             CategoryWt = "",
-            SKUId = 0
+            SKUId = 0,
+            purityId = 0
         )
 
     }

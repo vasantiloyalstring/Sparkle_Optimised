@@ -230,7 +230,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.face_icon),
+                        painter = painterResource(id = R.drawable.face_svg),
                         contentDescription = localizedContext.getString(R.string.face_login),
                         tint = if (selectedLoginMode == "face") Color.White else Color.DarkGray,
                         modifier = Modifier.size(28.dp)
@@ -306,9 +306,9 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Icon(
-                    painter = painterResource(id = R.drawable.scan_counter),
+                    painter = painterResource(id = R.drawable.face_lock),
                     contentDescription = "Face Login",
-                    tint = Color(0xFF1976D2),
+                    tint = Color(0xFFC7C7C9),
                     modifier = Modifier.size(72.dp)
                 )
 

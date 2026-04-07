@@ -584,6 +584,8 @@ fun ProductListScreen(
                                 }
 
                                 IconButton(onClick = {
+                                    Log.d("EDIT_ITEM", "itemCode=${item.itemCode}, purity=${item.purity}, purityId=${item.purityId}")
+
                                     try {
                                         val currentEntry = navController.currentBackStackEntry
                                         currentEntry?.savedStateHandle?.set("item", item)

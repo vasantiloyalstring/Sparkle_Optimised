@@ -210,6 +210,9 @@ fun EditProductScreen(
     var productCode by remember { mutableStateOf(item.productCode.orEmpty()) }
     var productNameState by remember { mutableStateOf(item.productName.orEmpty()) }
     var imageUrlState by remember { mutableStateOf(item.imageUrl.orEmpty()) }
+    var purityId by remember { mutableStateOf(item.purityId ?: 0) }
+    Log.d("EDIT_ITEM", item.toString())
+    Log.d("purityId","purityId"+purityId+" "+makingPer)
 
     Scaffold(
         topBar = {
@@ -263,7 +266,7 @@ fun EditProductScreen(
                         CategoryId = categoryId,
                         ProductId = productId,
                         DesignId =designId,
-                        PurityId = 0,
+                        PurityId = purityId,
                         Colour = "",
                         Size = "",
                         WeightCategory = null,
@@ -392,6 +395,7 @@ fun EditProductScreen(
                         StoneWeight = swt,
                         epc = epc
                     )
+                    Log.d("UPDATE_REQ", "purityId=$purityId, makingPer=$makingPer")
 
                     val requestList = listOf(request)
 
