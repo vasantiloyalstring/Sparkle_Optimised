@@ -163,7 +163,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
         ) {
             CurvedGradientHeader(localizedContext=localizedContext)
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier
@@ -240,7 +240,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             }
             if (selectedLoginMode == "password") {
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             OutlinedTextField(
                 value = username,
@@ -394,7 +394,7 @@ fun CurvedGradientHeader(localizedContext: Context) {
     Box(
         modifier = Modifier
             .width(550.13666.dp)
-            .height(300.8201.dp)
+            .height(285.8201.dp)
     ) {
         Canvas(
             Modifier
