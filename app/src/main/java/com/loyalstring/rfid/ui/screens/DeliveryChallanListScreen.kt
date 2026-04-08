@@ -444,7 +444,7 @@ fun DeliveryChallanTable(
                                                 GradientDialogButtonnew(
                                                     text =  localizedContext.getString(R.string.connect_bluetooth_printer),
                                                     onClick = {
-                                                        logBondedDevices()
+                                                        logBondedDevices(context)
 
                                                         if (activity == null) {
                                                             bluetoothStatus = "Activity not found"

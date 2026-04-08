@@ -18,9 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.loyalstring.rfid.ui.utils.PrinterManager
 
 import android.Manifest
+import android.content.Context
 
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
@@ -38,7 +40,7 @@ fun PrinterScreen(navController: NavHostController) {
     Column(modifier = Modifier.padding(16.dp)) {
         Button(
             onClick = {
-                logBondedDevices()
+                logBondedDevices(context)
                 if (hasBluetoothPermissions(activity)) {
                     printerManager.connectBluetooth("60:6E:41:BE:B7:99") { _, msg ->
                         status = msg
@@ -72,16 +74,25 @@ fun PrinterScreen(navController: NavHostController) {
         Text(text = status)
     }
 }
-fun logBondedDevices() {
-    val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-    adapter?.bondedDevices?.forEach { device ->
-        android.util.Log.d(
-            "BT_BONDED",
-            "name=${device.name}, address=${device.address}, type=${device.type}"
-        )
+fun logBondedDevices(context: Context) {
+    val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter() ?: return
+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.BLUETOOTH_CONNECT
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!granted) {
+            Log.d("BT_DEBUG", "BLUETOOTH_CONNECT permission not granted")
+            return
+        }
+    }
+
+    bluetoothAdapter.bondedDevices?.forEach { device ->
+        Log.d("BT_DEBUG", "name=${device.name}, address=${device.address}")
     }
 }
-
 fun hasBluetoothPermissions(activity: Activity): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         ContextCompat.checkSelfPermission(
