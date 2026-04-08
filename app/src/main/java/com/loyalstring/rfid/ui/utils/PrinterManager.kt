@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanItemPrint
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanPrintData
+import kotlinx.coroutines.launch
 import net.posprinter.IConnectListener
 import net.posprinter.IDeviceConnection
 import net.posprinter.POSConnect
@@ -18,7 +19,29 @@ class PrinterManager(private val context: Context) {
     private var posPrinter: POSPrinter? = null
     private var companyName: String = ""
 
+/*    fun connectBluetooth(macAddress: String, onResult: (Boolean, String) -> Unit) {
+        deviceConnection = POSConnect.createDevice(POSConnect.DEVICE_TYPE_BLUETOOTH)
+
+        deviceConnection?.connect(macAddress, object : IConnectListener {
+            override fun onStatus(code: Int, connectInfo: String?, message: String?) {
+                Log.d("PRINTER", "BT status=$code info=$connectInfo msg=$message")
+
+                if (code == POSConnect.CONNECT_SUCCESS) {
+                    posPrinter = POSPrinter(deviceConnection)
+                    onResult(true, message ?: "Bluetooth printer connected")
+                } else {
+                    onResult(false, message ?: "Bluetooth printer connection failed")
+                }
+            }
+        })
+    }*/
+
     fun connectBluetooth(macAddress: String, onResult: (Boolean, String) -> Unit) {
+        try {
+            disconnect()
+            Thread.sleep(300)
+        } catch (_: Exception) { }
+
         deviceConnection = POSConnect.createDevice(POSConnect.DEVICE_TYPE_BLUETOOTH)
 
         deviceConnection?.connect(macAddress, object : IConnectListener {
@@ -36,7 +59,11 @@ class PrinterManager(private val context: Context) {
     }
 
     fun disconnect() {
-        deviceConnection?.close()
+        try {
+            deviceConnection?.close()
+        } catch (e: Exception) {
+            Log.e("PRINTER", "disconnect error", e)
+        }
         deviceConnection = null
         posPrinter = null
     }

@@ -441,7 +441,7 @@ fun DeliveryChallanTable(
                                             )
                                             if (showBluetoothControls) {
                                                 Spacer(modifier = Modifier.height(8.dp))
-                                                GradientDialogButtonnew(
+                                              /*  GradientDialogButtonnew(
                                                     text =  localizedContext.getString(R.string.connect_bluetooth_printer),
                                                     onClick = {
                                                         logBondedDevices(context)
@@ -456,6 +456,36 @@ fun DeliveryChallanTable(
                                                                 bluetoothStatus = msg
                                                                 isPrinterConnected = success
                                                             }
+                                                        } else {
+                                                            requestBluetoothPermissions(activity)
+                                                            bluetoothStatus = "Please grant Bluetooth permissions"
+                                                            isPrinterConnected = false
+                                                        }
+                                                    }
+                                                )*/
+
+                                                GradientDialogButtonnew(
+                                                    text = localizedContext.getString(R.string.connect_bluetooth_printer),
+                                                    onClick = {
+                                                        if (activity == null) {
+                                                            bluetoothStatus = "Activity not found"
+                                                            return@GradientDialogButtonnew
+                                                        }
+
+                                                        if (hasBluetoothPermissions(activity)) {
+                                                            logBondedDevices(context)
+
+                                                            bluetoothStatus = "Connecting..."
+                                                            isPrinterConnected = false
+
+                                                            printerManager.disconnect()
+
+                                                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                                printerManager.connectBluetooth("60:6E:41:BE:B7:99") { success, msg ->
+                                                                    bluetoothStatus = msg
+                                                                    isPrinterConnected = success
+                                                                }
+                                                            }, 500)
                                                         } else {
                                                             requestBluetoothPermissions(activity)
                                                             bluetoothStatus = "Please grant Bluetooth permissions"
