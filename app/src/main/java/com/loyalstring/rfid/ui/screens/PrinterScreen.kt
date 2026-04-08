@@ -93,7 +93,7 @@ fun logBondedDevices(context: Context) {
         Log.d("BT_DEBUG", "name=${device.name}, address=${device.address}")
     }
 }
-fun hasBluetoothPermissions(activity: Activity): Boolean {
+/*fun hasBluetoothPermissions(activity: Activity): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         ContextCompat.checkSelfPermission(
             activity,
@@ -106,17 +106,48 @@ fun hasBluetoothPermissions(activity: Activity): Boolean {
     } else {
         true
     }
+}*/
+fun hasBluetoothPermissions(activity: Activity): Boolean {
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            activity,
+            android.Manifest.permission.BLUETOOTH_CONNECT
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            activity,
+            android.Manifest.permission.BLUETOOTH
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    activity,
+                    android.Manifest.permission.BLUETOOTH_ADMIN
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    activity,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 }
 
 fun requestBluetoothPermissions(activity: Activity) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        ActivityCompat.requestPermissions(
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        androidx.core.app.ActivityCompat.requestPermissions(
             activity,
             arrayOf(
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+                android.Manifest.permission.BLUETOOTH_SCAN
             ),
             1001
+        )
+    } else {
+        androidx.core.app.ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(
+                android.Manifest.permission.BLUETOOTH,
+                android.Manifest.permission.BLUETOOTH_ADMIN,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ),
+            1002
         )
     }
 }
