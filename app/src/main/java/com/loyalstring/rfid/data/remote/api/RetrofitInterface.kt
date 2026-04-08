@@ -84,6 +84,7 @@ import com.loyalstring.rfid.data.remote.data.StockTransferRequest
 import com.loyalstring.rfid.data.remote.data.UserPermissionRequest
 import com.loyalstring.rfid.data.remote.data.UserPermissionResponse
 import com.loyalstring.rfid.data.remote.response.AlllabelResponse
+import com.loyalstring.rfid.data.remote.response.BranchLabelledStocksResponse
 import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -138,7 +139,7 @@ interface RetrofitInterface {
     @POST("api/ProductMaster/GetAllPurity")
     suspend fun getAllPurityDetails(@Body request: ClientCodeRequest): Response<List<PurityModel>>
 
-    //Get all stock
+   /* //Get all stock
     @POST("api/ProductMaster/GetAllStockAndroid")
     suspend fun getAllLabeledStock(@Body request: RequestBody): Response<List<AlllabelResponse.LabelItem>>
 
@@ -146,7 +147,20 @@ interface RetrofitInterface {
     @Streaming
     suspend fun getAllLabeledStockNew(
         @Body request: RequestBody
+    ): Response<ResponseBody>*/
+
+
+    @POST("api/ProductMaster/branch-labelled-stocks/search")
+    suspend fun getAllLabeledStock(
+        @Body request: RequestBody
+    ): Response<BranchLabelledStocksResponse>
+
+    @POST("api/ProductMaster/branch-labelled-stocks/search")
+    @Streaming
+    suspend fun getAllLabeledStockNew(
+        @Body request: RequestBody
     ): Response<ResponseBody>
+
 
 
     //Get all packets
