@@ -791,5 +791,7 @@
     <string name="privacy_policy">سياسة الخصوصية</string>
     <string name="view_our_privacy_policy">عرض سياسة الخصوصية الخاصة بنا</string>
     <string name="failed_to_fetch_face_data">فشل في جلب بيانات الوجه</string>
+    <string name="expiry_warning">تحذير انتهاء الصلاحية</string>
+
 
 </resources>

@@ -801,6 +801,8 @@
     <string name="privacy_policy">गोपनीयता नीति</string>
     <string name="view_our_privacy_policy">हमारी गोपनीयता नीति देखें</string>
     <string name="failed_to_fetch_face_data">चेहरा डेटा प्राप्त करने में विफल</string>
+    <string name="expiry_warning">समाप्ति चेतावनी</string>
+
 
 
 </resources>

@@ -834,5 +834,7 @@
     <string name="privacy_policy">Privacy Policy</string>
     <string name="view_our_privacy_policy">View our privacy policy</string>
     <string name="failed_to_fetch_face_data">Failed to fetch face data</string>
+    <string name="expiry_warning">Expiry Warning</string>
+
 
 </resources>

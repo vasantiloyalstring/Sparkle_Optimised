@@ -71,6 +71,10 @@ import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
 import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.launch
 
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
+
 @Composable
 fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltViewModel()) {
     val context = LocalContext.current
@@ -84,6 +88,10 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(false) }
+
+    var showExpiryPopup by remember { mutableStateOf(false) }
+    var expiryPopupMessage by remember { mutableStateOf("") }
+    var pendingLoginResponse by remember { mutableStateOf<LoginResponse?>(null) }
 
     val loginResponse by viewModel.loginResponse.observeAsState()
     val isLoading = loginResponse is Resource.Loading
@@ -121,7 +129,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
         }
     }
 
-    LaunchedEffect(loginSuccess) {
+   /* LaunchedEffect(loginSuccess) {
         if (loginSuccess){
             val loginData = (loginResponse as? Resource.Success<LoginResponse>)?.data
             loginData?.let { response ->
@@ -146,6 +154,69 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                 }
 
                 navController.navigate(Screens.HomeScreen.route)
+            }
+        }
+    }*/
+
+    fun completeLogin(response: LoginResponse) {
+        userPrefs.saveToken(response.token.orEmpty())
+        userPrefs.saveUserName(response.employee?.username.toString())
+        userPrefs.saveEmployee(response.employee)
+        userPrefs.setLoggedIn(true)
+        userPrefs.saveBranchId(response.employee!!.defaultBranchId)
+        userPrefs.saveClient(response.employee?.clients!!)
+        userPrefs.saveOrganization(response.employee?.clients!!.organisationName.toString())
+
+        response.employee.empEmail?.let { scanDisplayViewModel.saveEmail(it) }
+
+        userPrefs.saveLoginCredentials(
+            username,
+            password,
+            rememberMe,
+            response.employee.clients.rfidType.toString(),
+            response.employee.id,
+            response.employee.defaultBranchId,
+            response.employee.clients.organisationName.toString()
+        )
+
+        response.employee.clientCode?.let {
+            userPermissionViewModel.loadPermissions(it, response.employee.id)
+        }
+
+        navController.navigate(Screens.HomeScreen.route) {
+            popUpTo(Screens.LoginScreen.route) { inclusive = true }
+        }
+    }
+
+    LaunchedEffect(loginSuccess) {
+        if (loginSuccess) {
+            val loginData = (loginResponse as? Resource.Success<LoginResponse>)?.data
+            loginData?.let { response ->
+
+              //  val expiryDateStr = response.employee?.clients?.expiryDate
+                val expiryDateStr ="2027-04-10"
+                val daysRemaining = getDaysRemaining(expiryDateStr)
+
+                when {
+                    daysRemaining == null -> completeLogin(response)
+
+                    daysRemaining < 0 -> {
+                        Toast.makeText(
+                            context,
+                            "Your subscription has expired. Please contact support.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    daysRemaining in 0..15 -> {
+                        pendingLoginResponse = response
+                        expiryPopupMessage =
+                            "Your subscription will expire in $daysRemaining day(s). Please renew soon."
+                        showExpiryPopup = true
+                    }
+
+                    else -> completeLogin(response)
+                }
             }
         }
     }
@@ -385,7 +456,40 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+    if (showExpiryPopup) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text(localizedContext.getString(R.string.expiry_warning), color = Color.Blue, fontWeight = FontWeight.Medium)
+            },
+            text = {
+                Text(expiryPopupMessage)
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showExpiryPopup = false
+                        pendingLoginResponse?.let { completeLogin(it) }
+                        pendingLoginResponse = null
+                    }
+                ) {
+                    Text(localizedContext.getString(R.string.continue_text), color = Color.Blue, fontWeight = FontWeight.Medium)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showExpiryPopup = false
+                        pendingLoginResponse = null
+                    }
+                ) {
+                    Text(localizedContext.getString(R.string.cancel),color = Color.Blue, fontWeight = FontWeight.Medium)
+                }
+            }
+        )
+    }
 }
+
 
 @Composable
 fun CurvedGradientHeader(localizedContext: Context) {
@@ -483,3 +587,19 @@ fun TroubleLoginText(onContactClick: () -> Unit) {
         )
     }
 }
+
+fun getDaysRemaining(expiryDateStr: String?): Long? {
+    return try {
+        if (expiryDateStr.isNullOrBlank()) return null
+
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val expiryDate = LocalDate.parse(expiryDateStr, formatter)
+        val today = LocalDate.now()
+
+        ChronoUnit.DAYS.between(today, expiryDate)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+
