@@ -33,7 +33,7 @@ class UserPermissionRepository @Inject constructor(
             val userData = body.first()
 
             val userEntity = UserPermissionEntity(
-                userId = userData.userId,
+                UserId = userData.userId,
                 firstName = userData.firstName,
                 lastName = userData.lastName,
                 roleId = userData.roleId,
@@ -101,7 +101,7 @@ class UserPermissionRepository @Inject constructor(
             val userEntities = body.map { userData ->
 
                 UserPermissionEntity(
-                    userId = userData.userId,
+                    UserId = userData.userId,
                     firstName = userData.firstName,
                     lastName = userData.lastName,
                     roleId = userData.roleId,

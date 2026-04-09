@@ -45,6 +45,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +84,7 @@ import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
+import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -202,6 +204,7 @@ private fun SetupNavigation(
 ) {
     val context = LocalContext.current
     val orderViewModel1: OrderViewModel = hiltViewModel()
+    val userPermissionViewModel:UserPermissionViewModel = hiltViewModel()
     val viewModel: BulkViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -251,7 +254,63 @@ private fun SetupNavigation(
     val navigationBody: @Composable () -> Unit = {
         AppNavigation(navController, drawerState, scope, userPreferences, startDestination)
     }
+    val allEmployees by userPermissionViewModel.allEmployees.observeAsState(emptyList())
 
+
+    val prefUserId = userPreferences.getUserId()
+
+    LaunchedEffect(prefUserId) {
+        Log.d("USER_DEBUG", "LaunchedEffect prefUserId = $prefUserId")
+
+        val savedEmployee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
+        Log.d("USER_DEBUG", "savedEmployee from prefs = $savedEmployee")
+
+        employee = savedEmployee
+
+        if (savedEmployee == null) {
+            Log.d("USER_DEBUG", "savedEmployee is null")
+            return@LaunchedEffect
+        }
+
+        if (savedEmployee.clientCode.isNullOrBlank()) {
+            Log.d("USER_DEBUG", "clientCode is null or blank")
+            return@LaunchedEffect
+        }
+
+        Log.d("USER_DEBUG", "employee loaded = $savedEmployee")
+        Log.d("USER_DEBUG", "clientCode = '${savedEmployee.clientCode}'")
+
+        userPermissionViewModel.loadPermissionsAll(savedEmployee.clientCode.toString())
+    }
+
+    LaunchedEffect(allEmployees, prefUserId) {
+        Log.d("USER_DEBUG", "allEmployees size = ${allEmployees.size}")
+        Log.d("USER_DEBUG", "PrefUserId = $prefUserId")
+
+        if (allEmployees.isEmpty()) {
+            Log.d("USER_DEBUG", "Employee list still empty")
+            return@LaunchedEffect
+        }
+
+        val selectedUser = allEmployees.firstOrNull {
+            it.UserId.toString().trim() == prefUserId.toString().trim()
+        }
+
+        if (selectedUser == null) {
+            Log.d("USER_DEBUG", "No matching user found for prefUserId = $prefUserId")
+            return@LaunchedEffect
+        }
+
+        Log.d(
+            "USER_DEBUG",
+            "PrefUserId = $prefUserId, SelectedUserId = ${selectedUser.UserId}"
+        )
+
+        val branchIds = getBranchIdsFromBranchSelectionJson(selectedUser.branchSelectionJson)
+        UserPreferences.getInstance(context).saveBranchIds(branchIds)
+
+        Log.d("branchIds", "branchIds = $branchIds")
+    }
     // Drawer visibility logic (hide on Login)
     val disableDrawerRoutes = listOf(Screens.LoginScreen.route)
     val shouldShowDrawer = currentRoute !in disableDrawerRoutes
@@ -415,6 +474,20 @@ private fun SetupNavigation(
         }
     } else {
         Scaffold(content = { navigationBody() })
+    }
+}
+
+fun getBranchIdsFromBranchSelectionJson(branchSelectionJson: String): List<Int> {
+    return try {
+        val jsonArray = com.google.gson.JsonParser
+            .parseString(branchSelectionJson)
+            .asJsonArray
+
+        jsonArray.mapNotNull { element ->
+            element.asJsonObject.get("Id")?.asInt
+        }
+    } catch (e: Exception) {
+        emptyList()
     }
 }
 

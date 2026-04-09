@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -46,13 +47,29 @@ class UserPermissionViewModel @Inject constructor(
     }*/
 fun loadPermissionsAll(clientCode: String) {
     viewModelScope.launch {
+        Log.d("PERMISSION_VM", "loadPermissionsAll called, clientCode = $clientCode")
 
         val result = repository.fetchAndSavePermissionsAll(clientCode)
 
-        if (result is Resource.Success) {
-            _allEmployees.value = result.data ?: emptyList()
-        } else {
-            _allEmployees.value = emptyList()
+        when (result) {
+            is Resource.Success -> {
+                Log.d("PERMISSION_VM", "Success")
+                Log.d("PERMISSION_VM", "result.data size = ${result.data?.size ?: 0}")
+                Log.d("PERMISSION_VM", "result.data = ${result.data}")
+
+                _allEmployees.value = result.data ?: emptyList()
+
+                Log.d("PERMISSION_VM", "_allEmployees size = ${_allEmployees.value?.size ?: 0}")
+            }
+
+            is Resource.Error -> {
+                Log.d("PERMISSION_VM", "Error = ${result.message}")
+                _allEmployees.value = emptyList()
+            }
+
+            is Resource.Loading -> {
+                Log.d("PERMISSION_VM", "Loading")
+            }
         }
     }
 }

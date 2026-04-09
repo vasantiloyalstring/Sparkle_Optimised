@@ -1,5 +1,6 @@
 package com.loyalstring.rfid.repository
 
+import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -20,16 +21,20 @@ import com.loyalstring.rfid.data.remote.response.AlllabelResponse
 import com.loyalstring.rfid.data.remote.response.ClearStockDataModelResponse
 import com.loyalstring.rfid.di.NormalRetrofit
 import com.loyalstring.rfid.di.SyncRetrofit
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.bouncycastle.crypto.params.Blake3Parameters.context
 import java.io.EOFException
 import java.net.SocketException
 import javax.inject.Inject
 
 class BulkRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     @SyncRetrofit private val syncApi: RetrofitInterface,
     @NormalRetrofit private val apiService: RetrofitInterface,
     override val bulkItemDao: BulkItemDao,
@@ -125,12 +130,15 @@ class BulkRepositoryImpl @Inject constructor(
     ): List<AlllabelResponse.LabelItem> {
         Log.d("SYNC_ITEM", "Server API syncBulkItemsFromServer Called Repository")
 
+        val savedBranchIds = UserPreferences.getInstance(context).getBranchIds()
+        Log.d("savedBranchIds", savedBranchIds.toString())
+
         val jsonObject = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
 
-            val branchIdsArray = JsonArray().apply {
-                add(1)
-                add(2)
+            val branchIdsArray = JsonArray()
+            savedBranchIds.forEach { id ->
+                branchIdsArray.add(id)
             }
 
             add("branchIds", branchIdsArray)
@@ -537,13 +545,14 @@ class BulkRepositoryImpl @Inject constructor(
 
         Log.d("SYNC_ITEM", "Server API New Called: ${request.clientcode}")
         var totalCount = 0
-
+        val savedBranchIds = UserPreferences.getInstance(context).getBranchIds()
+        Log.d("savedBranchIds", savedBranchIds.toString())
         val requestBody = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
 
-            val branchIdsArray = JsonArray().apply {
-                add(1)
-                add(2)
+            val branchIdsArray = JsonArray()
+            savedBranchIds.forEach { id ->
+                branchIdsArray.add(id)
             }
 
             add("branchIds", branchIdsArray)

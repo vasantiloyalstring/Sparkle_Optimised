@@ -6,7 +6,7 @@ import androidx.room.Relation
 data class UserWithModules(
     @Embedded val user: UserPermissionEntity,
     @Relation(
-        parentColumn = "userId",
+        parentColumn = "UserId",
         entityColumn = "userOwnerId",
         entity = ModuleEntity::class
     )

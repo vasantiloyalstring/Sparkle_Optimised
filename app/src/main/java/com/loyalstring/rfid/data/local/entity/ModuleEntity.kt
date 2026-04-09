@@ -7,7 +7,7 @@ import androidx.room.*
     foreignKeys = [
         ForeignKey(
             entity = UserPermissionEntity::class,
-            parentColumns = ["userId"],
+            parentColumns = ["UserId"],
             childColumns = ["userOwnerId"],
             onDelete = ForeignKey.CASCADE
         )

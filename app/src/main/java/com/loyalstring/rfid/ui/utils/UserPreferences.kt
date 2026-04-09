@@ -120,6 +120,10 @@ class UserPreferences @Inject constructor(
 
     fun isRememberMe(): Boolean = prefs.getBoolean(KEY_REMEMBER_ME, false)
 
+    fun getUserId(): Int? {
+        return prefs.getInt(KEY_USER_ID, 0)
+    }
+
     fun setLoggedIn(loggedIn: Boolean) {
         prefs.edit { putBoolean(KEY_LOGGED_IN, loggedIn) }
     }
@@ -273,6 +277,17 @@ class UserPreferences @Inject constructor(
 
     fun getDeviceId(): String? {
         return prefs.getString(DEVICE_ID, "")
+    }
+
+    fun saveBranchIds(branchIds: List<Int>) {
+        val json = com.google.gson.Gson().toJson(branchIds)
+        prefs.edit().putString("branch_ids", json).apply()
+    }
+
+    fun getBranchIds(): List<Int> {
+        val json = prefs.getString("branch_ids", "[]") ?: "[]"
+        val type = object : com.google.gson.reflect.TypeToken<List<Int>>() {}.type
+        return com.google.gson.Gson().fromJson(json, type)
     }
 }
 

@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "user_permissions")
 data class UserPermissionEntity(
-    @PrimaryKey val userId: Int,
+    @PrimaryKey val UserId: Int,
     val firstName: String,
     val lastName: String,
     val roleId: Int,
