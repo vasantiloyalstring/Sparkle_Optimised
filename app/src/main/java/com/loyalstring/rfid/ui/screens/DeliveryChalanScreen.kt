@@ -873,7 +873,8 @@ fun DeliveryChalanScreen(
                 fixMaking = makingFixedAmt,
                 fixWastage = makingFixedWastage,
                 TIDNumber = matchedItem.tid ?: "",
-                CustomerName = ""
+                CustomerName = "",
+                Pcs = matchedItem.pcs?:0
             )
 
             if (productList.none { it.ItemCode == productDetail.ItemCode }) {
@@ -2088,7 +2089,8 @@ MakingPerGram=${touchMatch.MakingPerGram}
             totayRate = rate.toString(),
             makingPercent = makingPercentFinal.toString(),
             fixMaking = fixMakingFinal.toString(),
-            fixWastage = fixWastageFinal.toString()
+            fixWastage = fixWastageFinal.toString(),
+            Pcs = matchedItem.pcs?:0
         )
 
         productList.add(newProduct)
@@ -2809,7 +2811,7 @@ fun DeliveryChallanItem.toChallanDetails(): ChallanDetails {
         BalanceSilver = "0.0",
         BalanceGold = "0.0",
         ConvertAmt = "0.0",
-        Pieces = this.qty ?: "1",
+        Pieces = (this.pcs ?: 1).toString(),
         StoneLessPercent = "0.0",
         DesignId = this.designid,
         PacketId = 0,

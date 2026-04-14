@@ -108,7 +108,8 @@ data class ChallanDetails(
     val fixMaking:String?="",
     val fixWastage:String?="",
     val TIDNumber:String?="",
-    var CustomerName:String=""
+    var CustomerName:String="",
+    val Pcs:Int=0
 
 
 )
