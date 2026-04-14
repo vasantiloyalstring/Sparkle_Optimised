@@ -54,5 +54,6 @@ data class DeliveryChallanItem(
     val makingPercentage: String,
     val makingFixedAmt: String,
     val makingFixedWastage: String,
-    val makingPerGram: String
+    val makingPerGram: String,
+    val pcs:Int=0
 )
