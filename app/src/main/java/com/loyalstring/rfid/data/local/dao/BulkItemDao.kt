@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RoomWarnings
 import androidx.room.Transaction
 import androidx.room.Update
 import com.loyalstring.rfid.data.local.entity.BulkItem
@@ -14,6 +15,7 @@ import com.loyalstring.rfid.data.remote.data.IdNamePair
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+@SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
 interface BulkItemDao {
 
     @Query("DELETE FROM bulk_items")
@@ -97,8 +99,7 @@ interface BulkItemDao {
     //@Query("DELETE FROM bulk_items WHERE id = :id")
     //suspend fun deleteById(id: Int): Int   // ✅ rows deleted
     // Pagination queries for efficient large dataset handling
-    @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId,category, rfid, design ,grossWeight,netWeight,stoneWeight,diamondWeight ,makingPerGram,fixMaking,fixWastage,stoneAmount,diamondAmount,sku ,purity ,branchId ,productId,designId,pcs FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
-    @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId,category, rfid, design ,grossWeight,netWeight,stoneWeight,diamondWeight ,makingPerGram,fixMaking,fixWastage,stoneAmount,diamondAmount,sku ,purity ,branchId ,productId,designId ,purityId ,makingPercent FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
+   @Query("SELECT id, bulkItemId, productName, itemCode, epc, imageUrl, isScanned, counterName, branchName, boxName, branchType, totalQty, totalNetWt, mrp, categoryId,category, rfid, design ,grossWeight,netWeight,stoneWeight,diamondWeight ,makingPerGram,fixMaking,fixWastage,stoneAmount,diamondAmount,sku ,purity ,branchId ,productId,designId ,purityId ,makingPercent,pcs FROM bulk_items ORDER BY bulkItemId LIMIT :limit OFFSET :offset")
     suspend fun getMinimalItemsPaged(limit: Int, offset: Int): List<BulkItem>
 
     @Query("SELECT COUNT(*) FROM bulk_items")

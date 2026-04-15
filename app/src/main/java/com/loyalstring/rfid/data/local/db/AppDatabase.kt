@@ -77,7 +77,8 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         FaceInfo::class
 
     ],
-    version = 2
+    version = 2,
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): UHFTAGDao

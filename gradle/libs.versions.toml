@@ -46,6 +46,7 @@ androidx-hilt = "1.2.0"
 
 # WorkManager
 work-runtime-ktx = "2.9.1"
+ui = "1.10.6"
 
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
@@ -124,3 +125,4 @@ androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedat
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "androidx-hilt" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "androidx-hilt" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }

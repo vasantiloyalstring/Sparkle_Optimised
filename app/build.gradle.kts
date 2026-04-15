@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.espresso.core)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.compose.ui)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     androidTestImplementation(platform(libs.androidx.compose.bom))

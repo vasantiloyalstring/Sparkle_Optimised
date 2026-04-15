@@ -1,5 +1,12 @@
 package com.loyalstring.rfid
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.saveable.rememberSaveable
+
+import com.loyalstring.rfid.ui.utils.GradientButtonIcon
+
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
@@ -13,6 +20,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,7 +58,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +73,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -73,15 +81,20 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.loyalstring.rfid.data.model.ClientCodeRequest
 import com.loyalstring.rfid.data.model.login.Employee
+import com.loyalstring.rfid.data.model.login.LoginRequest
 import com.loyalstring.rfid.data.reader.ScanKeyListener
+import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.AppNavigation
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.navigation.listOfNavItems
+
 import com.loyalstring.rfid.ui.theme.SparkleRFIDTheme
 import com.loyalstring.rfid.ui.utils.BackgroundGradient
+
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.BulkViewModel
+import com.loyalstring.rfid.viewmodel.LoginViewModel
 import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UserPermissionViewModel
@@ -90,6 +103,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -217,6 +234,128 @@ private fun SetupNavigation(
     // Reactive state for employee (same variable name)
     var employee by remember { mutableStateOf<Employee?>(null) }
 
+
+    var showExpiryPopup by rememberSaveable { mutableStateOf(false) }
+    var expiryPopupMessage by rememberSaveable { mutableStateOf("") }
+    var isPlanExpired by rememberSaveable { mutableStateOf(false) }
+    var hasCheckedExpiryOnLaunch by rememberSaveable { mutableStateOf(false) }
+    val loginViewModel: LoginViewModel = hiltViewModel()
+    val loginResponse by loginViewModel.loginResponse.observeAsState()
+    LaunchedEffect(Unit) {
+        if (hasCheckedExpiryOnLaunch) return@LaunchedEffect
+        hasCheckedExpiryOnLaunch = true
+
+        val prefs = UserPreferences.getInstance(context)
+        if (!prefs.isLoggedIn()) return@LaunchedEffect
+
+        val savedUsername = prefs.getSavedUsername()
+        val savedPassword = prefs.getSavedPassword()
+
+        if (savedUsername.isNullOrBlank() || savedPassword.isNullOrBlank()) {
+            isPlanExpired = true
+            expiryPopupMessage = "Session expired. Please login again."
+            showExpiryPopup = true
+            return@LaunchedEffect
+        }
+
+        loginViewModel.login(
+            LoginRequest(
+                username = savedUsername,
+                password = savedPassword
+            ),
+            rememberMe = true
+        )
+    }
+
+    LaunchedEffect(loginResponse) {
+        when (val result = loginResponse) {
+            is Resource.Success -> {
+                val loginData = result.data ?: return@LaunchedEffect
+                val employeeData = loginData.employee ?: return@LaunchedEffect
+                val prefs = UserPreferences.getInstance(context)
+
+                // fresh data save
+                prefs.saveToken(loginData.token.orEmpty())
+                prefs.saveUserName(employeeData.username.toString())
+                prefs.saveEmployee(employeeData)
+                prefs.setLoggedIn(true)
+                prefs.saveBranchId(employeeData.defaultBranchId)
+                employeeData.clients?.let { prefs.saveClient(it) }
+                prefs.saveOrganization(employeeData.clients?.organisationName.toString())
+
+                val expiryDateStr = employeeData.clients?.planExpiryDate
+                val daysRemaining = getDaysRemaining(expiryDateStr)
+
+                when {
+                    daysRemaining == null -> {
+                        showExpiryPopup = false
+                    }
+
+                    daysRemaining < 0 -> {
+                        isPlanExpired = true
+                        expiryPopupMessage =
+                            "Your subscription has expired. Please login again to continue."
+                        showExpiryPopup = true
+                    }
+
+                    daysRemaining in 0..15 -> {
+                        isPlanExpired = false
+                        expiryPopupMessage =
+                            "Your subscription will expire in $daysRemaining day(s). Please renew soon."
+                        showExpiryPopup = true
+                    }
+
+                    else -> {
+                        showExpiryPopup = false
+                    }
+                }
+            }
+
+            is Resource.Error -> {
+                isPlanExpired = true
+                expiryPopupMessage = "Session validation failed. Please login again."
+                showExpiryPopup = true
+            }
+
+            else -> {}
+        }
+    }
+/*
+    LaunchedEffect(Unit) {
+        if (hasCheckedExpiryOnLaunch) return@LaunchedEffect
+        hasCheckedExpiryOnLaunch = true
+
+        val prefs = UserPreferences.getInstance(context)
+        val isLoggedIn = prefs.isLoggedIn()
+        val savedEmployee = prefs.getEmployee(Employee::class.java)
+        val expiryDateStr = savedEmployee?.clients?.planExpiryDate
+
+        if (!isLoggedIn || savedEmployee == null) return@LaunchedEffect
+
+        val daysRemaining = getDaysRemaining(expiryDateStr)
+
+        when {
+            daysRemaining == null -> {
+                // no expiry date or parse issue -> do nothing
+            }
+
+            daysRemaining < 0 -> {
+                isPlanExpired = true
+                expiryPopupMessage = "Your subscription has expired. Please contact support."
+                showExpiryPopup = true
+            }
+
+            daysRemaining in 0..15 -> {
+                isPlanExpired = false
+                expiryPopupMessage =
+                    "Your subscription will expire in $daysRemaining day(s). Please renew soon."
+                showExpiryPopup = true
+            }
+        }
+    }*/
+
+
+
 // Load employee on first composition
     LaunchedEffect(Unit) {
         employee = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
@@ -257,7 +396,14 @@ private fun SetupNavigation(
     val allEmployees by userPermissionViewModel.allEmployees.observeAsState(emptyList())
 
 
-    val prefUserId = userPreferences.getUserId()
+    var prefUserId: Int? by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(employee) {
+        val prefs = UserPreferences.getInstance(context)
+        prefUserId = prefs.getUserId()
+
+        Log.d("USER_DEBUG", "Updated prefUserId = $prefUserId")
+    }
 
     LaunchedEffect(prefUserId) {
         Log.d("USER_DEBUG", "LaunchedEffect prefUserId = $prefUserId")
@@ -292,6 +438,11 @@ private fun SetupNavigation(
             return@LaunchedEffect
         }
 
+        if (prefUserId == null) {
+            Log.d("USER_DEBUG", "prefUserId is null")
+            return@LaunchedEffect
+        }
+
         val selectedUser = allEmployees.firstOrNull {
             it.UserId.toString().trim() == prefUserId.toString().trim()
         }
@@ -301,16 +452,140 @@ private fun SetupNavigation(
             return@LaunchedEffect
         }
 
-        Log.d(
-            "USER_DEBUG",
-            "PrefUserId = $prefUserId, SelectedUserId = ${selectedUser.UserId}"
-        )
+        Log.d("USER_DEBUG", "SelectedUserId = ${selectedUser.UserId}")
+        Log.d("USER_DEBUG", "branchSelectionJson = ${selectedUser.branchSelectionJson}")
 
         val branchIds = getBranchIdsFromBranchSelectionJson(selectedUser.branchSelectionJson)
-        UserPreferences.getInstance(context).saveBranchIds(branchIds)
 
-        Log.d("branchIds", "branchIds = $branchIds")
+        Log.d("USER_DEBUG", "parsed branchIds = $branchIds")
+
+        if (branchIds.isEmpty()) {
+            Log.d("USER_DEBUG", "branchIds empty, skipping save to avoid overwriting old value")
+            return@LaunchedEffect
+        }
+
+        val prefs = UserPreferences.getInstance(context)
+        prefs.saveBranchIds(branchIds)
+
+        Log.d("USER_DEBUG", "saved branchIds = ${prefs.getBranchIds()}")
     }
+        if (showExpiryPopup) {
+            Dialog(onDismissRequest = { }) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White,
+                    tonalElevation = 4.dp,
+                    modifier = Modifier.fillMaxWidth(0.92f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White, RoundedCornerShape(12.dp))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF3A3A3A))
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 16.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.stylus_note),
+                                    contentDescription = "Expiry",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Text(
+                                    text = if (isPlanExpired) "Subscription Expired" else "Expiry Warning",
+                                    fontSize = 18.sp,
+                                    color = Color.White,
+                                    fontFamily = poppins
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = expiryPopupMessage,
+                                fontSize = 14.sp,
+                                color = Color.DarkGray,
+                                fontFamily = poppins
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            if (isPlanExpired) {
+                                GradientButtonIcon(
+                                    text = "OK",
+                                    onClick = {
+                                        showExpiryPopup = false
+                                        userPreferences.logout()
+                                        UserPreferences.getInstance(context).clearAll()
+                                        navController.navigate(Screens.LoginScreen.route) {
+                                            popUpTo(0) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    icon = painterResource(id = R.drawable.check_circle),
+                                    iconDescription = "OK",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(40.dp)
+                                )
+                            } else {
+                                GradientButtonIcon(
+                                    text = "Later",
+                                    onClick = {
+                                        showExpiryPopup = false
+                                    },
+                                    icon = painterResource(id = R.drawable.ic_cancel),
+                                    iconDescription = "Later",
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(40.dp)
+                                        .padding(end = 6.dp)
+                                )
+
+                                GradientButtonIcon(
+                                    text = "Continue",
+                                    onClick = {
+                                        showExpiryPopup = false
+                                    },
+                                    icon = painterResource(id = R.drawable.check_circle),
+                                    iconDescription = "Continue",
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(40.dp)
+                                        .padding(start = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     // Drawer visibility logic (hide on Login)
     val disableDrawerRoutes = listOf(Screens.LoginScreen.route)
     val shouldShowDrawer = currentRoute !in disableDrawerRoutes
@@ -477,17 +752,32 @@ private fun SetupNavigation(
     }
 }
 
-fun getBranchIdsFromBranchSelectionJson(branchSelectionJson: String): List<Int> {
+fun getBranchIdsFromBranchSelectionJson(branchSelectionJson: String?): List<Int> {
     return try {
-        val jsonArray = com.google.gson.JsonParser
-            .parseString(branchSelectionJson)
-            .asJsonArray
-
-        jsonArray.mapNotNull { element ->
-            element.asJsonObject.get("Id")?.asInt
+        if (branchSelectionJson.isNullOrBlank()) {
+            return listOf(1) // ✅ default
         }
+
+        val parsed = com.google.gson.JsonParser.parseString(branchSelectionJson)
+
+        val jsonArray = when {
+            parsed.isJsonArray -> parsed.asJsonArray
+            parsed.isJsonPrimitive && parsed.asJsonPrimitive.isString -> {
+                com.google.gson.JsonParser.parseString(parsed.asString).asJsonArray
+            }
+            else -> return listOf(1) // ✅ default
+        }
+
+        val branchIds = jsonArray.mapNotNull { element ->
+            val obj = element.asJsonObject
+            if (obj.has("Id") && !obj.get("Id").isJsonNull) obj.get("Id").asInt else null
+        }
+
+        if (branchIds.isEmpty()) listOf(1) else branchIds // ✅ fallback
+
     } catch (e: Exception) {
-        emptyList()
+        Log.e("USER_DEBUG", "Branch parse error: ${e.message}")
+        listOf(1) // ✅ fallback
     }
 }
 
@@ -552,4 +842,18 @@ fun HomeTopBar(onNavigationClick: () -> Unit) {
                 )
             )
     )
+}
+
+fun getDaysRemaining(expiryDateStr: String?): Long? {
+    return try {
+        if (expiryDateStr.isNullOrBlank()) return null
+
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val expiryDate = LocalDate.parse(expiryDateStr, formatter)
+        val today = LocalDate.now()
+
+        ChronoUnit.DAYS.between(today, expiryDate)
+    } catch (e: Exception) {
+        null
+    }
 }

@@ -1,5 +1,8 @@
 package com.loyalstring.rfid.ui.screens
 
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
+
 import android.content.Context
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
@@ -61,6 +64,7 @@ import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.Screens
 import com.loyalstring.rfid.ui.utils.BackGroundLinerGradient
 import com.loyalstring.rfid.ui.utils.BackgroundGradient
+import com.loyalstring.rfid.ui.utils.GradientButtonIcon
 import com.loyalstring.rfid.ui.utils.NetworkUtils
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
@@ -194,7 +198,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             loginData?.let { response ->
 
               //  val expiryDateStr = response.employee?.clients?.expiryDate
-                val expiryDateStr ="2027-04-10"
+                val expiryDateStr =response.employee?.clients?.planExpiryDate
                 val daysRemaining = getDaysRemaining(expiryDateStr)
 
                 when {
@@ -457,36 +461,106 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
         }
     }
     if (showExpiryPopup) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { },
-            title = {
-                Text(localizedContext.getString(R.string.expiry_warning), color = Color.Blue, fontWeight = FontWeight.Medium)
-            },
-            text = {
-                Text(expiryPopupMessage)
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        showExpiryPopup = false
-                        pendingLoginResponse?.let { completeLogin(it) }
-                        pendingLoginResponse = null
-                    }
+        Dialog(onDismissRequest = { }) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+                tonalElevation = 4.dp,
+                modifier = Modifier.fillMaxWidth(0.92f)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(12.dp))
                 ) {
-                    Text(localizedContext.getString(R.string.continue_text), color = Color.Blue, fontWeight = FontWeight.Medium)
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        showExpiryPopup = false
-                        pendingLoginResponse = null
+                    // Header same like below popup
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF3A3A3A))
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 16.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_warning), // apna icon de
+                                contentDescription = localizedContext.getString(R.string.expiry_warning),
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = localizedContext.getString(R.string.expiry_warning),
+                                fontSize = 18.sp,
+                                color = Color.White,
+                                fontFamily = poppins
+                            )
+                        }
                     }
-                ) {
-                    Text(localizedContext.getString(R.string.cancel),color = Color.Blue, fontWeight = FontWeight.Medium)
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = expiryPopupMessage,
+                            fontSize = 14.sp,
+                            color = Color.DarkGray,
+                            fontFamily = poppins
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Buttons same size like below popup
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        GradientButtonIcon(
+                            text = localizedContext.getString(R.string.cancel),
+                            onClick = {
+                                showExpiryPopup = false
+                                pendingLoginResponse = null
+                            },
+                            icon = painterResource(id = R.drawable.ic_cancel),
+                            iconDescription = localizedContext.getString(R.string.cancel),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .padding(end = 6.dp)
+                        )
+
+                        GradientButtonIcon(
+                            text = localizedContext.getString(R.string.continue_text),
+                            onClick = {
+                                showExpiryPopup = false
+                                pendingLoginResponse?.let { completeLogin(it) }
+                                pendingLoginResponse = null
+                            },
+                            icon = painterResource(id = R.drawable.check_circle),
+                            iconDescription = localizedContext.getString(R.string.continue_text),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .padding(start = 6.dp)
+                        )
+                    }
                 }
             }
-        )
+        }
     }
 }
 

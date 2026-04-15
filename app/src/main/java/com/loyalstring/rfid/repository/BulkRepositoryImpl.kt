@@ -135,6 +135,7 @@ class BulkRepositoryImpl @Inject constructor(
 
         val jsonObject = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
+            addProperty("ReturnAll",true)
 
             val branchIdsArray = JsonArray()
             savedBranchIds.forEach { id ->
@@ -549,7 +550,7 @@ class BulkRepositoryImpl @Inject constructor(
         Log.d("savedBranchIds", savedBranchIds.toString())
         val requestBody = JsonObject().apply {
             addProperty("ClientCode", request.clientcode)
-
+            addProperty("ReturnAll",true)
             val branchIdsArray = JsonArray()
             savedBranchIds.forEach { id ->
                 branchIdsArray.add(id)
