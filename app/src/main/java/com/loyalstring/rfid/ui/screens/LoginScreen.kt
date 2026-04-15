@@ -207,7 +207,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     daysRemaining < 0 -> {
                         Toast.makeText(
                             context,
-                            "Your subscription has expired. Please contact support.",
+                            localizedContext.getString(R.string.your_subscription_has_expired_please_contact_support),
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -215,7 +215,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
                     daysRemaining in 0..15 -> {
                         pendingLoginResponse = response
                         expiryPopupMessage =
-                            "Your subscription will expire in $daysRemaining day(s). Please renew soon."
+                            localizedContext.getString(R.string.subscription_expiry_warning, daysRemaining)
                         showExpiryPopup = true
                     }
 

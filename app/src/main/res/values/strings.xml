@@ -835,6 +835,8 @@
     <string name="view_our_privacy_policy">View our privacy policy</string>
     <string name="failed_to_fetch_face_data">Failed to fetch face data</string>
     <string name="expiry_warning">Expiry Warning</string>
-
+    <string name="your_subscription_has_expired_please_contact_support">Your subscription has expired. Please contact support.</string>
+    <string name="subscription_expiry_warning">Your subscription will expire in %1$d day(s). Please renew soon.</string>
+    <string name="your_subscription_has_expired_please_login_again_to_continue">Your subscription has expired. Please login again to continue.</string>
 
 </resources>

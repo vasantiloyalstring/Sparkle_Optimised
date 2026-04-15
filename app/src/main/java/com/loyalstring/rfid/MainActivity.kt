@@ -211,7 +211,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @RequiresApi(Build.VERSION_CODES.R)
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "LocalContextGetResourceValueCall")
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun SetupNavigation(
@@ -285,7 +285,7 @@ private fun SetupNavigation(
 
                 val expiryDateStr = employeeData.clients?.planExpiryDate
                 val daysRemaining = getDaysRemaining(expiryDateStr)
-
+                    //   val context = LocalContext.current
                 when {
                     daysRemaining == null -> {
                         showExpiryPopup = false
@@ -293,15 +293,14 @@ private fun SetupNavigation(
 
                     daysRemaining < 0 -> {
                         isPlanExpired = true
-                        expiryPopupMessage =
-                            "Your subscription has expired. Please login again to continue."
+                        expiryPopupMessage = context.getString(R.string.your_subscription_has_expired_please_login_again_to_continue)
                         showExpiryPopup = true
                     }
 
                     daysRemaining in 0..15 -> {
                         isPlanExpired = false
                         expiryPopupMessage =
-                            "Your subscription will expire in $daysRemaining day(s). Please renew soon."
+                          context.getString(R.string.subscription_expiry_warning)
                         showExpiryPopup = true
                     }
 

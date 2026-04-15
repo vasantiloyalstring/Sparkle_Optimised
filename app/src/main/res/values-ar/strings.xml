@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">سباركل RFID</string>
     <string name="menu_rates_title">الأسعار</string>
     <string name="menu_rates_subtitle">إضافة / تحديث الأسعار</string>
@@ -792,6 +792,14 @@
     <string name="view_our_privacy_policy">عرض سياسة الخصوصية الخاصة بنا</string>
     <string name="failed_to_fetch_face_data">فشل في جلب بيانات الوجه</string>
     <string name="expiry_warning">تحذير انتهاء الصلاحية</string>
+    <string name="your_subscription_has_expired_please_contact_support">
+    انتهت صلاحية اشتراكك. يرجى الاتصال بالدعم.
+</string>
 
-
+    <string name="subscription_expiry_warning">
+    سينتهي اشتراكك خلال %1$d يومًا. يرجى التجديد قريبًا.
+</string>
+    <string name="your_subscription_has_expired_please_login_again_to_continue">
+    انتهت صلاحية اشتراكك. يرجى تسجيل الدخول مرة أخرى للمتابعة.
+</string>
 </resources>

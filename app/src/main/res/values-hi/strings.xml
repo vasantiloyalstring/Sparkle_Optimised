@@ -802,7 +802,14 @@
     <string name="view_our_privacy_policy">हमारी गोपनीयता नीति देखें</string>
     <string name="failed_to_fetch_face_data">चेहरा डेटा प्राप्त करने में विफल</string>
     <string name="expiry_warning">समाप्ति चेतावनी</string>
+   <string name="your_subscription_has_expired_please_contact_support">
+    आपकी सदस्यता समाप्त हो गई है। कृपया सहायता के लिए संपर्क करें।
+</string>
 
-
-
+    <string name="subscription_expiry_warning">
+    आपकी सदस्यता %1$d दिन में समाप्त हो जाएगी। कृपया जल्द नवीनीकरण करें।
+</string>
+    <string name="your_subscription_has_expired_please_login_again_to_continue">
+    आपकी सदस्यता समाप्त हो गई है। कृपया जारी रखने के लिए फिर से लॉगिन करें।
+</string>
 </resources>
