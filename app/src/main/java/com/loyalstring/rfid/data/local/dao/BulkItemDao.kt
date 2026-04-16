@@ -187,6 +187,11 @@ interface BulkItemDao {
 """)
  suspend fun getDistinctCounters(): List<String>
 
-
+ @Query("""
+    SELECT DISTINCT TRIM(boxName) 
+    FROM bulk_items 
+    WHERE boxName IS NOT NULL AND TRIM(boxName) != ''
+""")
+ suspend fun getDistinctBoxes(): List<String>
 
 }
