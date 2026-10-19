@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,12 +20,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -84,9 +87,13 @@ import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
+import com.loyalstring.rfid.ui.utils.PrinterManager
 import com.loyalstring.rfid.ui.utils.UserPreferences
+import com.loyalstring.rfid.ui.utils.deliveryChallanListBranchId
 import com.loyalstring.rfid.ui.utils.isBulkItemAlreadyInChallanList
 import com.loyalstring.rfid.ui.utils.isDuplicateProductIdentity
+import com.loyalstring.rfid.ui.utils.poppins
+import com.loyalstring.rfid.ui.utils.resolvePrintHeader
 import com.loyalstring.rfid.ui.utils.resolveProductImageUrl
 import com.loyalstring.rfid.viewmodel.BulkViewModel
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
@@ -94,6 +101,7 @@ import com.loyalstring.rfid.viewmodel.OrderViewModel
 import com.loyalstring.rfid.viewmodel.ProductListViewModel
 import com.loyalstring.rfid.viewmodel.SingleProductViewModel
 import com.loyalstring.rfid.viewmodel.UiState
+import com.loyalstring.rfid.viewmodel.sharedDeliveryChallanViewModel
 import com.loyalstring.rfid.worker.LocaleHelper
 import com.rscja.deviceapi.entity.UHFTAGInfo
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +123,7 @@ fun DeliveryChalanScreen(
     val viewModel: BulkViewModel = hiltViewModel()
     val orderViewModel: OrderViewModel = hiltViewModel()
     val singleProductViewModel: SingleProductViewModel = hiltViewModel()
-    val deliveryChallanViewModel: DeliveryChallanViewModel = hiltViewModel()
+    val deliveryChallanViewModel: DeliveryChallanViewModel = sharedDeliveryChallanViewModel(navController)
     val context = LocalContext.current
     var selectedPower by remember { mutableStateOf(10) }
     val isScanning by viewModel.isScanning.collectAsState()
@@ -190,7 +198,8 @@ fun DeliveryChalanScreen(
         if (challanId != null && challanId != 0) {
             isEditMode = true
             employee?.let {
-                deliveryChallanViewModel.fetchAllChallans(it.clientCode ?: "", it.branchNo ?: 0)
+                val branch = deliveryChallanListBranchId(context, it, userPreferences)
+                deliveryChallanViewModel.fetchAllChallans(it.clientCode ?: "", branch)
             }
         }
     }
@@ -198,7 +207,11 @@ fun DeliveryChalanScreen(
     val fullDataVersion by deliveryChallanViewModel.fullDataVersion.collectAsState()
     LaunchedEffect(challanId, fullDataVersion) {
         if (challanId == null || challanId == 0) return@LaunchedEffect
-        val selected = deliveryChallanViewModel.getFullChallan(challanId) ?: return@LaunchedEffect
+        val code = employee?.clientCode.orEmpty()
+        val branch = deliveryChallanListBranchId(context, employee, userPreferences)
+        val selected = deliveryChallanViewModel.getFullChallan(challanId)
+            ?: deliveryChallanViewModel.ensureFullChallan(challanId, code, branch)
+            ?: return@LaunchedEffect
         deliveryChallanViewModel.setSelectedChallan(selected)
 
         customerName = selected.CustomerName.toString()
@@ -993,7 +1006,8 @@ fun DeliveryChalanScreen(
         val newChallanNo = lastNo + 1
 
         val clientCode = employee?.clientCode ?: return@LaunchedEffect
-        val branchId = resolveBranchId(null, context, userPreferences, employee)
+        // Must match list cache key (prefs / employee default) or saved row won't appear in list.
+        val branchId = deliveryChallanListBranchId(context, employee, userPreferences)
 
 
         Log.d("DeliveryChallan", "➡️ Adding challan with No: $newChallanNo")
@@ -1087,10 +1101,118 @@ fun DeliveryChalanScreen(
         )
 
         deliveryChallanViewModel.addDeliveryChallan(request)
-
     }
 
 
+
+    LaunchedEffect(Unit) {
+        deliveryChallanViewModel.clearAddChallanResponse()
+        deliveryChallanViewModel.clearUpdateChallanResponse()
+        deliveryChallanViewModel.clearError()
+    }
+
+    var challanPrintData by remember { mutableStateOf<DeliveryChallanPrintData?>(null) }
+    var showPostSavePrintDialog by remember { mutableStateOf(false) }
+    var showBluetoothControls by remember { mutableStateOf(false) }
+    var bluetoothStatus by remember { mutableStateOf("Not connected") }
+    var isPrinterConnected by remember { mutableStateOf(false) }
+    var bondedDevices by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
+    var showDeviceList by remember { mutableStateOf(false) }
+    val printerManager = remember { PrinterManager(context) }
+    val organizationName = remember { userPreferences.getOrganization() }
+    val printHeader = resolvePrintHeader(
+        clientCode = employee?.clientCode,
+        companyName = organizationName.orEmpty(),
+        organizationName = organizationName,
+    )
+
+    val addChallanResponse by deliveryChallanViewModel.addChallanResponse.collectAsState()
+
+    LaunchedEffect(addChallanResponse) {
+        val response = addChallanResponse ?: return@LaunchedEffect
+
+        isSaving = false
+
+        fun formatIsoToNormal(input: String?): String {
+            if (input.isNullOrBlank()) return ""
+            return try {
+                val odt = OffsetDateTime.parse(input)
+                val outFmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm", Locale.getDefault())
+                odt.format(outFmt)
+            } catch (e: Exception) {
+                ""
+            }
+        }
+
+        val savedCustomerName = customerName
+        val itemsForPrint = productList.map { detail ->
+            DeliveryChallanItemPrint(
+                itemName = detail.DesignName ?: "",
+                purity = detail.Purity ?: "",
+                pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
+                grossWt = detail.GrossWt ?: "0.000 gm",
+                stoneWt = detail.TotalStoneWeight ?: "0 gm",
+                netWt = detail.NetWt ?: "0.000 gm",
+                stoneAmt = detail.StoneAmt?.takeIf { it.isNotBlank() }
+                    ?: detail.StoneAmount?.takeIf { it.isNotBlank() }
+                    ?: detail.TotalStoneAmount?.takeIf { it.isNotBlank() }
+                    ?: "0.00",
+                ratePerGram = detail.MetalRate ?: "0",
+                wastage = detail.FineWastageWt ?: "0%",
+                itemAmount = detail.ItemAmount ?: "0.00"
+            )
+        }
+
+        challanPrintData = DeliveryChallanPrintData(
+            branchName = "QA",
+            city = runCatching { response.customer.City }.getOrDefault(""),
+            createdDateTime = formatIsoToNormal(response.CreatedOn),
+            customerName = savedCustomerName,
+            quotationNo = (response.InvoiceNo ?: response.ChallanNo ?: "0").toString(),
+            phone = runCatching { response.customer.Mobile }.getOrDefault(""),
+            items = itemsForPrint,
+            taxableAmount = String.format("%.2f", baseTotal),
+            cgstPercent = 1.5,
+            cgstAmount = String.format("%.2f", baseTotal * 0.015),
+            sgstPercent = 1.5,
+            sgstAmount = String.format("%.2f", baseTotal * 0.015),
+            totalNetAmount = String.format("%.2f", totalWithGst)
+        )
+
+        Toast.makeText(
+            context,
+            localizedContext.getString(R.string.msg_challan_saved),
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // Same print options as list screen (View PDF / Bluetooth).
+        showPostSavePrintDialog = true
+        showBluetoothControls = false
+        bluetoothStatus = localizedContext.getString(R.string.not_connected)
+        isPrinterConnected = false
+        showDeviceList = false
+
+        // Reset form immediately (before clearing response) so Cancel on print dialog
+        // never leaves the previous challan data on screen.
+        resetAllFields(
+            onResetCustomerName = { customerName = it },
+            onResetCustomerId = { customerId = it },
+            onResetSelectedCustomer = { selectedCustomer = it },
+            onResetExpandedCustomer = { expandedCustomer = it },
+            onResetItemCode = { itemCode = it },
+            onResetSelectedItem = { selectedItem = it },
+            onResetDropdownItemcode = { showDropdownItemcode = it },
+            onResetProductList = { productList.clear() },
+            onResetScanning = { viewModel.stopScanning() },
+            viewModel = viewModel,
+            deliveryChallanViewModel = deliveryChallanViewModel,
+        )
+        viewModel.syncItems(context)
+        productListViewModel.refrshProductList()
+        viewModel.resetProductScanResults()
+
+        deliveryChallanViewModel.clearAddChallanResponse()
+    }
 
     /*LaunchedEffect(itemCode.text) {
         val query = itemCode.text.trim()
@@ -1520,115 +1642,6 @@ fun DeliveryChalanScreen(
 
 
 
-// 🔹 Show success message when challan addedfval pendingItem =
-    val addChallanResponse by deliveryChallanViewModel.addChallanResponse.collectAsState()
-
-    LaunchedEffect(addChallanResponse) {
-        addChallanResponse?.let { response ->
-            Toast.makeText(
-                context,
-               localizedContext.getString(R.string.msg_challan_saved),
-                Toast.LENGTH_SHORT
-            ).show()
-
-            viewModel.syncItems(context)
-            productListViewModel.refrshProductList()
-            viewModel.resetProductScanResults()
-
-
-            // Optional: clear after short delay so toast doesn’t miss it
-            kotlinx.coroutines.delay(500)
-            //deliveryChallanViewModel.clearAddChallanResponse()
-
-            // Prepare print data from your screen state
-            val itemsForPrint = productList.map { detail ->
-                DeliveryChallanItemPrint(
-                    itemName = detail.DesignName ?: "",
-                    purity = detail.Purity ?: "",
-                    pcs = detail.Pieces?.toIntOrNull() ?: detail.qty ?: 0,
-                    grossWt = detail.GrossWt ?: "0.000 gm",
-                    stoneWt = detail.TotalStoneWeight ?: "0 gm",
-                    netWt = detail.NetWt ?: "0.000 gm",
-                    stoneAmt = detail.StoneAmt?.takeIf { it.isNotBlank() }
-                        ?: detail.StoneAmount?.takeIf { it.isNotBlank() }
-                        ?: detail.TotalStoneAmount?.takeIf { it.isNotBlank() }
-                        ?: "0.00",
-                    ratePerGram = detail.MetalRate ?: "0",
-                    wastage = detail.FineWastageWt ?: "0%",
-                    itemAmount = detail.ItemAmount ?: "0.00"
-                )
-            }
-
-            fun formatIsoToNormal(input: String?): String {
-                if (input.isNullOrBlank()) return ""
-
-                return try {
-                    val odt = OffsetDateTime.parse(input) // parses +05:30 also
-                    val outFmt =
-                        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm", Locale.getDefault())
-                    odt.format(outFmt)
-                } catch (e: Exception) {
-                    ""
-                }
-            }
-
-            val printData = DeliveryChallanPrintData(
-                branchName = "QA",
-                city = response?.customer?.City ?: "",
-                createdDateTime = formatIsoToNormal(response.CreatedOn),
-                customerName = customerName,
-                quotationNo = (response.InvoiceNo ?: "0").toString(),
-                phone = response?.customer?.Mobile ?: "",
-                items = itemsForPrint,
-                taxableAmount = String.format("%.2f", baseTotal),
-                cgstPercent = 1.5,
-                cgstAmount = String.format("%.2f", baseTotal * 0.015),
-                sgstPercent = 1.5,
-                sgstAmount = String.format("%.2f", baseTotal * 0.015),
-                totalNetAmount = String.format("%.2f", totalWithGst)
-            )
-
-            val uri = generateDeliveryChallanPdf(context, printData)
-
-            if (uri != null) {
-                openPdfPreview(context, uri)
-                // or:
-                // sharePdfOnWhatsApp(context, uri)
-            }
-
-            //val activity = LocalContext.current.findActivity()
-
-          /*  BT printer call
-           ensureBluetoothPermissions(context) {
-                CoroutineScope(Dispatchers.IO).launch {
-
-                    BluetoothThermalPrinterHelper.printDeliveryChallan(
-                        context = context,
-                        data = printData,
-                        printerName = "4B-2043PB-B799"
-                    )
-                }
-            }*/
-            //Toast.makeText(context, "printer class", Toast.LENGTH_SHORT).show()
-            deliveryChallanViewModel.clearAddChallanResponse()
-        }
-
-
-        resetAllFields(   onResetCustomerName = { customerName = it },
-            onResetCustomerId = { customerId = it },
-            onResetSelectedCustomer = { selectedCustomer = it },
-            onResetExpandedCustomer = { expandedCustomer = it },
-            onResetItemCode = { itemCode = it },
-            onResetSelectedItem = { selectedItem = it },
-            onResetDropdownItemcode = { showDropdownItemcode = it },
-            onResetProductList = { productList.clear() },
-            onResetScanning = { viewModel.stopScanning() },
-            viewModel = viewModel,
-            deliveryChallanViewModel = deliveryChallanViewModel)
-    }
-
-
-
 // 🔹 Handle error messages
     LaunchedEffect(deliveryChallanViewModel.error) {
         val errMsg = deliveryChallanViewModel.error.value
@@ -1681,13 +1694,19 @@ fun DeliveryChalanScreen(
         }
     }
 
-    LaunchedEffect(deliveryChallanViewModel.updateChallanResponse.collectAsState().value) {
-        deliveryChallanViewModel.updateChallanResponse.collect { response ->
-            if (response != null) {
-                Toast.makeText(context, localizedContext.getString(R.string.msg_challan_updated), Toast.LENGTH_SHORT).show()
-               // deliveryChallanViewModel.fetchAllChallans(clientCode, branchId)
-                onBack()
-            }
+    val updateChallanResponse by deliveryChallanViewModel.updateChallanResponse.collectAsState()
+
+    LaunchedEffect(updateChallanResponse) {
+        updateChallanResponse?.let {
+            Toast.makeText(
+                context,
+                localizedContext.getString(R.string.msg_challan_updated),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.syncItems(context)
+            productListViewModel.refrshProductList()
+            deliveryChallanViewModel.clearUpdateChallanResponse()
+            onBack()
         }
     }
     fun addItemToList(code: String) {
@@ -2351,7 +2370,7 @@ MakingPerGram=${touchMatch.MakingPerGram}
                     } else {
 
                         val clientCode = employee?.clientCode ?: return@ScanBottomBar
-                        val branchId = resolveBranchId(employee.branchNo, context, userPreferences, employee)
+                        val branchId = deliveryChallanListBranchId(context, employee, userPreferences)
 
                         // 🔹 Step 1: Fetch last challan no
                         isSaving = true
@@ -2359,9 +2378,19 @@ MakingPerGram=${touchMatch.MakingPerGram}
                         deliveryChallanViewModel.fetchLastChallanNo(clientCode, branchId)
                     }
                 },
-                onList = { navController.navigate(Screens.DeliveryChallanListScreen.route,)
-                  //  navController.navigate(Screens.PrinterScreen.route)
-                    },
+                onList = {
+                    employee?.clientCode?.let { code ->
+                        val branch = deliveryChallanListBranchId(context, employee, userPreferences)
+                        deliveryChallanViewModel.loadAllChallans(
+                            clientCode = code,
+                            branchId = branch,
+                            forceRefresh = true,
+                        )
+                    }
+                    navController.navigate(Screens.DeliveryChallanListScreen.route) {
+                        launchSingleTop = true
+                    }
+                },
                 onScan = {
                     viewModel.startSingleScan(20)
                 },
@@ -2604,17 +2633,155 @@ MakingPerGram=${touchMatch.MakingPerGram}
         )
     }
 
+    if (showPostSavePrintDialog) {
+        val printData = challanPrintData
+        if (printData != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showPostSavePrintDialog = false
+                showBluetoothControls = false
+                bluetoothStatus = localizedContext.getString(R.string.not_connected)
+                isPrinterConnected = false
+                showDeviceList = false
+            },
+            title = {
+                Text(localizedContext.getString(R.string.print_options), fontFamily = poppins)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.view_pdf),
+                        onClick = {
+                            val uri = generateDeliveryChallanPdf(context, printData)
+                            if (uri != null) {
+                                openPdfPreview(context, uri)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    localizedContext.getString(R.string.pdf_not_generated),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            showPostSavePrintDialog = false
+                        }
+                    )
 
-    /*  DeliveryChallanDialogEditAndDisplay(
-          selectedItem = selectedOrderItem,
-          branchList = branchList,
-          salesmanList = salesmanList,
-          onDismiss = { showInvoiceDialog = false },
-          onSave = { updatedItem ->
-              println("✅ Saved Invoice: ${updatedItem.branchName}")
-              showInvoiceDialog = false
-          }
-      )*/
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.bluetooth_printer),
+                        onClick = { showBluetoothControls = true }
+                    )
+
+                    if (showBluetoothControls) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        GradientDialogButtonnew(
+                            text = localizedContext.getString(R.string.connect_bluetooth_printer),
+                            onClick = {
+                                val btActivity = activity as? Activity
+                                if (btActivity == null) {
+                                    bluetoothStatus = "Activity not found"
+                                    return@GradientDialogButtonnew
+                                }
+                                if (hasBluetoothPermissions(btActivity)) {
+                                    val bluetoothAdapter =
+                                        android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+                                    if (bluetoothAdapter == null) {
+                                        bluetoothStatus = "Bluetooth not supported"
+                                        return@GradientDialogButtonnew
+                                    }
+                                    if (!bluetoothAdapter.isEnabled) {
+                                        bluetoothStatus = "Please turn on Bluetooth"
+                                        return@GradientDialogButtonnew
+                                    }
+                                    bondedDevices = bluetoothAdapter.bondedDevices.toList()
+                                    showDeviceList = true
+                                    bluetoothStatus = if (bondedDevices.isEmpty()) {
+                                        "No paired Bluetooth devices found"
+                                    } else {
+                                        "Select printer device"
+                                    }
+                                } else {
+                                    requestBluetoothPermissions(btActivity)
+                                    bluetoothStatus = "Please grant Bluetooth permissions"
+                                }
+                            }
+                        )
+
+                        if (showDeviceList) {
+                            androidx.compose.material3.Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 220.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF5F5F5)
+                                )
+                            ) {
+                                androidx.compose.foundation.lazy.LazyColumn(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(bondedDevices.size) { index ->
+                                        val device = bondedDevices[index]
+                                        Text(
+                                            text = "${device.name ?: "Unknown"}\n${device.address}",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    bluetoothStatus =
+                                                        "Connecting to ${device.name ?: device.address}..."
+                                                    isPrinterConnected = false
+                                                    showDeviceList = false
+                                                    printerManager.disconnect()
+                                                    android.os.Handler(android.os.Looper.getMainLooper())
+                                                        .postDelayed({
+                                                            printerManager.connectBluetooth(device.address) { success, msg ->
+                                                                bluetoothStatus = msg
+                                                                isPrinterConnected = success
+                                                            }
+                                                        }, 500)
+                                                }
+                                                .padding(10.dp),
+                                            fontFamily = poppins,
+                                            fontSize = 13.sp
+                                        )
+                                        androidx.compose.material3.HorizontalDivider()
+                                    }
+                                }
+                            }
+                        }
+
+                        GradientDialogButtonnew(
+                            text = localizedContext.getString(R.string.print_challan),
+                            onClick = {
+                                printerManager.printDeliveryChallanCompact(
+                                    printData,
+                                    printHeader,
+                                    clientCode = employee?.clientCode
+                                ) { _, msg ->
+                                    bluetoothStatus = msg
+                                }
+                            },
+                            enabled = isPrinterConnected
+                        )
+
+                        Text(text = bluetoothStatus, fontFamily = poppins)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showPostSavePrintDialog = false
+                        showBluetoothControls = false
+                        bluetoothStatus = localizedContext.getString(R.string.not_connected)
+                    }
+                ) {
+                    Text(localizedContext.getString(R.string.cancel))
+                }
+            }
+        )
+        }
+    }
 
     }
 

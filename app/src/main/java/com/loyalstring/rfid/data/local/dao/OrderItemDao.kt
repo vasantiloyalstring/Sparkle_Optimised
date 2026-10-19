@@ -211,7 +211,27 @@ interface OrderItemDao {
     fun getAllOrderItem(): Flow<List<OrderItem>>
 
     @Query("SELECT * FROM customer WHERE clientCode = :clientCode")
-    suspend  fun getAllEmployees(clientCode: String): List<EmployeeList>
+    suspend fun getAllEmployees(clientCode: String): List<EmployeeList>
+
+    @Query("SELECT * FROM customer WHERE clientCode = :clientCode AND (Id IS NULL OR Id = 0)")
+    suspend fun getUnsyncedLocalCustomers(clientCode: String): List<EmployeeList>
+
+    @Query("SELECT * FROM customer WHERE clientCode = :clientCode AND Mobile = :mobile LIMIT 1")
+    suspend fun findCustomerByMobile(clientCode: String, mobile: String): EmployeeList?
+
+    @Query("""
+        SELECT * FROM customer
+        WHERE clientCode = :clientCode
+          AND Id IS NOT NULL AND Id > 0
+          AND FirstName = :firstName
+          AND IFNULL(LastName, '') = :lastName
+        LIMIT 1
+    """)
+    suspend fun findServerCustomerByName(
+        clientCode: String,
+        firstName: String,
+        lastName: String,
+    ): EmployeeList?
 
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -266,6 +286,9 @@ interface OrderItemDao {
 
     @Query("DELETE FROM order_list_cache WHERE clientCode=:clientCode")
     suspend fun clear(clientCode: String)
+
+    @Query("DELETE FROM order_list_cache WHERE clientCode=:clientCode AND orderId=:orderId")
+    suspend fun deleteOrderCacheById(clientCode: String, orderId: Int)
 
 
 }

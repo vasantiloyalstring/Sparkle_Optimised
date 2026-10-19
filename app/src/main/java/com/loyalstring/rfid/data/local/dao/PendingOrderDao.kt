@@ -38,6 +38,25 @@ interface PendingOrderDao {
     @Query("""
     UPDATE pending_orders
     SET payloadJson = :payloadJson,
+        customerId = :customerId,
+        op = :op,
+        status = 'PENDING',
+        attempts = 0,
+        lastError = NULL,
+        updatedAt = :updatedAt
+    WHERE localId = :localId
+""")
+    suspend fun updatePayloadWithCustomer(
+        localId: String,
+        payloadJson: String,
+        customerId: Int,
+        op: String,
+        updatedAt: Long = System.currentTimeMillis()
+    )
+
+    @Query("""
+    UPDATE pending_orders
+    SET payloadJson = :payloadJson,
         op = :op,
         status = 'PENDING',
         attempts = 0,
@@ -50,6 +69,38 @@ interface PendingOrderDao {
         payloadJson: String,
         op: String,
         updatedAt: Long = System.currentTimeMillis()
+    )
+
+    @Query("""
+        SELECT * FROM pending_orders
+        WHERE status = 'PENDING'
+          AND (op = 'CREATE' OR op = '' OR op IS NULL)
+        ORDER BY createdAt ASC
+    """)
+    suspend fun getPendingCreates(): List<PendingOrderEntity>
+
+    @Query("""
+        SELECT * FROM pending_orders
+        WHERE status = 'PENDING'
+          AND (op = 'CREATE' OR op = '' OR op IS NULL)
+          AND localCustomerKey = :localCustomerKey
+        ORDER BY createdAt ASC
+    """)
+    suspend fun getPendingCreatesByLocalCustomerKey(localCustomerKey: String): List<PendingOrderEntity>
+
+    @Query("""
+        UPDATE pending_orders
+        SET customerId = :serverCustomerId,
+            updatedAt = :updatedAt
+        WHERE localCustomerKey = :localCustomerKey
+          AND status = 'PENDING'
+          AND (op = 'CREATE' OR op = '' OR op IS NULL)
+          AND (customerId IS NULL OR customerId = 0)
+    """)
+    suspend fun setServerCustomerIdByLocalKey(
+        localCustomerKey: String,
+        serverCustomerId: Int,
+        updatedAt: Long = System.currentTimeMillis(),
     )
 
 

@@ -19,7 +19,7 @@ interface PendingEmployeeDao {
     @Query("DELETE FROM pending_employee WHERE localId = :localId")
     suspend fun deleteByLocalId(localId: String)
 
-    @Query("UPDATE pending_employee SET status='FAILED', lastError=:err WHERE localId=:localId")
+    @Query("UPDATE pending_employee SET status='PENDING', lastError=:err WHERE localId=:localId")
     suspend fun markFailed(localId: String, err: String?)
 
     @Query("UPDATE pending_employee SET status='SYNCED' WHERE localId=:localId")

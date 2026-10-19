@@ -60,7 +60,7 @@ import com.loyalstring.rfid.data.model.quotation.QuotationItem
 import com.loyalstring.rfid.data.model.quotation.QuotationPrintData
 import com.loyalstring.rfid.data.model.quotation.QuotationPrintItem
 import com.loyalstring.rfid.data.model.quotation.UpdateQuotationRequest
-import com.loyalstring.rfid.data.model.sampleOut.SampleOutFields
+import com.loyalstring.rfid.data.model.quotation.QuotationFields
 import com.loyalstring.rfid.data.reader.ScanKeyListener
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
@@ -85,6 +85,7 @@ import com.loyalstring.rfid.viewmodel.UiState
 import com.loyalstring.rfid.worker.LocaleHelper
 import androidx.compose.runtime.rememberUpdatedState
 import com.rscja.deviceapi.entity.UHFTAGInfo
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 private fun QuotationItem.toUiQuotationItem(): QuotationItem {
@@ -140,7 +141,9 @@ fun QuotationScreen(
     val isLoading by orderViewModel.isItemCodeLoading.collectAsState()
 
     val branchList = singleProductViewModel.branches
-    var sampleOutFields by remember { mutableStateOf<SampleOutFields?>(null) }
+    var quotationFields by remember { mutableStateOf<QuotationFields?>(null) }
+    var quotationDate by remember { mutableStateOf("") }
+    var quotationRemark by remember { mutableStateOf("") }
     val productList = remember { mutableStateListOf<QuotationItem>() }
     val deliveryChallanViewModel: DeliveryChallanViewModel = hiltViewModel()
     val tags by viewModel.scannedTags.collectAsState()
@@ -209,6 +212,14 @@ fun QuotationScreen(
                 ?.map { it.toUiQuotationItem() }
                 ?: emptyList()
         )
+        quotationDate = formatQuotationUiDate(
+            selected.date ?: selected.quotationDate ?: selected.createdOn
+        )
+        quotationRemark = selected.quotationItem
+            .mapNotNull { it.Description?.trim()?.takeIf { d -> d.isNotEmpty() } }
+            .firstOrNull()
+            .orEmpty()
+        quotationFields = QuotationFields(date = quotationDate, remark = quotationRemark)
         editPrefilled = true
     }
 
@@ -424,7 +435,7 @@ fun QuotationScreen(
                 MakingFixedWastage = makingFixedWastage,
                 MakingPerGram = makingPerGram,
                 MakingPercentage = makingPercent,
-                Description = "",
+                Description = quotationRemark,
                 CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
                 CuttingNetWt = matchedItem.netWeight ?: "0.0",
                 BaseCurrency = "INR",
@@ -604,7 +615,7 @@ fun QuotationScreen(
         MakingFixedWastage = wastagePercent.toString(),
         MakingPerGram = makingPerGram,
         MakingPercentage = makingPercent,
-        Description = "",
+        Description = quotationRemark,
         CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
         CuttingNetWt = matchedItem.netWeight ?: "0.0",
         BaseCurrency = "INR",
@@ -816,7 +827,7 @@ fun QuotationScreen(
                 MakingFixedWastage = fixWastage.toString(),
                 MakingPerGram = makingPerGram,
                 MakingPercentage = makingPercent,
-                Description = "",
+                Description = quotationRemark,
 
                 CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
                 CuttingNetWt = matchedItem.netWeight ?: "0.0",
@@ -1025,7 +1036,7 @@ fun QuotationScreen(
                 MakingFixedWastage = fixWastageFinal.toString(),
                 MakingPerGram = makingPerGramFinal.toString(),
                 MakingPercentage = makingPercentFinal.toString(),
-                Description = "",
+                Description = quotationRemark,
                 CuttingGrossWt = matchedItem.grossWeight ?: "0.0",
                 CuttingNetWt = matchedItem.netWeight ?: "0.0",
                 BaseCurrency = "INR",
@@ -1147,17 +1158,17 @@ fun QuotationScreen(
             BranchId = branchId,
             CustomerId = custId.toString(),
             QuotationNo=newLastQuotationNo.toString(),
-          //  SampleOutNo = newLastSampleOutNO,
-            //ReturnDate = productList.get(0).ReturnDate,
-          //  Description =  productList.get(0).Description,
-           // Date = productList.get(0).Date,
-            //SampleStatus = "SampleOut",
-           // Quantity = productList.size.toString(),
+            Date = quotationDate.ifBlank {
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date())
+            },
+            QuotationDate = quotationDate.ifBlank {
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date())
+            },
+            Qty = productList.size.toString(),
             TotalDiamondWeight = productList.sumOf { it.DiamondWt?.toDoubleOrNull() ?: 0.0 }.toString(),
             GrossWt = productList.sumOf { it.GrossWt?.toDoubleOrNull() ?: 0.0 }.toString(),
             NetWt = productList.sumOf { it.NetWt?.toDoubleOrNull() ?: 0.0 }.toString(),
             TotalStoneWeight = productList.sumOf { it.StoneAmt?.toDoubleOrNull() ?: 0.0 }.toString(),
-           // TotalWt = productList.sumOf { it.TotalWt?.toDoubleOrNull() ?: 0.0 }.toString(),
             QuotationItem = productList.map { challan ->
                 challan.toAddQuotationApiItem(
                     clientCode = clientCode,
@@ -1175,7 +1186,7 @@ fun QuotationScreen(
                     NetWt = challan.NetWt,
                     TotalWt = challan.TotalWt ?: challan.NetWt,
                     FinePercentage = challan.FinePer ?: challan.FinePercentage ?: "0.0",
-                    Description = challan.Description ?: "",
+                    Description = quotationRemark.ifBlank { challan.Description ?: "" },
                     CategoryName = challan.CategoryName ?: "",
                     ProductName = challan.ProductName ?: "",
                     DesignName = challan.DesignName ?: "",
@@ -1237,9 +1248,9 @@ fun QuotationScreen(
             ownerContact = "9342232444",
 
             quotationNo = quotationNoStr,
-            date = dateStr,
+            date = quotationDate.ifBlank { dateStr },
             salesMan = "",
-            remark = "",
+            remark = quotationRemark,
 
             customerName = customerName,
             customerMobile = selectedCustomer?.Mobile ?: "",
@@ -1251,6 +1262,9 @@ fun QuotationScreen(
 
         openPdfTrigger = true
         quotationViewModel.clearAddResult()
+        quotationDate = ""
+        quotationRemark = ""
+        quotationFields = null
         resetAllFields(   onResetCustomerName = { customerName = it },
             onResetCustomerId = { customerId = it },
             onResetSelectedCustomer = { selectedCustomer = it },
@@ -1325,9 +1339,16 @@ fun QuotationScreen(
                             branchId = employee?.branchNo?.toInt(),
                             customerId = customerId!!.toInt(),
 
-                            date = productList[0].LastUpdated,
-                            quotationDate =productList[0].LastUpdated,
+                            date = quotationDate.ifBlank {
+                                productList.firstOrNull()?.LastUpdated
+                                    ?: SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date())
+                            },
+                            quotationDate = quotationDate.ifBlank {
+                                productList.firstOrNull()?.LastUpdated
+                                    ?: SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date())
+                            },
                             quotationStatus = "Delivered",
+                            qty = productList.size.toString(),
 
                             totalDiamondWeight = productList.sumOf { it.DiamondWt?.toDoubleOrNull() ?: 0.0 }.toString(),
                             grossWt = productList.sumOf { it.GrossWt?.toDoubleOrNull() ?: 0.0 }.toString(),
@@ -1362,7 +1383,8 @@ fun QuotationScreen(
                                     totayRate = challan.totayRate ?: "0.0",
                                     makingPercent = challan.makingPercent ?: "0.0",
                                     fixMaking = challan.fixMaking ?: "0.0",
-                                    fixWastage = challan.fixWastage ?: "0.0"
+                                    fixWastage = challan.fixWastage ?: "0.0",
+                                    Description = quotationRemark.ifBlank { challan.Description ?: "" }
                                 )
 
                             }
@@ -1403,6 +1425,9 @@ fun QuotationScreen(
                         deliveryChallanViewModel = deliveryChallanViewModel
 
                     ) // 🧹 Clear everything in one call
+                    quotationDate = ""
+                    quotationRemark = ""
+                    quotationFields = null
                     viewModel.resetProductScanResults()
                     viewModel.stopBarcodeScanner()
                 },
@@ -1538,11 +1563,22 @@ fun QuotationScreen(
         }
     }
 
-
-
-
-
-
+    if (showInvoiceDialog) {
+        QuotationFieldsDialog(
+            initialDate = quotationDate,
+            initialRemark = quotationRemark,
+            onDismiss = { showInvoiceDialog = false },
+            onConfirm = { fields ->
+                showInvoiceDialog = false
+                quotationFields = fields
+                quotationDate = fields.date
+                quotationRemark = fields.remark
+                for (i in productList.indices) {
+                    productList[i] = productList[i].copy(Description = fields.remark)
+                }
+            }
+        )
+    }
 }
 
 fun addItemToList(
@@ -1575,4 +1611,17 @@ fun addItemToList(
     Log.d("DropdownSelect", "✅ Matched item ${matchedItem.itemCode}")
 
     onMatched(matchedItem)
+}
+
+private fun formatQuotationUiDate(raw: String?): String {
+    if (raw.isNullOrBlank()) return ""
+    val trimmed = raw.trim()
+    if (trimmed.matches(Regex("""\d{2}/\d{2}/\d{4}"""))) return trimmed
+    // Prefer dd/MM/yyyy UI format from ISO / datetime
+    return runCatching {
+        val isoPart = trimmed.take(10)
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(isoPart)
+        if (parsed != null) SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(parsed)
+        else trimmed.take(10)
+    }.getOrElse { trimmed.take(10) }
 }

@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.sparklepos.models.loginclasses.customerBill.EmployeeList
 import com.loyalstring.rfid.data.local.converters.UHFTAGInfoConverter
 import com.loyalstring.rfid.data.local.dao.BulkItemDao
@@ -75,9 +77,8 @@ import com.loyalstring.rfid.data.model.setting.LocationItem
         Stone::class,
         Diamond::class,
         FaceInfo::class
-
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -98,20 +99,36 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): AppDatabase =
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE pending_orders ADD COLUMN localCustomerKey TEXT NOT NULL DEFAULT ''"
+                )
+                db.execSQL(
+                    "ALTER TABLE pending_orders ADD COLUMN customerFirstName TEXT NOT NULL DEFAULT ''"
+                )
+                db.execSQL(
+                    "ALTER TABLE pending_orders ADD COLUMN customerLastName TEXT NOT NULL DEFAULT ''"
+                )
+                db.execSQL(
+                    "ALTER TABLE pending_orders ADD COLUMN customerMobile TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
 
+        fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
-               // context.deleteDatabase("app_db")
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_db"
                 )
-                   .fallbackToDestructiveMigration(false)
+                    .addMigrations(MIGRATION_2_3)
+                    .fallbackToDestructiveMigration(false)
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                    .build().also { INSTANCE = it }
+                    .build()
+                    .also { INSTANCE = it }
             }
-
 
         fun closeInstance() {
             INSTANCE?.close()

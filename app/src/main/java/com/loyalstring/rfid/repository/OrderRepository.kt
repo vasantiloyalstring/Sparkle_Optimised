@@ -15,31 +15,117 @@ import com.loyalstring.rfid.data.model.order.CustomOrderUpdateResponse
 import com.loyalstring.rfid.data.model.order.ItemCodeResponse
 import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
 import com.loyalstring.rfid.data.model.order.OrderSearchRequest
+import com.loyalstring.rfid.data.remote.api.JewelMartsApi
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.data.DeleteOrderRequest
 import com.loyalstring.rfid.data.remote.data.DeleteOrderResponse
+import com.loyalstring.rfid.ui.utils.OfflineCustomerMatch
+import com.loyalstring.rfid.ui.utils.UserPreferences
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
+import android.content.Context
+
 import javax.inject.Inject
 import kotlin.String
 
 class OrderRepository @Inject constructor(
     private val apiService: RetrofitInterface,
     private val orderItemDao: OrderItemDao,
-   // private val employeeDao: PendingEmployeeDao,
+    private val jewelMartsApi: JewelMartsApi,
+    @ApplicationContext private val appContext: Context,
 ) {
     suspend fun AAddAllEmployeeDetails(request: AddEmployeeRequest): Response<EmployeeResponse> {
         return apiService.addEmployee(request)
     }
 
+    /**
+     * Best-effort push to JewelMarts ClientAdd (separate server).
+     * Only for client LS000563. Does not throw — never blocks main customer-add flow.
+     */
+    suspend fun pushClientAddToJewelMarts(request: AddEmployeeRequest) {
+        try {
+            val prefs = UserPreferences.getInstance(appContext)
+            val clientCode = request.ClientCode
+                ?.trim()
+                .orEmpty()
+                .ifBlank { prefs.getClient()?.clientCode?.trim().orEmpty() }
+            if (!clientCode.equals(JEWELMARTS_CLIENT_CODE, ignoreCase = true)) {
+                Log.d("JewelMartsClientAdd", "Skipped for ClientCode=$clientCode")
+                return
+            }
+
+            val companyName = prefs.getOrganization().orEmpty().ifBlank { "Loyal" }
+            // API credentials from JewelMarts callback (Postman).
+            val username = "varakrupa"
+            val password = "varakrupa@123"
+            val text = "text/plain".toMediaType()
+
+            fun part(value: String?) = (value.orEmpty()).toRequestBody(text)
+
+            val response = jewelMartsApi.clientAdd(
+                username = part(username),
+                password = part(password),
+                firstName = part(request.FirstName),
+                lastName = part(request.LastName),
+                companyName = part(companyName),
+                mobile = part(request.Mobile),
+                email = part(request.Email),
+                panNumber = part(request.PanNo),
+            )
+            Log.d(
+                "JewelMartsClientAdd",
+                "ack=${response.body()?.ack} msg=${response.body()?.msg} code=${response.code()}"
+            )
+        } catch (e: Exception) {
+            Log.e("JewelMartsClientAdd", "Failed: ${e.message}")
+        }
+    }
+
+    companion object {
+        private const val JEWELMARTS_CLIENT_CODE = "LS000563"
+    }
+
     suspend fun getAllEmpList(clientCodeRequest: ClientCodeRequest): Response<List<EmployeeList>> {
         val res = apiService.getAllEmpList(clientCodeRequest)
         if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+            val clientCode = clientCodeRequest.clientcode.orEmpty()
+            // Keep ALL offline-added customers (Id=0), including name-only (no mobile).
+            val unsyncedLocal = if (clientCode.isNotBlank()) {
+                orderItemDao.getUnsyncedLocalCustomers(clientCode)
+            } else emptyList()
             clearAllEmployees()
             saveEmpListToRoom(res.body()!!)
+            val serverMobiles = res.body()!!
+                .map { it.Mobile.orEmpty().trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+            val serverNames = res.body()!!
+                .map {
+                    "${it.FirstName.orEmpty().trim().lowercase()}|${it.LastName.orEmpty().trim().lowercase()}"
+                }
+                .toSet()
+            unsyncedLocal
+                .filter { local ->
+                    val mobile = local.Mobile.orEmpty().trim()
+                    val nameKey =
+                        "${local.FirstName.orEmpty().trim().lowercase()}|${local.LastName.orEmpty().trim().lowercase()}"
+                    val stillOfflineByMobile = mobile.isNotEmpty() && mobile !in serverMobiles
+                    val stillOfflineByName = mobile.isEmpty() &&
+                        nameKey.isNotBlank() &&
+                        nameKey != "|" &&
+                        nameKey !in serverNames
+                    stillOfflineByMobile || stillOfflineByName ||
+                        OfflineCustomerMatch.extractLocalCustId(local.Remark) != null
+                }
+                .forEach { local ->
+                    orderItemDao.insert(local.copy(custId = 0, Id = 0))
+                }
         }
-        return apiService.getAllEmpList(clientCodeRequest)
+        return res
     }
 
 
@@ -195,7 +281,16 @@ class OrderRepository @Inject constructor(
                 payloadJson = gson.toJson(it)
             )
         }
-        orderItemDao.upsertAll(entities)
+        // Replace cache so deleted server orders do not linger after refresh.
+        orderItemDao.clear(clientCode)
+        if (entities.isNotEmpty()) {
+            orderItemDao.upsertAll(entities)
+        }
+    }
+
+    suspend fun deleteOrderFromCache(clientCode: String, orderId: Int) {
+        if (clientCode.isBlank() || orderId <= 0) return
+        orderItemDao.deleteOrderCacheById(clientCode, orderId)
     }
 
     suspend fun getOrderListCache(clientCode: String): List<CustomOrderResponse> {

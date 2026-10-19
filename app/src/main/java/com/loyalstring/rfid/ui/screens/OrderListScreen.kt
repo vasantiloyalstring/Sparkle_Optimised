@@ -105,6 +105,11 @@ fun OrderLisrScreen(
     LaunchedEffect(Unit) {
         employee?.clientCode?.let {
             orderViewModel.fetchAllOrderListFromApi(ClientCodeRequest(it))
+            // When internet is back, push pending offline orders to server.
+            if (NetworkUtils.isNetworkAvailable(context)) {
+                orderViewModel.enqueuePendingSync(context)
+                orderViewModel.enqueuePendingEmployeeSync(context)
+            }
         }
     }
 
@@ -509,29 +514,45 @@ fun OrderTableWithPagination(
                                                 orderToDelete?.let { order ->
                                                     Log.d("customer order id","onclick ok " + order.CustomOrderId)
                                                     val isOnline = NetworkUtils.isNetworkAvailable(context)
-                                                    if(isOnline) {
-                                                        employee?.clientCode?.let {
+                                                    val isLocalOnly =
+                                                        order.CustomOrderId <= 0 ||
+                                                            order.OrderNo.orEmpty().startsWith("LOCAL-") ||
+                                                            order.OrderNo.orEmpty().startsWith("OFF-")
+
+                                                    if (isOnline && !isLocalOnly) {
+                                                        employee?.clientCode?.let { code ->
                                                             orderViewModel.deleteOrders(
-                                                                ClientCodeRequest(it),
+                                                                ClientCodeRequest(code),
                                                                 order.CustomOrderId
                                                             ) { isSuccess ->
                                                                 Toast.makeText(
                                                                     context,
-                                                                    if (isSuccess)  localizedContext.getString(R.string.order_deleted_success) else  localizedContext.getString(R.string.delete_failed_message),
+                                                                    if (isSuccess) localizedContext.getString(R.string.order_deleted_success)
+                                                                    else localizedContext.getString(R.string.delete_failed_message),
                                                                     Toast.LENGTH_SHORT
                                                                 ).show()
-                                                                if (isSuccess) {
-                                                                    orderViewModel.removeOrderById(
-                                                                        order.CustomOrderId
-                                                                    )
-                                                                }
                                                             }
+                                                        } ?: Toast.makeText(
+                                                            context,
+                                                            localizedContext.getString(R.string.delete_failed_message),
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    } else {
+                                                        // Offline, or never-synced local order: delete locally / queue server delete.
+                                                        val orderForDelete =
+                                                            if (order.ClientCode.isBlank()) {
+                                                                order.copy(
+                                                                    ClientCode = employee?.clientCode.orEmpty()
+                                                                )
+                                                            } else order
+                                                        orderViewModel.deleteOrderOffline(orderForDelete) { ok ->
+                                                            Toast.makeText(
+                                                                context,
+                                                                if (ok) localizedContext.getString(R.string.order_deleted_success)
+                                                                else localizedContext.getString(R.string.delete_failed_message),
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
                                                         }
-                                                    }else
-                                                    {
-
-                                                        Log.d("orderListscreen","Order.orderNo"+order.OrderNo.toString())
-                                                       orderViewModel.deleteOrderOffline(order)
                                                         orderViewModel.enqueuePendingSync(context)
                                                     }
                                                 }

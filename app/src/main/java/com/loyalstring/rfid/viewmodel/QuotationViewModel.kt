@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @HiltViewModel
 class QuotationViewModel  @Inject constructor(
@@ -93,7 +96,7 @@ class QuotationViewModel  @Inject constructor(
         viewModelScope.launch {
             _loading.value = true
             try {
-                val result = repository.saveQuotation(request) // Result<AddQuotationResponse>
+                val result = repository.saveQuotation(request.withQuotationDateOrToday())
 
                 result
                     .onSuccess { body ->
@@ -153,7 +156,7 @@ class QuotationViewModel  @Inject constructor(
         viewModelScope.launch {
             _loading.value = true
             try {
-                repository.updateQuotation(request)
+                repository.updateQuotation(request.withQuotationDateOrToday())
                     .onSuccess { body ->
                         _updateResult.value = body
                         _error.value = null
@@ -179,5 +182,44 @@ class QuotationViewModel  @Inject constructor(
             ?: 0
     }
 
+    /** Prefer QuotationDate, else Date; if both null/blank use today (yyyy-MM-dd). */
+    private fun resolveQuotationDateOrToday(quotationDate: String?, date: String?): String {
+        normalizeQuotationDate(quotationDate)?.let { return it }
+        normalizeQuotationDate(date)?.let { return it }
+        return todayIsoDate()
+    }
 
+    private fun normalizeQuotationDate(raw: String?): String? {
+        val s = raw?.trim().orEmpty()
+        if (s.isEmpty() || s.equals("null", ignoreCase = true)) return null
+        if (Regex("""\d{4}-\d{2}-\d{2}""").matches(s.take(10))) return s.take(10)
+        return try {
+            val parsed = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                .apply { isLenient = false }
+                .parse(s)
+                ?: return null
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).format(parsed)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun todayIsoDate(): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+
+    private fun AddQuotationRequest.withQuotationDateOrToday(): AddQuotationRequest {
+        val resolved = resolveQuotationDateOrToday(QuotationDate, Date)
+        return copy(
+            QuotationDate = resolved,
+            Date = normalizeQuotationDate(Date) ?: resolved
+        )
+    }
+
+    private fun UpdateQuotationRequest.withQuotationDateOrToday(): UpdateQuotationRequest {
+        val resolved = resolveQuotationDateOrToday(quotationDate, date)
+        return copy(
+            quotationDate = resolved,
+            date = normalizeQuotationDate(date) ?: resolved
+        )
+    }
 }

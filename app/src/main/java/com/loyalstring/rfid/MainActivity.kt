@@ -368,6 +368,8 @@ private fun SetupNavigation(
             val emp = UserPreferences.getInstance(context).getEmployee(Employee::class.java)
             withContext(Dispatchers.Main) { employee = emp }
         }
+        // Already logged in / app restart: warm challan list cache like post-login.
+        loginViewModel.prefetchDeliveryChallanIfLoggedIn()
     }
 
     // Refresh when drawer opens (always show latest info)

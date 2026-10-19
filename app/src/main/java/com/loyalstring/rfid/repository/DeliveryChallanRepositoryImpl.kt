@@ -13,6 +13,7 @@ import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanRequestLis
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
+import okhttp3.ResponseBody
 import retrofit2.Response
 import javax.inject.Inject
 
@@ -24,6 +25,12 @@ class DeliveryChallanRepositoryImpl @Inject constructor(
         request: DeliveryChallanRequestList
     ): Response<List<DeliveryChallanResponseList>> {
         return api.getAllChallanList(request)
+    }
+
+    override suspend fun getAllDeliveryChallansRaw(
+        request: DeliveryChallanRequestList
+    ): Response<ResponseBody> {
+        return api.getAllChallanListRaw(request)
     }
 
     override suspend fun getLastChallanNo(

@@ -209,6 +209,12 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             userPermissionViewModel.loadPermissions(it, response.employee.id)
         }
 
+        // Warm Delivery Challan list cache in background so first list open is instant.
+        viewModel.prefetchDeliveryChallanList(
+            clientCode = response.employee.clientCode,
+            branchId = response.employee.defaultBranchId,
+        )
+
         navController.navigate(Screens.HomeScreen.route) {
             popUpTo(Screens.LoginScreen.route) { inclusive = true }
         }

@@ -10,6 +10,7 @@ import com.loyalstring.rfid.data.model.login.LoginRequest
 import com.loyalstring.rfid.data.model.login.LoginResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.LoginRepository
+import com.loyalstring.rfid.ui.utils.DeliveryChallanPrefetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 
 import kotlinx.coroutines.launch
@@ -24,7 +25,8 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val repository: LoginRepository // or whatever your dependency is
+    private val repository: LoginRepository,
+    private val deliveryChallanPrefetcher: DeliveryChallanPrefetcher,
 ) : ViewModel() {
 
     private val _loginResponse = MutableLiveData<Resource<LoginResponse>>()
@@ -32,6 +34,16 @@ class LoginViewModel @Inject constructor(
 
     private val _companyDetailsResponse = MutableLiveData<Resource<List<CompanyDetails>>>()
     val companyDetailsResponse: LiveData<Resource<List<CompanyDetails>>> = _companyDetailsResponse
+
+    /** Warm Delivery Challan list cache in background right after login (non-blocking). */
+    fun prefetchDeliveryChallanList(clientCode: String?, branchId: Int) {
+        deliveryChallanPrefetcher.prefetchAfterLogin(clientCode, branchId)
+    }
+
+    /** Cold start when user is already logged in — same cache as post-login prefetch. */
+    fun prefetchDeliveryChallanIfLoggedIn() {
+        deliveryChallanPrefetcher.prefetchForLoggedInUser()
+    }
 
     fun login(request: LoginRequest, rememberMe: Boolean) {
         viewModelScope.launch {

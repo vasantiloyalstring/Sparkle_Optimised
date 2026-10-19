@@ -39,6 +39,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -59,15 +61,17 @@ import com.loyalstring.rfid.data.remote.data.CompanyDetails
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.navigation.Screens
-import com.loyalstring.rfid.ui.utils.DeliveryChallanListCache
 import com.loyalstring.rfid.ui.utils.LIST_PAGE_SIZE
 import com.loyalstring.rfid.ui.utils.LazyListLoadMoreEffect
 import com.loyalstring.rfid.ui.utils.PrinterManager
+import com.loyalstring.rfid.ui.utils.DeliveryChallanListCache
+import com.loyalstring.rfid.ui.utils.deliveryChallanListBranchId
 import com.loyalstring.rfid.ui.utils.resolvePrintHeader
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.poppins
 import com.loyalstring.rfid.viewmodel.DeliveryChallanViewModel
 import com.loyalstring.rfid.viewmodel.LoginViewModel
+import com.loyalstring.rfid.viewmodel.sharedDeliveryChallanViewModel
 import com.loyalstring.rfid.worker.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,9 +85,10 @@ fun DeliveryChallanListScreen(
     onBack: () -> Unit,
     navController: NavHostController,
 ) {
-    val viewModel: DeliveryChallanViewModel = hiltViewModel()
+    val viewModel: DeliveryChallanViewModel = sharedDeliveryChallanViewModel(navController)
     val loginViewModel: LoginViewModel = hiltViewModel()
     val context = LocalContext.current
+    val navBackStackEntry = navController.currentBackStackEntry
     val employee = remember {
         UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     }
@@ -97,7 +102,7 @@ fun DeliveryChallanListScreen(
     val localizedContext = LocaleHelper.applyLocale(context, currentLang)
 
     val challanList by viewModel.challanList.collectAsState()
-    val isLoading by viewModel.loading.collectAsState()
+    val isLoading by viewModel.listLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     var companyName by rememberSaveable { mutableStateOf("") }
 
@@ -106,37 +111,44 @@ fun DeliveryChallanListScreen(
     var showPrintDialog by remember { mutableStateOf(false) }
     var selectedPrintData by remember { mutableStateOf<DeliveryChallanPrintData?>(null) }
 
-    val bootstrapRows = remember(employee?.clientCode, employee?.branchNo) {
-        employee?.let { emp ->
-            DeliveryChallanListCache.readMemoryRows(
-                clientCode = emp.clientCode.orEmpty(),
-                branchId = emp.branchNo ?: 0,
-            )
-        }.orEmpty()
+    val clientCode = remember(employee) { employee?.clientCode.orEmpty() }
+    val branchId = remember(employee, userPreferences) {
+        deliveryChallanListBranchId(context, employee, userPreferences)
     }
-    val listForUi = if (challanList.isNotEmpty()) challanList else bootstrapRows
 
-    LaunchedEffect(Unit) {
-        employee?.let { emp ->
-            val clientCode = emp.clientCode ?: return@let
-            val branchId = emp.branchNo ?: 0
-            if (bootstrapRows.isNotEmpty()) {
-                viewModel.seedRowsIfEmpty(bootstrapRows)
+    // First frame: paint cache, then force-refresh so newly saved challans appear.
+    LaunchedEffect(clientCode, branchId) {
+        if (clientCode.isBlank()) return@LaunchedEffect
+        DeliveryChallanListCache.readMemoryRows(clientCode, branchId)
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { viewModel.seedRowsIfEmpty(it) }
+        viewModel.loadAllChallans(clientCode, branchId, forceRefresh = true)
+    }
+
+    DisposableEffect(navBackStackEntry, clientCode, branchId) {
+        var skipFirstResume = true
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            if (skipFirstResume) {
+                skipFirstResume = false
+                return@LifecycleEventObserver
             }
-            viewModel.fetchAllChallans(clientCode, branchId)
+            if (clientCode.isNotBlank()) {
+                viewModel.loadAllChallans(clientCode, branchId, forceRefresh = true)
+            }
         }
+        navBackStackEntry?.lifecycle?.addObserver(observer)
+        onDispose { navBackStackEntry?.lifecycle?.removeObserver(observer) }
     }
 
-    val filteredData by remember {
-        derivedStateOf {
-            if (searchQuery.isNotEmpty()) {
-                listForUi.filter {
-                    it.ChallanNo.orEmpty().contains(searchQuery, true) ||
-                            it.CustomerName.orEmpty().contains(searchQuery, true)
-                }
-            } else {
-                listForUi
+    val filteredData = remember(challanList, searchQuery) {
+        if (searchQuery.isNotEmpty()) {
+            challanList.filter {
+                it.ChallanNo.orEmpty().contains(searchQuery, true) ||
+                    it.CustomerName.orEmpty().contains(searchQuery, true)
             }
+        } else {
+            challanList
         }
     }
 
@@ -225,8 +237,10 @@ fun DeliveryChallanListScreen(
         )
 
         DeliveryChallanTable(
+            viewModel = viewModel,
             companyName= companyName,
             navController = navController,
+            listBranchId = branchId,
             headerTitles = headerTitles,
             columnWidths = columnWidths,
             data = visibleData,
@@ -234,7 +248,7 @@ fun DeliveryChallanListScreen(
             onLoadMore = {
                 if (visibleItems < filteredData.size) visibleItems += LIST_PAGE_SIZE
             },
-            isLoading = isLoading && listForUi.isEmpty(),
+            isLoading = isLoading && challanList.isEmpty(),
             context = context,
             localizedContext=localizedContext,
             selectedPrintData = selectedPrintData,
@@ -256,8 +270,10 @@ fun DeliveryChallanListScreen(
 @SuppressLint("MissingPermission")
 @Composable
 fun DeliveryChallanTable(
+    viewModel: DeliveryChallanViewModel,
     companyName: String,
     navController: NavHostController,
+    listBranchId: Int,
     headerTitles: List<String>,
     columnWidths: List<Dp>,
     data: List<DeliveryChallanListRow>,
@@ -274,7 +290,7 @@ fun DeliveryChallanTable(
 ) {
     val sharedScrollState = rememberScrollState()
     val listState = rememberLazyListState()
-    val viewModel: DeliveryChallanViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
     val employee = remember {
         UserPreferences.getInstance(context).getEmployee(Employee::class.java)
     }
@@ -351,7 +367,7 @@ fun DeliveryChallanTable(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        if (isLoading) {
+        if (isLoading && data.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -362,7 +378,7 @@ fun DeliveryChallanTable(
             ) {
                 itemsIndexed(
                     items = data,
-                    key = { _, challan -> challan.Id }
+                    key = { index, challan -> "${challan.Id}_$index" }
                 ) { index, challan ->
 
                     Row(
@@ -445,16 +461,22 @@ fun DeliveryChallanTable(
                             // ✏️ Print Button (middle icon)
 
                             IconButton(onClick = {
-                                val fullChallan = viewModel.getFullChallan(challan.Id)
-                                if (fullChallan != null) {
-                                    onSelectedPrintDataChange(fullChallan.toDeliveryChallanPrintData(context))
-                                    onShowPrintDialogChange(true)
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        localizedContext.getString(R.string.error_loading_challans),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                scope.launch {
+                                    val fullChallan = viewModel.ensureFullChallan(
+                                        id = challan.Id,
+                                        clientCode = employee?.clientCode.orEmpty(),
+                                        branchId = listBranchId,
+                                    )
+                                    if (fullChallan != null) {
+                                        onSelectedPrintDataChange(fullChallan.toDeliveryChallanPrintData(context))
+                                        onShowPrintDialogChange(true)
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            localizedContext.getString(R.string.error_loading_challans),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                             }, modifier = Modifier.size(26.dp)) {
                                 Icon(
@@ -476,240 +498,241 @@ fun DeliveryChallanTable(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
-
-                            if (showPrintDialog && selectedPrintData != null) {
-                                AlertDialog(
-                                    onDismissRequest = {
-                                        onShowPrintDialogChange(false)
-                                        onSelectedPrintDataChange(null)
-                                        showBluetoothControls = false
-                                        bluetoothStatus = "Not connected"
-                                    },
-                                    title = {
-                                        Text( localizedContext.getString(R.string.print_options), fontFamily = poppins)
-                                    },
-                                    text = {
-                                        Column(
-                                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            GradientDialogButtonnew(
-                                                text =  localizedContext.getString(R.string.view_pdf),
-                                                onClick = {
-                                                    val uri = generateDeliveryChallanPdf(context, selectedPrintData!!)
-                                                    if (uri != null) {
-                                                        openPdfPreview(context, uri)
-                                                    } else {
-                                                        Toast.makeText(context,  localizedContext.getString(R.string.pdf_not_generated), Toast.LENGTH_SHORT).show()
-                                                    }
-                                                    onShowPrintDialogChange(false)
-                                                }
-                                            )
-
-                                            GradientDialogButtonnew(
-                                                text =  localizedContext.getString(R.string.bluetooth_printer),
-                                                onClick = {
-                                                    showBluetoothControls = true
-                                                }
-                                            )
-                                            if (showBluetoothControls) {
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                GradientDialogButtonnew(
-                                                    text = localizedContext.getString(R.string.connect_bluetooth_printer),
-                                                    onClick = {
-                                                        if (activity == null) {
-                                                            bluetoothStatus = "Activity not found"
-                                                            return@GradientDialogButtonnew
-                                                        }
-
-                                                        if (hasBluetoothPermissions(activity)) {
-                                                            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-                                                            if (bluetoothAdapter == null) {
-                                                                bluetoothStatus = "Bluetooth not supported"
-                                                                return@GradientDialogButtonnew
-                                                            }
-
-                                                            if (!bluetoothAdapter.isEnabled) {
-                                                                bluetoothStatus = "Please turn on Bluetooth"
-                                                                return@GradientDialogButtonnew
-                                                            }
-
-                                                            bondedDevices = bluetoothAdapter.bondedDevices.toList()
-                                                            showDeviceList = true
-
-                                                            if (bondedDevices.isEmpty()) {
-                                                                bluetoothStatus = "No paired Bluetooth devices found"
-                                                            } else {
-                                                                bluetoothStatus = "Select printer device"
-                                                            }
-
-                                                        } else {
-                                                            requestBluetoothPermissions(activity)
-                                                            bluetoothStatus = "Please grant Bluetooth permissions"
-                                                        }
-                                                    }
-                                                )
-
-                                                // ✅ ADD DEVICE LIST HERE
-                                                if (showDeviceList) {
-                                                    Card(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .heightIn(max = 220.dp),
-                                                        colors = CardDefaults.cardColors(
-                                                            containerColor = Color(0xFFF5F5F5)
-                                                        )
-                                                    ) {
-                                                        LazyColumn(
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                            items(bondedDevices) { device ->
-                                                                Text(
-                                                                    text = "${device.name ?: "Unknown"}\n${device.address}",
-                                                                    modifier = Modifier
-                                                                        .fillMaxWidth()
-                                                                        .clickable {
-                                                                            bluetoothStatus = "Connecting to ${device.name ?: device.address}..."
-                                                                            isPrinterConnected = false
-                                                                            showDeviceList = false
-
-                                                                            printerManager.disconnect()
-
-                                                                            Handler(Looper.getMainLooper()).postDelayed({
-                                                                                printerManager.connectBluetooth(device.address) { success, msg ->
-                                                                                    bluetoothStatus = msg
-                                                                                    isPrinterConnected = success
-                                                                                }
-                                                                            }, 500)
-                                                                        }
-                                                                        .padding(10.dp),
-                                                                    fontFamily = poppins,
-                                                                    fontSize = 13.sp
-                                                                )
-
-                                                                Divider()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-
-                                                GradientDialogButtonnew(
-                                                    text = localizedContext.getString(R.string.print_challan),
-                                                    onClick = {
-                                                        if (selectedPrintData != null) {
-                                                            printerManager.printDeliveryChallanCompact(
-                                                                selectedPrintData,
-                                                                printHeader,
-                                                                clientCode = employee?.clientCode
-                                                            ) { _, msg ->
-                                                                bluetoothStatus = msg
-                                                            }
-                                                        } else {
-                                                            bluetoothStatus = localizedContext.getString(R.string.no_print_data_found)
-                                                        }
-                                                    },
-                                                    enabled = isPrinterConnected
-                                                )
-
-                                                Text(
-                                                    text = bluetoothStatus,
-                                                    fontFamily = poppins
-                                                )
-                                            }
-                                        }
-                                    },
-                                    confirmButton = {},
-                                    dismissButton = {
-                                        TextButton(
-                                            onClick = {
-                                                onShowPrintDialogChange(false)
-                                                onSelectedPrintDataChange(null)
-                                                showBluetoothControls = false
-                                                bluetoothStatus =  localizedContext.getString(R.string.not_connected)
-                                            }
-                                        ) {
-                                            Text( localizedContext.getString(R.string.cancel))
-                                        }
-                                    }
-                                )
-                            }
-
-                            if (challanToDelete != null) {
-                                AlertDialog(
-                                    onDismissRequest = { challanToDelete = null },
-                                    title = {
-                                        Text(
-                                            text = localizedContext.getString(R.string.delete_confirmation_title),
-                                            fontFamily = poppins
-                                        )
-                                    },
-                                    text = {
-                                        Text(
-                                            text = localizedContext.getString(R.string.delete_confirmation_message),
-                                            fontFamily = poppins
-                                        )
-                                    },
-                                    confirmButton = {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            GradientDialogButtonnew(
-                                                text = localizedContext.getString(R.string.cancel_button),
-                                                onClick = { challanToDelete = null },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            GradientDialogButtonnew(
-                                                text = localizedContext.getString(R.string.delete_button),
-                                                onClick = {
-                                                    challanToDelete?.let { challan ->
-                                                        employee?.clientCode?.let { clientCode ->
-                                                            viewModel.deleteDeliveryChallan(
-                                                                clientCode = clientCode,
-                                                                id = challan.Id ?: 0
-                                                            ) { isSuccess ->
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    if (isSuccess) localizedContext.getString(R.string.delete_success_message)
-                                                                    else localizedContext.getString(R.string.delete_failed_message),
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                            }
-                                                        }
-                                                    }
-                                                    challanToDelete = null
-                                                },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-                                    },
-                                    dismissButton = {}
-                                )
-                            }
-                         /*   IconButton(onClick = {
-                                val printData: DeliveryChallanPrintData = challan.toDeliveryChallanPrintData(context)
-
-                                val uri = generateDeliveryChallanPdf(context, printData)
-                                if (uri != null) {
-                                    openPdfPreview(context, uri)
-                                }
-                            }) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.print_svg),
-                                    contentDescription = localizedContext.getString(R.string.cd_print_challan),
-                                    tint = Color(0xFF37474F),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }*/
                         }
                     }
 
                     Divider(color = Color(0xFFE0E0E0))
                 }
+
+                if (data.isNotEmpty() && data.size < totalCount) {
+                    item(key = "load_more_footer") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
             }
         }
+    }
+
+    if (showPrintDialog && selectedPrintData != null) {
+        AlertDialog(
+            onDismissRequest = {
+                onShowPrintDialogChange(false)
+                onSelectedPrintDataChange(null)
+                showBluetoothControls = false
+                bluetoothStatus = "Not connected"
+            },
+            title = {
+                Text(localizedContext.getString(R.string.print_options), fontFamily = poppins)
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.view_pdf),
+                        onClick = {
+                            val uri = generateDeliveryChallanPdf(context, selectedPrintData!!)
+                            if (uri != null) {
+                                openPdfPreview(context, uri)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    localizedContext.getString(R.string.pdf_not_generated),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            onShowPrintDialogChange(false)
+                        }
+                    )
+
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.bluetooth_printer),
+                        onClick = {
+                            showBluetoothControls = true
+                        }
+                    )
+                    if (showBluetoothControls) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        GradientDialogButtonnew(
+                            text = localizedContext.getString(R.string.connect_bluetooth_printer),
+                            onClick = {
+                                if (activity == null) {
+                                    bluetoothStatus = "Activity not found"
+                                    return@GradientDialogButtonnew
+                                }
+
+                                if (hasBluetoothPermissions(activity)) {
+                                    val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+                                    if (bluetoothAdapter == null) {
+                                        bluetoothStatus = "Bluetooth not supported"
+                                        return@GradientDialogButtonnew
+                                    }
+
+                                    if (!bluetoothAdapter.isEnabled) {
+                                        bluetoothStatus = "Please turn on Bluetooth"
+                                        return@GradientDialogButtonnew
+                                    }
+
+                                    bondedDevices = bluetoothAdapter.bondedDevices.toList()
+                                    showDeviceList = true
+
+                                    if (bondedDevices.isEmpty()) {
+                                        bluetoothStatus = "No paired Bluetooth devices found"
+                                    } else {
+                                        bluetoothStatus = "Select printer device"
+                                    }
+                                } else {
+                                    requestBluetoothPermissions(activity)
+                                    bluetoothStatus = "Please grant Bluetooth permissions"
+                                }
+                            }
+                        )
+
+                        if (showDeviceList) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 220.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF5F5F5)
+                                )
+                            ) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(bondedDevices) { device ->
+                                        Text(
+                                            text = "${device.name ?: "Unknown"}\n${device.address}",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    bluetoothStatus =
+                                                        "Connecting to ${device.name ?: device.address}..."
+                                                    isPrinterConnected = false
+                                                    showDeviceList = false
+
+                                                    printerManager.disconnect()
+
+                                                    Handler(Looper.getMainLooper()).postDelayed({
+                                                        printerManager.connectBluetooth(device.address) { success, msg ->
+                                                            bluetoothStatus = msg
+                                                            isPrinterConnected = success
+                                                        }
+                                                    }, 500)
+                                                }
+                                                .padding(10.dp),
+                                            fontFamily = poppins,
+                                            fontSize = 13.sp
+                                        )
+
+                                        Divider()
+                                    }
+                                }
+                            }
+                        }
+
+                        GradientDialogButtonnew(
+                            text = localizedContext.getString(R.string.print_challan),
+                            onClick = {
+                                if (selectedPrintData != null) {
+                                    printerManager.printDeliveryChallanCompact(
+                                        selectedPrintData,
+                                        printHeader,
+                                        clientCode = employee?.clientCode
+                                    ) { _, msg ->
+                                        bluetoothStatus = msg
+                                    }
+                                } else {
+                                    bluetoothStatus = localizedContext.getString(R.string.no_print_data_found)
+                                }
+                            },
+                            enabled = isPrinterConnected
+                        )
+
+                        Text(
+                            text = bluetoothStatus,
+                            fontFamily = poppins
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onShowPrintDialogChange(false)
+                        onSelectedPrintDataChange(null)
+                        showBluetoothControls = false
+                        bluetoothStatus = localizedContext.getString(R.string.not_connected)
+                    }
+                ) {
+                    Text(localizedContext.getString(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (challanToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { challanToDelete = null },
+            title = {
+                Text(
+                    text = localizedContext.getString(R.string.delete_confirmation_title),
+                    fontFamily = poppins
+                )
+            },
+            text = {
+                Text(
+                    text = localizedContext.getString(R.string.delete_confirmation_message),
+                    fontFamily = poppins
+                )
+            },
+            confirmButton = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.cancel_button),
+                        onClick = { challanToDelete = null },
+                        modifier = Modifier.weight(1f)
+                    )
+                    GradientDialogButtonnew(
+                        text = localizedContext.getString(R.string.delete_button),
+                        onClick = {
+                            challanToDelete?.let { challan ->
+                                employee?.clientCode?.let { clientCode ->
+                                    viewModel.deleteDeliveryChallan(
+                                        clientCode = clientCode,
+                                        id = challan.Id
+                                    ) { isSuccess ->
+                                        Toast.makeText(
+                                            context,
+                                            if (isSuccess) localizedContext.getString(R.string.delete_success_message)
+                                            else localizedContext.getString(R.string.delete_failed_message),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                            challanToDelete = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            },
+            dismissButton = {}
+        )
     }
 }
 
@@ -751,7 +774,7 @@ private fun DeliveryChallanResponseList.toDeliveryChallanPrintData(
             wastage = detail.FineWastageWt ?: "0%",
             itemAmount = detail.ItemAmount ?: "0.00"
         )
-    }
+    }.orEmpty()
     return DeliveryChallanPrintData(
         branchName = "" ?: "QA",
         city = this.customer?.City?:"",
@@ -762,7 +785,7 @@ private fun DeliveryChallanResponseList.toDeliveryChallanPrintData(
 
         // ✅ List screen normally doesn't have items -> keep empty
 
-        items = itemsForPrint!!,
+        items = itemsForPrint,
 
         taxableAmount = "0.0",
 

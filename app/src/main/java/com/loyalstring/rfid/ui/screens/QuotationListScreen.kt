@@ -116,13 +116,12 @@ fun QuotationListScreen(
         localizedContext.getString(R.string.header_stone_weight),
         localizedContext.getString(R.string.header_diamond_weight),
         localizedContext.getString(R.string.header_quantity),
-        localizedContext.getString(R.string.order_date),
-        localizedContext.getString(R.string.delivery_date),
+        localizedContext.getString(R.string.date),
     )
 
     val scrollableColumnWidths = listOf(
-        40.dp, 68.dp, 96.dp, 72.dp, 100.dp, 64.dp,
-        64.dp, 56.dp, 56.dp, 56.dp, 44.dp, 72.dp, 72.dp
+        40.dp, 68.dp, 96.dp, 90.dp, 100.dp, 64.dp,
+        64.dp, 56.dp, 56.dp, 48.dp, 80.dp
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -189,6 +188,7 @@ fun QuotationTable(
     val listState = rememberLazyListState()
     val customerHeader = localizedContext.getString(R.string.header_customer_name)
     val productHeader = localizedContext.getString(R.string.header_product_name)
+    val descriptionHeader = localizedContext.getString(R.string.header_description)
     val actionHeader = localizedContext.getString(R.string.header_actions)
 
     LazyListLoadMoreEffect(
@@ -273,27 +273,36 @@ fun QuotationTable(
                             val designNames = challan.quotationItem.joinToString(", ") {
                                 it.DesignName ?: ""
                             }
+                            val remark = challan.quotationItem
+                                .mapNotNull { it.Description?.trim()?.takeIf { d -> d.isNotEmpty() } }
+                                .distinct()
+                                .joinToString(", ")
+                            val itemCount = challan.quotationItem.size.let { count ->
+                                if (count > 0) count.toString()
+                                else challan.qty?.takeIf { it.isNotBlank() } ?: "0"
+                            }
+                            val displayDate = formatQuotationListDate(challan.quotationDate)
 
                             val values = listOf(
                                 (index + 1).toString(),
                                 challan.quotationNo ?: "",
                                 challan.customer?.FirstName ?: "",
-                                "",
+                                remark,
                                 designNames,
                                 "",
                                 challan.grossWt ?: "0.000",
                                 challan.stoneWt ?: "0.000",
                                 challan.totalDiamondWeight ?: "0.000",
-                                challan.qty ?: "0",
-                                challan.createdOn ?: "",
-                                challan.quotationDate ?: ""
+                                itemCount,
+                                displayDate
                             )
 
                             values.forEachIndexed { i, rawValue ->
                                 val textValue = rawValue.toString()
                                 val isMultiLine =
                                     scrollableHeaderTitles.getOrNull(i) == customerHeader ||
-                                        scrollableHeaderTitles.getOrNull(i) == productHeader
+                                        scrollableHeaderTitles.getOrNull(i) == productHeader ||
+                                        scrollableHeaderTitles.getOrNull(i) == descriptionHeader
 
                                 Text(
                                     text = textValue,
@@ -373,6 +382,15 @@ fun QuotationTable(
 }
 
 
+private fun formatQuotationListDate(raw: String?): String {
+    if (raw.isNullOrBlank()) return ""
+    val trimmed = raw.trim()
+    // Already dd/MM/yyyy
+    if (trimmed.matches(Regex("""\d{2}/\d{2}/\d{4}"""))) return trimmed
+    // ISO / datetime → yyyy-MM-dd
+    return trimmed.take(10)
+}
+
 // ✅ Replace "QuotationListItem" with your challan model class name
 fun QuotationListResponse.toQuotationPrintData(context: Context): QuotationPrintData {
 
@@ -408,9 +426,12 @@ fun QuotationListResponse.toQuotationPrintData(context: Context): QuotationPrint
         ownerContact = "9342232444",
 
         quotationNo = this.quotationNo?.toString() ?: "",
-        date = formatDateSafe(this.date),           // ✅ replace this.date with your field
+        date = formatDateSafe(this.date ?: this.quotationDate ?: this.createdOn),
        // salesMan = this.salesMan ?: "",
-        //remark = this.remark ?: "",
+        remark = this.quotationItem
+            .mapNotNull { it.Description?.trim()?.takeIf { d -> d.isNotEmpty() } }
+            .distinct()
+            .joinToString(", "),
 
         customerName = "${this.customer?.FirstName.orEmpty()} ${this.lastName.orEmpty()}".trim(),
         customerMobile = this.customer?.Mobile ?: "",

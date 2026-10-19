@@ -85,6 +85,7 @@ import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.navigation.GradientTopBar
 import com.loyalstring.rfid.ui.utils.NetworkUtils
+import com.loyalstring.rfid.ui.utils.OfflineCustomerMatch
 import com.loyalstring.rfid.ui.utils.UserPreferences
 import com.loyalstring.rfid.ui.utils.resolveImagePathToUrl
 import com.loyalstring.rfid.ui.utils.resolveProductImageUrl
@@ -401,6 +402,29 @@ fun OrderScreen(
                     state.message ?: "Customer added successfully",
                     Toast.LENGTH_SHORT
                 ).show()
+                val data = state.data
+                if (data != null) {
+                    // Auto-select newly added customer so user can take order immediately (offline/online).
+                    customerName = "${data.FirstName} ${data.LastName}".trim()
+                    customerId = data.Id.takeIf { it > 0 }
+                    selectedCustomer = EmployeeList(
+                        custId = 0,
+                        Id = data.Id.takeIf { it > 0 } ?: 0,
+                        FirstName = data.FirstName,
+                        LastName = data.LastName,
+                        Mobile = data.Mobile,
+                        Email = data.Email,
+                        ClientCode = data.ClientCode,
+                        City = data.City,
+                        CurrAddState = data.CurrAddState,
+                        Country = data.Country,
+                        GstNo = data.GstNo,
+                        PanNo = data.PanNo,
+                        // Keep LOCAL_CUST so offline order sync maps this exact customer.
+                        Remark = data.Remark,
+                    )
+                }
+                employee?.clientCode?.let { orderViewModel.getAllEmpList(it) }
                 orderViewModel.clearAddEmpResponse()
             }
             is Resource.Error -> {
@@ -1171,7 +1195,6 @@ fun OrderScreen(
 
         val clientCode = employee?.clientCode.orEmpty()
         val branchId = employee?.defaultBranchId ?: 1
-        val custId = customerId ?: 0
 
         if (clientCode.isBlank()) {
             Log.e("SampleOut", "ClientCode missing")
@@ -1185,7 +1208,15 @@ fun OrderScreen(
             return@LaunchedEffect
         }
 
-        if (custId == 0) {
+        val customerListForCreate: List<EmployeeList> =
+            (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
+        val effectiveCustomer = resolveOrderCustomer(
+            selectedCustomer = selectedCustomer,
+            customerId = customerId,
+            customerName = customerName,
+            customerList = customerListForCreate,
+        )
+        if (effectiveCustomer == null) {
             Log.e("SampleOut", "Customer not selected")
             Toast.makeText(
                 context,
@@ -1196,6 +1227,11 @@ fun OrderScreen(
             orderViewModel.clearLastOrderNo()
             return@LaunchedEffect
         }
+        // Keep UI state aligned with the customer we will persist.
+        // Never use local Room custId as API CustomerId (would corrupt online/sync).
+        selectedCustomer = effectiveCustomer
+        customerId = effectiveCustomer.Id?.takeIf { it > 0 }
+        customerName = customerDisplayName(effectiveCustomer).ifBlank { customerName }
 
         if (productList.isEmpty()) {
             Log.e("SampleOut", "No items in productList")
@@ -1226,7 +1262,7 @@ fun OrderScreen(
 
         val customerObj= CustomOrderRequest(
             CustomOrderId = 0,
-            CustomerId = customerId.toString(),
+            CustomerId = (effectiveCustomer.Id?.takeIf { it > 0 } ?: 0).toString(),
             ClientCode = clientCode,
             OrderId = 0,
 
@@ -1328,7 +1364,7 @@ fun OrderScreen(
                     VendorId = 0,
 
                     CategoryName = item.categoryName ?: "",
-                    CustomerName = customerName,                    // you already have
+                    CustomerName = customerDisplayName(selectedCustomer).ifBlank { customerName },
                     VendorName = null,
 
                     ProductId = item.productId ?: 0,
@@ -1373,7 +1409,7 @@ fun OrderScreen(
                     Image = item.image ?: "",
 
                     ItemCode = item.itemCode ?: "",
-                    CustomerId = custId,                             // your customer id int
+                    CustomerId = effectiveCustomer.Id?.takeIf { it > 0 } ?: 0,
                     MRP = item.mrp ?: "0.0",
                     HSNCode = "" ?: "",
 
@@ -1477,11 +1513,14 @@ fun OrderScreen(
                 CustomerSlabId = 0,
                 CreditPeriodId = 0,
                 RateOfInterestId = 0,
-                Remark = "",
+                Remark = OfflineCustomerMatch.mergeRemark(
+                    selectedCustomer?.Remark,
+                    OfflineCustomerMatch.extractLocalCustId(selectedCustomer?.Remark),
+                ),
                 Area = "",
                 City = selectedCustomer?.City.orEmpty(),
                 Country = selectedCustomer?.Country.orEmpty(),
-                Id = selectedCustomer?.Id ?: 0,
+                Id = selectedCustomer?.Id?.takeIf { it > 0 } ?: 0,
                 CreatedOn = "2025-07-08",
                 LastUpdated = "2025-07-08",
                 StatusType = true
@@ -1499,28 +1538,25 @@ fun OrderScreen(
                 orderViewModel.clearLastOrderNo()
                 return@LaunchedEffect
             }
-            Log.d( "@@"," selectedCustomer?.Id.toString()"+selectedCustomer?.Id)
             val localOrderNo = "OFF-${System.currentTimeMillis()}"
-
-
-            val customerList: List<EmployeeList> =
-                (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
-
-            val selectedCustomerObj: EmployeeList? =
-                customerList.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
-
-            Log.d( "@@##"," selectedCustomer?.Id.toString()"+selectedCustomerObj?.Id)
+            // Use selectedCustomer directly — never re-lookup by Id (Id=0 collides offline).
             orderViewModel.saveOrderOffline(
                 buildOrderRequest(
                     orderNo = localOrderNo,
                     employee = currentEmployee,
                     productList = productList,
-                    selectedCustomer = selectedCustomerObj,
+                    selectedCustomer = effectiveCustomer,
                     gstAmount = gstAmount,
                     lastOrderDetails = lastOrderDetails
                 ),
                 context
             )
+            Toast.makeText(context, localizedContext.getString(R.string.order_success), Toast.LENGTH_SHORT).show()
+            customerName = ""
+            customerId = null
+            selectedCustomer = null
+            itemCode = TextFieldValue("")
+            productList.clear()
         }
 
     }
@@ -1535,7 +1571,9 @@ fun OrderScreen(
                 generateTablePdfWithImages(context, it,localizedContext)
                 //showInvoice = true
                 orderViewModel.clearOrderItemsAsync()
-                customerName = customerName
+                customerName = ""
+                customerId = null
+                selectedCustomer = null
                 itemCode = TextFieldValue("")  // reset text field
                 productList.clear()
             }
@@ -1634,7 +1672,9 @@ fun OrderScreen(
 
                        val request = CustomOrderRequest(
                            CustomOrderId = editOrder?.CustomOrderId?.toInt() ?: 0,
-                           CustomerId = editOrder?.Customer?.Id.toString(),
+                           CustomerId = (selectedCustomer?.Id?.takeIf { it > 0 }
+                               ?: editOrder?.Customer?.Id
+                               ?: 0).toString(),
                            ClientCode = employee?.clientCode.orEmpty(),
                            OrderId = 14,
                            TotalAmount = calculatedTotalAmount.toString(),
@@ -1725,7 +1765,8 @@ fun OrderScreen(
                                    CategoryId = selectedItem?.CategoryId,
                                    VendorId = 0,
                                    CategoryName = product.categoryName,
-                                   CustomerName = selectedCustomer?.FirstName,
+                                   CustomerName = customerDisplayName(selectedCustomer)
+                                       .ifBlank { selectedCustomer?.FirstName },
                                    VendorName = "",
                                    ProductId = product.productId,
                                    ProductName = product.productName,
@@ -1757,7 +1798,7 @@ fun OrderScreen(
                                    Image = product.image.split(",").lastOrNull()?.trim()
                                        .toString(),
                                    ItemCode = product.itemCode,
-                                   CustomerId = selectedCustomer?.Id ?: 0,
+                                   CustomerId = selectedCustomer?.Id?.takeIf { it > 0 } ?: 0,
                                    MRP = product.mrp,
                                    HSNCode = "",
                                    UnlProductId = 0,
@@ -1804,26 +1845,35 @@ fun OrderScreen(
                            Payments = emptyList(),
                            uRDPurchases = emptyList(),
                            Customer = Customer(
-                               FirstName = editOrder?.Customer?.FirstName.orEmpty(),
-                               LastName = editOrder?.Customer?.LastName.orEmpty(),
+                               FirstName = (selectedCustomer?.FirstName
+                                   ?: editOrder?.Customer?.FirstName).orEmpty(),
+                               LastName = (selectedCustomer?.LastName
+                                   ?: editOrder?.Customer?.LastName).orEmpty(),
                                PerAddStreet = "",
                                CurrAddStreet = "",
-                               Mobile = editOrder?.Customer?.Mobile.orEmpty(),
-                               Email = editOrder?.Customer?.Email.orEmpty(),
+                               Mobile = (selectedCustomer?.Mobile
+                                   ?: editOrder?.Customer?.Mobile).orEmpty(),
+                               Email = (selectedCustomer?.Email
+                                   ?: editOrder?.Customer?.Email).orEmpty(),
                                Password = "",
-                               CustomerLoginId = editOrder?.Customer?.Email.orEmpty(),
+                               CustomerLoginId = (selectedCustomer?.Email
+                                   ?: editOrder?.Customer?.Email).orEmpty(),
                                DateOfBirth = "",
                                MiddleName = "",
                                PerAddPincode = "",
                                Gender = "",
                                OnlineStatus = "",
-                               CurrAddTown = editOrder?.Customer?.CurrAddTown.orEmpty(),
+                               CurrAddTown = (selectedCustomer?.CurrAddTown
+                                   ?: editOrder?.Customer?.CurrAddTown).orEmpty(),
                                CurrAddPincode = "",
-                               CurrAddState = editOrder?.Customer?.CurrAddState.orEmpty(),
+                               CurrAddState = (selectedCustomer?.CurrAddState
+                                   ?: editOrder?.Customer?.CurrAddState).orEmpty(),
                                PerAddTown = "",
                                PerAddState = "",
-                               GstNo = editOrder?.Customer?.GstNo.orEmpty(),
-                               PanNo = editOrder?.Customer?.PanNo.orEmpty(),
+                               GstNo = (selectedCustomer?.GstNo
+                                   ?: editOrder?.Customer?.GstNo).orEmpty(),
+                               PanNo = (selectedCustomer?.PanNo
+                                   ?: editOrder?.Customer?.PanNo).orEmpty(),
                                AadharNo = "",
                                BalanceAmount = "0",
                                AdvanceAmount = "0",
@@ -1831,17 +1881,27 @@ fun OrderScreen(
                                CreditPeriod = "",
                                FineGold = "0",
                                FineSilver = "0",
-                               ClientCode = editOrder?.Customer?.ClientCode.orEmpty(),
+                               ClientCode = (selectedCustomer?.ClientCode
+                                   ?: editOrder?.Customer?.ClientCode).orEmpty(),
                                VendorId = 0,
                                AddToVendor = false,
                                CustomerSlabId = 0,
                                CreditPeriodId = 0,
                                RateOfInterestId = 0,
-                               Remark = "",
+                               Remark = OfflineCustomerMatch.mergeRemark(
+                                   selectedCustomer?.Remark ?: editOrder?.Customer?.Remark,
+                                   OfflineCustomerMatch.extractLocalCustId(
+                                       selectedCustomer?.Remark ?: editOrder?.Customer?.Remark
+                                   ),
+                               ),
                                Area = "",
-                               City = editOrder?.Customer?.City.orEmpty(),
-                               Country = editOrder?.Customer?.Country.orEmpty(),
-                               Id = editOrder?.Customer?.Id ?: 0,
+                               City = (selectedCustomer?.City
+                                   ?: editOrder?.Customer?.City).orEmpty(),
+                               Country = (selectedCustomer?.Country
+                                   ?: editOrder?.Customer?.Country).orEmpty(),
+                               Id = selectedCustomer?.Id?.takeIf { it > 0 }
+                                   ?: editOrder?.Customer?.Id
+                                   ?: 0,
                                CreatedOn = "2025-07-08",
                                LastUpdated = "2025-07-08",
                                StatusType = true,
@@ -1895,16 +1955,15 @@ fun OrderScreen(
                            val customerList: List<EmployeeList> =
                                (customerSuggestions as? UiState.Success<List<EmployeeList>>)?.data.orEmpty()
 
-                           if ((customerId ?: 0) == 0) {
-                               Toast.makeText(context, localizedContext.getString(R.string.please_select_customer), Toast.LENGTH_SHORT).show()
-                               return@ScanBottomBar
-                           }
-
-                           val selectedCustomerObj: EmployeeList? =
-                               customerList.firstOrNull { (it.Id ?: 0) == (customerId ?: 0) }
+                           val selectedCustomerObj = resolveOrderCustomer(
+                               selectedCustomer = selectedCustomer,
+                               customerId = customerId,
+                               customerName = customerName,
+                               customerList = customerList,
+                           )
 
                            if (selectedCustomerObj == null) {
-                               Toast.makeText(context, localizedContext.getString(R.string.customer_not_found), Toast.LENGTH_SHORT).show()
+                               Toast.makeText(context, localizedContext.getString(R.string.please_select_customer), Toast.LENGTH_SHORT).show()
                                return@ScanBottomBar
                            }
 
@@ -1913,7 +1972,11 @@ fun OrderScreen(
                                return@ScanBottomBar
                            }
 
-// ✅ 1) Build request ONCE
+                           selectedCustomer = selectedCustomerObj
+                           customerId = selectedCustomerObj.Id?.takeIf { it > 0 }
+                           customerName = customerDisplayName(selectedCustomerObj).ifBlank { customerName }
+
+// ✅ 1) Build request ONCE — use selected object (never Id=0 list re-lookup)
                            val request = buildOrderRequest(
                                orderNo = localOrderNo,
                                employee = employee,
@@ -1935,11 +1998,12 @@ fun OrderScreen(
                                generateTablePdfWithImages1(context, request,localizedContext)
                            }
 
-// ✅ 5) Reset UI (IMPORTANT: return should be at end)
+// ✅ 5) Reset UI completely so next order cannot reuse previous customer
                            customerName = ""
+                           customerId = null
+                           selectedCustomer = null
                            itemCode = TextFieldValue("")
                            productList.clear()
-                         //  orderViewModel.clearOrderItems() // optional, if you want room clear also
 
                            return@ScanBottomBar
 
@@ -1998,14 +2062,20 @@ fun OrderScreen(
             CustomerNameInputData(
                 customerName = customerName,
                 onCustomerNameChange = { customerName = it },
-                onClear = { customerName = "" },
+                onClear = {
+                    customerName = ""
+                    customerId = null
+                    selectedCustomer = null
+                },
                 onAddCustomerClick = { /* open popup handled internally */ },
                 filteredCustomers = filteredCustomers,
                 isLoading = false,
                 onCustomerSelected = {
-                    customerName = "${it.FirstName.orEmpty()} ${it.LastName.orEmpty()}".trim()
-                    customerId = it.Id ?: 0
-                    selectedCustomer=it
+                    customerName = customerDisplayName(it)
+                    customerId = it.Id?.takeIf { id -> id > 0 }
+                    // Always replace selection fully (including Remark/LOCAL_CUST) so the
+                    // previous offline customer tag cannot stick to the next order.
+                    selectedCustomer = it
                 },
                 coroutineScope = coroutineScope,
                 fetchSuggestions = { orderViewModel.getAllEmpList(clientCode = employee?.clientCode.toString()) },
@@ -2441,6 +2511,75 @@ suspend fun generateTablePdfWithImages1(context: Context, order: CustomOrderRequ
     context.startActivity(Intent.createChooser(intent, "Open PDF with..."))
 }
 
+fun customerDisplayName(customer: EmployeeList?): String =
+    "${customer?.FirstName.orEmpty()} ${customer?.LastName.orEmpty()}".trim()
+
+/**
+ * Resolve the customer for an order save.
+ * Never collapse offline Id=0 customers to the first Room row.
+ * If the typed name disagrees with selectedCustomer, prefer the typed/list match
+ * and drop a stale LOCAL_CUST tag from a previous selection.
+ */
+fun resolveOrderCustomer(
+    selectedCustomer: EmployeeList?,
+    customerId: Int?,
+    customerName: String,
+    customerList: List<EmployeeList>,
+): EmployeeList? {
+    val name = customerName.trim()
+    val selectedName = customerDisplayName(selectedCustomer)
+
+    // Typed name disagrees with selection → do not reuse previous customer (e.g. ATAN).
+    if (selectedCustomer != null &&
+        name.isNotEmpty() &&
+        selectedName.isNotEmpty() &&
+        !selectedName.equals(name, ignoreCase = true)
+    ) {
+        customerList.firstOrNull {
+            customerDisplayName(it).equals(name, ignoreCase = true)
+        }?.let { return it }
+
+        // Keep typed name; clear stale LOCAL_CUST so sync cannot map to old customer.
+        val parts = name.split(" ").filter { it.isNotBlank() }
+        return selectedCustomer.copy(
+            FirstName = parts.firstOrNull().orEmpty(),
+            LastName = parts.drop(1).joinToString(" "),
+            Id = 0,
+            Remark = null,
+            custId = 0,
+        )
+    }
+
+    // Prefer explicit UI selection when it matches the shown name (or name is blank).
+    if (selectedCustomer != null) {
+        val hasIdentity = !selectedCustomer.FirstName.isNullOrBlank() ||
+            !selectedCustomer.Mobile.isNullOrBlank() ||
+            (selectedCustomer.Id ?: 0) > 0 ||
+            selectedCustomer.custId > 0 ||
+            !OfflineCustomerMatch.extractLocalCustId(selectedCustomer.Remark).isNullOrBlank()
+        if (hasIdentity) return selectedCustomer
+    }
+
+    // Offline customers: match by Room custId when Id is 0.
+    val localCustId = selectedCustomer?.custId?.takeIf { it > 0 }
+    if (localCustId != null) {
+        customerList.firstOrNull { it.custId == localCustId }?.let { return it }
+    }
+
+    val id = customerId ?: 0
+    if (id > 0) {
+        customerList.firstOrNull { (it.Id ?: 0) == id }?.let { return it }
+    }
+
+    if (name.isNotEmpty()) {
+        customerList.firstOrNull {
+            customerDisplayName(it).equals(name, ignoreCase = true)
+        }?.let { return it }
+    }
+
+    return selectedCustomer
+}
+
 fun buildOrderRequest(
     orderNo: String,
     employee: Employee,
@@ -2521,7 +2660,7 @@ fun buildOrderRequest(
 
     return CustomOrderRequest(
         CustomOrderId = 0,
-        CustomerId = selectedCustomer?.Id.toString(),
+        CustomerId = (selectedCustomer?.Id?.takeIf { it > 0 } ?: 0).toString(),
         ClientCode = clientCode,
         OrderId = 0,
 
@@ -2636,7 +2775,7 @@ fun buildOrderRequest(
                 VendorId = 0,
 
                 CategoryName = item.categoryName.orEmpty(),
-                CustomerName = employee?.firstName.orEmpty(),
+                CustomerName = customerDisplayName(selectedCustomer),
                 VendorName = "",
 
                 ProductId = item.productId ?: 0,
@@ -2679,7 +2818,7 @@ fun buildOrderRequest(
 
                 Image = item.image.orEmpty(),
                 ItemCode = item.itemCode.orEmpty(),
-                CustomerId = (selectedCustomer?.Id ?: 0).toInt(),
+                CustomerId = selectedCustomer?.Id?.takeIf { it > 0 } ?: 0,
 
                 // ✅ REQUIRED
                 MRP = item.mrp ?: "0.0",
@@ -2784,11 +2923,14 @@ fun buildOrderRequest(
             CustomerSlabId = 0,
             CreditPeriodId = 0,
             RateOfInterestId = 0,
-            Remark = "",
+            Remark = OfflineCustomerMatch.mergeRemark(
+                selectedCustomer?.Remark,
+                OfflineCustomerMatch.extractLocalCustId(selectedCustomer?.Remark),
+            ),
             Area = "",
             City = selectedCustomer?.City.orEmpty(),
             Country = selectedCustomer?.Country.orEmpty(),
-            Id = selectedCustomer?.Id ?: 0,
+            Id = selectedCustomer?.Id?.takeIf { it > 0 } ?: 0,
             CreatedOn = "2025-07-08",
             LastUpdated = "2025-07-08",
             StatusType = true

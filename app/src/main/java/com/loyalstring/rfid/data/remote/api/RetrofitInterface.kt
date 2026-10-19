@@ -313,6 +313,11 @@ interface RetrofitInterface {
     @POST("/api/Invoice/GetAllDeliveryChallan")
     suspend fun getAllChallanList(@Body request: DeliveryChallanRequestList): Response<List<DeliveryChallanResponseList>>
 
+    /** Raw body for streaming list rows without allocating nested ChallanDetails graphs. */
+    @Streaming
+    @POST("/api/Invoice/GetAllDeliveryChallan")
+    suspend fun getAllChallanListRaw(@Body request: DeliveryChallanRequestList): Response<ResponseBody>
+
     @POST("/api/Invoice/GetLastChallanNo")
     suspend fun getLastChallanNo(@Body request: ChallanNoRequest): Response<ChallanNoResponse>
 

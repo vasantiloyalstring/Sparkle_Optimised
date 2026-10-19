@@ -31,6 +31,7 @@ import com.loyalstring.rfid.data.model.order.LastOrderNoResponse
 import com.loyalstring.rfid.data.remote.data.DailyRateResponse
 import com.loyalstring.rfid.data.remote.resource.Resource
 import com.loyalstring.rfid.repository.OrderRepository
+import com.loyalstring.rfid.ui.utils.OfflineCustomerMatch
 import com.loyalstring.rfid.worker.PendingEmployeeSyncWorker
 import com.loyalstring.rfid.worker.PendingOrderSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -147,45 +148,48 @@ class OrderViewModel @Inject constructor(
     fun addEmployee(request: AddEmployeeRequest) {
         viewModelScope.launch {
             _addEmpResponse.value = Resource.Loading()
+            // Always push to JewelMarts ClientAdd in parallel (online / best-effort).
+            // Does not affect main LoyalString customer-add success/failure.
+            pushClientAddBestEffort(request)
             try {
                 val gson = Gson()
-                val json = gson.toJson(request)  // Convert to JSON string
+                val json = gson.toJson(request)
                 Log.d("AddEmployeeRequestJSON", json)
                 val response = repository.AAddAllEmployeeDetails(request)
                 if (response.isSuccessful) {
                     val body = response.body()
                     Log.d("orderViewModel", "Response Body: $body")
 
-                    if (response.isSuccessful) {
-                        val body = response.body()
-
-                        if (body?.message != null) {
-                            // ❌ logical error (even though 200)
-                            _addEmpResponse.value =
-                                Resource.Error(body.message)
-                        } else if (body?.Id != null) {
-                            // ✅ real success
-                            _addEmpResponse.value =
-                                Resource.Success(body, "Customer added successfully")
-                        } else {
-                            _addEmpResponse.value =
-                                Resource.Error("Unknown server response")
+                    if (body?.message != null) {
+                        // Logical error from server — still keep offline so order can continue.
+                        saveEmployeeOffline(request, "Customer saved offline (${body.message})")
+                    } else if (body?.Id != null && body.Id > 0) {
+                        // Online success: persist locally and refresh list.
+                        val emp = request.toEmployeeList().copy(Id = body.Id)
+                        withContext(Dispatchers.IO) {
+                            repository.insertEmployeeToRoom(emp)
                         }
-
-                    }  else {
+                        getAllEmpList(request.ClientCode.orEmpty())
+                        _addEmpResponse.value =
+                            Resource.Success(body, "Customer added successfully")
+                        enqueueCustomerThenOrderSync(context1)
+                    } else {
                         saveEmployeeOffline(request)
-                        _addEmpResponse.value = Resource.Error("Invalid response data")
                     }
                 } else {
                     saveEmployeeOffline(request)
-                    Log.d("orderViewModel", "Response Error: ${response.errorBody()?.string()}")
-                    _addEmpResponse.value = Resource.Error("Server error: ${response.message()}")
                 }
             } catch (e: Exception) {
-                saveEmployeeOffline(request)
                 Log.e("orderViewModel", "Exception: ${e.message}")
-                _addEmpResponse.value = Resource.Error("Exception: ${e.message}")
+                saveEmployeeOffline(request)
             }
+        }
+    }
+
+    /** Fire-and-forget JewelMarts ClientAdd — never fails UI / main save. */
+    private fun pushClientAddBestEffort(request: AddEmployeeRequest) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.pushClientAddToJewelMarts(request)
         }
     }
 
@@ -195,7 +199,23 @@ class OrderViewModel @Inject constructor(
     }
 
     fun removeOrderById(orderId: Int) {
+        // CustomOrderId==0 is used by many offline rows — never wipe all of them.
+        if (orderId <= 0) return
         _getAllOrderList.value = _getAllOrderList.value.filterNot { it.CustomOrderId == orderId }
+    }
+
+    /** Remove one order from UI list (server id or local OrderNo). */
+    fun removeOrderFromUi(order: CustomOrderResponse) {
+        _getAllOrderList.value = _getAllOrderList.value.filterNot { sameOrder(it, order) }
+    }
+
+    private fun sameOrder(a: CustomOrderResponse, b: CustomOrderResponse): Boolean {
+        if (a.CustomOrderId > 0 && b.CustomOrderId > 0) {
+            return a.CustomOrderId == b.CustomOrderId
+        }
+        val aNo = a.OrderNo.orEmpty()
+        val bNo = b.OrderNo.orEmpty()
+        return aNo.isNotBlank() && aNo == bNo
     }
 
 
@@ -264,7 +284,11 @@ class OrderViewModel @Inject constructor(
 
                 val response = repository.getAllEmpList(request)
                 if (response.isSuccessful && !response.body().isNullOrEmpty()) {
-                    _empListFlow.value = UiState.Success(response.body()!!)
+                    // Prefer Room (includes preserved offline Id=0 customers).
+                    val merged = repository.getAllEmpListFromRoom(request)
+                    _empListFlow.value = UiState.Success(
+                        merged.ifEmpty { response.body()!! }
+                    )
                 } else if (cached.isEmpty()) {
                     _empListFlow.value = UiState.Success(cached)
                 }
@@ -658,8 +682,23 @@ class OrderViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // Offline-only rows have CustomOrderId=0 — API delete is invalid.
+                if (id <= 0) {
+                    onResult(false)
+                    return@launch
+                }
                 val response = repository.deleteOrder(request, id)
-                onResult(response.isSuccessful)
+                if (response.isSuccessful) {
+                    removeOrderById(id)
+                    withContext(Dispatchers.IO) {
+                        repository.deleteOrderFromCache(request.clientcode.orEmpty(), id)
+                        // Drop any pending UPDATE/DELETE row for this server order.
+                        pendingOrderDao.hardDeleteByLocalId("SRV-$id")
+                    }
+                    onResult(true)
+                } else {
+                    onResult(false)
+                }
             } catch (e: Exception) {
                 onResult(false)
             }
@@ -797,61 +836,148 @@ class OrderViewModel @Inject constructor(
     fun saveOrderOffline(req: CustomOrderRequest, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             val localId = UUID.randomUUID().toString()
+            val gson = Gson()
 
-            // ✅ orderNo ko local bana do (string hi rakhna)
-            val reqWithLocalNo = req.copy(OrderNo = "LOCAL-$localId")
+            val frozenReq = freezeOfflineOrderCustomer(gson, req).copy(OrderNo = "LOCAL-$localId")
+            val json = gson.toJson(frozenReq)
+            val localCustomerKey =
+                OfflineCustomerMatch.extractLocalCustId(frozenReq.Customer.Remark).orEmpty()
+            val first = frozenReq.Customer.FirstName.trim()
+            val last = frozenReq.Customer.LastName.trim()
+            val mobile = frozenReq.Customer.Mobile.trim()
 
-            // ✅ pending table me payload save
-            val json = Gson().toJson(reqWithLocalNo)
+            Log.d(
+                "OrderOfflineSave",
+                "localId=$localId customer=$first key=$localCustomerKey mobile=$mobile"
+            )
 
             pendingOrderDao.upsert(
                 PendingOrderEntity(
                     localId = localId,
-                    clientCode = req.ClientCode.orEmpty(),
-                    customerId = req.CustomerId?.toIntOrNull() ?: 0,
+                    clientCode = frozenReq.ClientCode.orEmpty(),
+                    customerId = frozenReq.CustomerId.toIntOrNull() ?: 0,
                     payloadJson = json,
                     status = "PENDING",
                     createdAt = System.currentTimeMillis(),
                     op = "CREATE",
-                    updatedAt = System.currentTimeMillis()
-
+                    updatedAt = System.currentTimeMillis(),
+                    localCustomerKey = localCustomerKey,
+                    customerFirstName = first,
+                    customerLastName = last,
+                    customerMobile = mobile,
                 )
             )
 
-            val localItem = reqWithLocalNo.toLocalResponse(localId,req.Customer)
+            val localItem = frozenReq.toLocalResponse(localId, frozenReq.Customer)
             launch(Dispatchers.Main) {
                 _getAllOrderList.value = listOf(localItem) + _getAllOrderList.value
             }
 
-            // ✅ network available hote hi sync worker chale
-            enqueuePendingSync(context)
+            enqueueCustomerThenOrderSync(context)
         }
     }
 
-    fun enqueuePendingSync(context: Context) {
-        val request = OneTimeWorkRequestBuilder<PendingOrderSyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
+    /**
+     * Snapshot customer fields onto the pending payload and attach the correct
+     * LOCAL_CUST tag by matching pending offline employees to this order's customer.
+     */
+    private suspend fun freezeOfflineOrderCustomer(
+        gson: Gson,
+        req: CustomOrderRequest,
+    ): CustomOrderRequest {
+        val first = req.Customer.FirstName.trim()
+        val last = req.Customer.LastName.trim()
+        val mobile = req.Customer.Mobile.trim()
+        val display = listOf(first, last).filter { it.isNotEmpty() }.joinToString(" ")
+
+        var localCustId: String? = null
+        val pending = pendingEmployeeDao.getPending()
+            .filter {
+                req.ClientCode.isNullOrBlank() ||
+                    it.clientCode.equals(req.ClientCode, ignoreCase = true)
+            }
+        val remarkKey = OfflineCustomerMatch.extractLocalCustId(req.Customer.Remark)
+        if (!remarkKey.isNullOrBlank() && pending.any { it.localId == remarkKey }) {
+            // Selected offline customer tag is valid — use it (1:1 link).
+            localCustId = remarkKey
+        } else {
+            // Resolve by THIS order's name/mobile against pending employees only.
+            for (row in pending) {
+                val emp = runCatching {
+                    gson.fromJson(row.payloadJson, AddEmployeeRequest::class.java)
+                }.getOrNull() ?: continue
+                val empMobile = emp.Mobile.orEmpty().trim()
+                val empFirst = emp.FirstName.orEmpty().trim()
+                val empLast = emp.LastName.orEmpty().trim()
+                val mobileMatch = mobile.isNotEmpty() && empMobile.isNotEmpty() &&
+                    mobile.equals(empMobile, ignoreCase = true)
+                val nameMatch = first.isNotEmpty() &&
+                    first.equals(empFirst, ignoreCase = true) &&
+                    last.equals(empLast, ignoreCase = true)
+                if (mobileMatch || nameMatch) {
+                    localCustId = row.localId
+                    break
+                }
+            }
+        }
+
+        val customer = req.Customer.copy(
+            FirstName = first,
+            LastName = last,
+            Mobile = mobile,
+            Id = req.Customer.Id.takeIf { it > 0 } ?: 0,
+            Remark = OfflineCustomerMatch.mergeRemark(req.Customer.Remark, localCustId),
+        )
+        return req.copy(
+            CustomerId = (customer.Id.takeIf { it > 0 } ?: 0).toString(),
+            Customer = customer,
+            CustomOrderItem = req.CustomOrderItem.map { item ->
+                item.copy(
+                    CustomerId = customer.Id.takeIf { it > 0 } ?: 0,
+                    CustomerName = display.ifBlank { item.CustomerName },
+                )
+            },
+        )
+    }
+
+    /** Unique chained work: sync offline customers, then offline orders. */
+    fun enqueueCustomerThenOrderSync(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "pending_order_sync",
-            ExistingWorkPolicy.KEEP,
-            request
-        )
+        val employeeWork = OneTimeWorkRequestBuilder<PendingEmployeeSyncWorker>()
+            .setConstraints(constraints)
+            .build()
+        val orderWork = OneTimeWorkRequestBuilder<PendingOrderSyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context)
+            .beginUniqueWork(
+                "pending_customer_order_sync",
+                ExistingWorkPolicy.REPLACE,
+                employeeWork,
+            )
+            .then(orderWork)
+            .enqueue()
+    }
+
+    fun enqueuePendingSync(context: Context) {
+        // Keep API: always run customer→order chain so CustomerId is ready.
+        enqueueCustomerThenOrderSync(context)
     }
 
     @Inject
     lateinit var pendingEmployeeDao: PendingEmployeeDao // constructor me inject karo
 
-    fun saveEmployeeOffline(req: AddEmployeeRequest) {
+    fun saveEmployeeOffline(
+        req: AddEmployeeRequest,
+        successMessage: String = "Customer saved offline. Will sync when online.",
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             val localId = UUID.randomUUID().toString()
 
-            // ✅ 1) pending table me save
             val json = Gson().toJson(req)
             pendingEmployeeDao.upsert(
                 PendingEmployeeEntity(
@@ -862,36 +988,43 @@ class OrderViewModel @Inject constructor(
                 )
             )
 
-            // ✅ 2) employee list me turant dikhane ke liye room employee table me insert
-            // (tumhare pas already mapper hai)
-            val emp = req.toEmployeeList()
+            // Tag remark so we can correlate; keep selectable in UI with Id=0.
+            val emp = req.toEmployeeList().copy(
+                Remark = listOf(req.Remark.orEmpty(), "LOCAL_CUST:$localId")
+                    .filter { it.isNotBlank() }
+                    .joinToString(" | ")
+            )
             repository.insertEmployeeToRoom(emp)
 
-            // ✅ 3) UI state refresh (optional: just call getAllEmpList again)
-            // getAllEmpList(req.ClientCode.orEmpty())
+            val localList = repository.getAllEmpListFromRoom(
+                ClientCodeRequest(req.ClientCode.orEmpty())
+            )
+            val offlineResponse = EmployeeResponse(
+                FirstName = req.FirstName.orEmpty(),
+                LastName = req.LastName.orEmpty(),
+                Mobile = req.Mobile.orEmpty(),
+                Email = req.Email.orEmpty(),
+                ClientCode = req.ClientCode.orEmpty(),
+                City = req.City.orEmpty(),
+                CurrAddState = req.CurrAddState.orEmpty(),
+                Country = req.Country.orEmpty(),
+                GstNo = req.GstNo.orEmpty(),
+                PanNo = req.PanNo.orEmpty(),
+                Id = 0,
+                Remark = OfflineCustomerMatch.localCustTag(localId),
+            )
 
+            withContext(Dispatchers.Main) {
+                _empListFlow.value = UiState.Success(localList)
+                _addEmpResponse.value = Resource.Success(offlineResponse, successMessage)
+            }
 
-
-
-            // ✅ 4) internet aate hi sync
-            enqueuePendingEmployeeSync(context1)
+            enqueueCustomerThenOrderSync(context1)
         }
     }
 
     fun enqueuePendingEmployeeSync(context: Context) {
-        val work = OneTimeWorkRequestBuilder<PendingEmployeeSyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
-            .build()
-
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "pending_employee_sync",
-            ExistingWorkPolicy.KEEP,
-            work
-        )
+        enqueueCustomerThenOrderSync(context)
     }
     private fun CustomOrderRequest.toLocalResponse(
         localId: String,
@@ -1040,6 +1173,10 @@ class OrderViewModel @Inject constructor(
         val pending = pendingOrderDao.getPendingByClientCode(clientCode)
         return pending.mapNotNull { entity ->
             try {
+                // Deleted / pending-delete rows must not reappear in the list on refresh.
+                if (entity.isDeleted || entity.op.equals("DELETE", ignoreCase = true)) {
+                    return@mapNotNull null
+                }
                 val req = Gson().fromJson(entity.payloadJson, CustomOrderRequest::class.java)
 
                 val fallbackCustomer = req.Customer
@@ -1082,10 +1219,11 @@ class OrderViewModel @Inject constructor(
         )
     }
 
-    fun deleteOrderOffline(order: CustomOrderResponse) {
+    fun deleteOrderOffline(order: CustomOrderResponse, onResult: ((Boolean) -> Unit)? = null) {
         viewModelScope.launch(Dispatchers.IO) {
 
             val clientCode = order.ClientCode.orEmpty()
+                .ifBlank { /* keep going with empty — localId still works */ "" }
 
             // ✅ localId decide
             val localId = when {
@@ -1097,35 +1235,61 @@ class OrderViewModel @Inject constructor(
 
                 else -> {
                     // fallback: try remark LOCAL_ID
-                    extractLocalIdFromRemark(order.Remark) ?: return@launch
+                    extractLocalIdFromRemark(order.Remark)
                 }
             }
 
-            // ✅ If row doesn't exist (server order), create delete pending entry
+            if (localId.isNullOrBlank()) {
+                // Still remove from UI so user isn't stuck; cannot queue sync without id.
+                withContext(Dispatchers.Main) {
+                    removeOrderFromUi(order)
+                    onResult?.invoke(false)
+                }
+                return@launch
+            }
+
             val existing = pendingOrderDao.getByLocalId(localId)
-            if (existing == null) {
+            val hasServerId = (existing?.serverOrderId ?: 0) > 0 || order.CustomOrderId > 0
+
+            if (!hasServerId) {
+                // Never synced CREATE — remove locally only (no server delete needed).
+                pendingOrderDao.hardDeleteByLocalId(localId)
+            } else {
+                val serverId = existing?.serverOrderId?.takeIf { it > 0 }
+                    ?: order.CustomOrderId.takeIf { it > 0 }
                 pendingOrderDao.upsert(
                     PendingOrderEntity(
                         localId = localId,
-                        clientCode = clientCode,
-                        customerId = order.CustomerId,
-                        payloadJson = Gson().toJson(order.toRequest()),
+                        clientCode = clientCode.ifBlank { order.ClientCode.orEmpty() },
+                        customerId = existing?.customerId ?: order.CustomerId,
+                        payloadJson = existing?.payloadJson
+                            ?: Gson().toJson(order.toRequest()),
                         status = "PENDING",
-                        createdAt = System.currentTimeMillis(),
+                        createdAt = existing?.createdAt ?: System.currentTimeMillis(),
                         updatedAt = System.currentTimeMillis(),
                         op = "DELETE",
-                        serverOrderId = order.CustomOrderId.takeIf { it > 0 },
-                        serverOrderNo = order.OrderNo
+                        serverOrderId = serverId,
+                        serverOrderNo = existing?.serverOrderNo ?: order.OrderNo,
+                        isDeleted = true,
+                        attempts = existing?.attempts ?: 0,
+                        lastError = null,
+                        localCustomerKey = existing?.localCustomerKey.orEmpty(),
+                        customerFirstName = existing?.customerFirstName.orEmpty(),
+                        customerLastName = existing?.customerLastName.orEmpty(),
+                        customerMobile = existing?.customerMobile.orEmpty(),
                     )
                 )
-            } else {
-                pendingOrderDao.markPendingDelete(localId)
+                if (serverId != null && serverId > 0) {
+                    repository.deleteOrderFromCache(
+                        clientCode.ifBlank { order.ClientCode.orEmpty() },
+                        serverId
+                    )
+                }
             }
 
-            // ✅ UI se turant hata do
-            _getAllOrderList.value = _getAllOrderList.value.filterNot {
-                (order.CustomOrderId > 0 && it.CustomOrderId == order.CustomOrderId) ||
-                        (order.CustomOrderId == 0 && it.OrderNo == order.OrderNo)
+            withContext(Dispatchers.Main) {
+                removeOrderFromUi(order)
+                onResult?.invoke(true)
             }
         }
     }
@@ -1144,6 +1308,8 @@ class OrderViewModel @Inject constructor(
 
 
 }
+
+
 
 
 

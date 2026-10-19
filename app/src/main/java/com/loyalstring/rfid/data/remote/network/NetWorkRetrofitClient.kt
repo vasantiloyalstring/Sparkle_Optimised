@@ -157,7 +157,9 @@ class GzipRequestInterceptor : Interceptor {
 
 
 import android.content.Context
+import com.loyalstring.rfid.data.remote.api.JewelMartsApi
 import com.loyalstring.rfid.data.remote.api.RetrofitInterface
+import com.loyalstring.rfid.di.JewelMartsRetrofit
 import com.loyalstring.rfid.di.NormalRetrofit
 import com.loyalstring.rfid.di.SyncRetrofit
 import com.loyalstring.rfid.ui.utils.UserPreferences
@@ -171,6 +173,7 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import okhttp3.Response
+import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
 import okio.GzipSink
 import okio.buffer
@@ -185,6 +188,7 @@ import javax.inject.Singleton
 object NetWorkRetrofitClient {
 
     private const val DEFAULT_BASE_URL = "https://rrgold.loyalstring.co.in/"
+    private const val JEWELMARTS_BASE_URL = "https://varakrupa.jewelmarts.com/"
 
     @Provides
     fun provideBaseUrl(): String = DEFAULT_BASE_URL
@@ -223,6 +227,38 @@ object NetWorkRetrofitClient {
             .writeTimeout(10, TimeUnit.MINUTES)
             .retryOnConnectionFailure(true)
             .build()
+
+    /* ---------------- JEWELMARTS OKHTTP / RETROFIT ---------------- */
+
+    @Provides
+    @Singleton
+    @JewelMartsRetrofit
+    fun provideJewelMartsOkHttp(): OkHttpClient =
+        OkHttpClient.Builder()
+            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+
+    @Provides
+    @Singleton
+    @JewelMartsRetrofit
+    fun provideJewelMartsRetrofit(
+        @JewelMartsRetrofit okHttpClient: OkHttpClient,
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(JEWELMARTS_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient)
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideJewelMartsApi(
+        @JewelMartsRetrofit retrofit: Retrofit,
+    ): JewelMartsApi = retrofit.create(JewelMartsApi::class.java)
 
     /* ---------------- NORMAL RETROFIT ---------------- */
 

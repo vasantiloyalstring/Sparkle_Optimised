@@ -13,9 +13,14 @@ import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanRequestLis
 import com.loyalstring.rfid.data.model.deliveryChallan.DeliveryChallanResponseList
 import com.loyalstring.rfid.data.model.deliveryChallan.UpdateDeliveryChallanRequest
 import retrofit2.Response
+import okhttp3.ResponseBody
 
 interface DeliveryChallanRepository {
     suspend fun getAllDeliveryChallans(request: DeliveryChallanRequestList): Response<List<DeliveryChallanResponseList>>
+
+    /** Streaming body — parse list rows without nested ChallanDetails allocation. */
+    suspend fun getAllDeliveryChallansRaw(request: DeliveryChallanRequestList): Response<ResponseBody>
+
     suspend fun getLastChallanNo(request: ChallanNoRequest): Response<ChallanNoResponse>
     suspend fun addDeliveryChallan(request: AddDeliveryChallanRequest): Response<AddDeliveryChallanResponse>
     suspend fun updateDeliveryChallan(request: UpdateDeliveryChallanRequest): Response<AddDeliveryChallanResponse>
