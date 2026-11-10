@@ -1944,7 +1944,7 @@ class ScanDisplayViewModel @Inject constructor(
                     }
 
                 _scanSession.value = lastResponse
-                _successMsg.value = "Stock status updated successfully"
+                _successMsg.value = "Stock verification uploaded successfully!"
 
             } catch (e: Exception) {
                 Log.e("SAVE_BUTTON", "Upload failed", e)
@@ -1956,46 +1956,53 @@ class ScanDisplayViewModel @Inject constructor(
     }
 
 
-    fun uploadStockVerificationFile(
+    /**
+     * Uploads stock verification file and returns true on success.
+     * Caller should show the success toast after dismissing the loader
+     * (same pattern as Flutter inventory save).
+     */
+    suspend fun uploadStockVerificationFile(
         clientCode: String,
         jsonFile: File
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
+    ): Boolean = withContext(Dispatchers.IO) {
+        _loading.value = true
+        _error.value = null
+        _successMsg.value = null
 
-            _loading.value = true
-            _error.value = null
-            _successMsg.value = null
+        try {
+            if (clientCode.isBlank()) {
+                _error.value = "ClientCode is missing"
+                return@withContext false
+            }
 
-            try {
-                if (clientCode.isBlank()) {
-                    _error.value = "ClientCode is missing"
-                    return@launch
-                }
+            if (!jsonFile.exists()) {
+                _error.value = "JSON file not found"
+                return@withContext false
+            }
 
-                if (!jsonFile.exists()) {
-                    _error.value = "JSON file not found"
-                    return@launch
-                }
+            Log.d("UPLOAD_FILE", "Uploading file: ${jsonFile.name}, size=${jsonFile.length()}")
 
-                Log.d("UPLOAD_FILE", "Uploading file: ${jsonFile.name}, size=${jsonFile.length()}")
+            val result = repository.uploadStockFile(
+                clientCode = clientCode,
+                file = jsonFile
+            )
 
-                val result = repository.uploadStockFile(
-                    clientCode = clientCode,
-                    file = jsonFile
-                )
-
-                result.onSuccess { response ->
-                    _successMsg.value = response.Message ?: "File uploaded successfully"
-                }.onFailure { e ->
+            result.fold(
+                onSuccess = {
+                    // UI shows localized toast after loader is dismissed
+                    // (Flutter: stockVerificationUploaded).
+                    true
+                },
+                onFailure = { e ->
                     throw e
                 }
-
-            } catch (e: Exception) {
-                Log.e("UPLOAD_FILE", "Upload failed", e)
-                _error.value = e.message ?: "Upload failed"
-            } finally {
-                _loading.value = false
-            }
+            )
+        } catch (e: Exception) {
+            Log.e("UPLOAD_FILE", "Upload failed", e)
+            _error.value = e.message ?: "Upload failed"
+            false
+        } finally {
+            _loading.value = false
         }
     }
 

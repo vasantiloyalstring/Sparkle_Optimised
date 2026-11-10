@@ -739,6 +739,7 @@
     <string name="all_items_matched_scan_stopped">सभी आइटम मेल हो गए। स्कैन रोक दिया गया।</string>
     <string name="load_more_items">और आइटम लोड करें</string>
     <string name="please_wait">कृपया प्रतीक्षा करें...</string>
+    <string name="stock_verification_uploaded">स्टॉक वेरिफिकेशन सफलतापूर्वक अपलोड हो गया!</string>
     <string name="loading_products">प्रोडक्ट लोड हो रहे हैं...</string>
     <string name="design">डिज़ाइन</string>
     <string name="rfid_no">आरएफआईडी नंबर</string>

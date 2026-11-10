@@ -777,6 +777,7 @@
     <string name="all_items_matched_scan_stopped">All items matched. Scan stopped.</string>
     <string name="load_more_items">Load More Items</string>
     <string name="please_wait">Please wait...</string>
+    <string name="stock_verification_uploaded">Stock verification uploaded successfully!</string>
     <string name="loading_products">Loading products...</string>
     <string name="design">Design</string>
     <string name="rfid_no">RFID No</string>

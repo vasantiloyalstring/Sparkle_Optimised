@@ -862,50 +862,66 @@ fun ScanDisplayScreen(onBack: () -> Unit, navController: NavHostController) {
                     onSave = { /* save */
                         _isLoadingCommon.value = true
                         scope.launch(Dispatchers.IO) {
-                            val clientCode = employee?.clientCode       // 🔁 replace
+                            var uploadOk = false
+                            try {
+                                val clientCode = employee?.clientCode       // 🔁 replace
 
-                            val finalItems: List<BulkItem> =
-                                scannedItemsSequence
-                                    .map { scanned ->
+                                val finalItems: List<BulkItem> =
+                                    scannedItemsSequence
+                                        .map { scanned ->
 
-                                        val key = scanned.originalBulkItem.tagKey()
-                                        val isMatched =
-                                            key != null && effectiveMatchedSet.contains(key)
+                                            val key = scanned.originalBulkItem.tagKey()
+                                            val isMatched =
+                                                key != null && effectiveMatchedSet.contains(key)
 
-                                        scanned.originalBulkItem.copy(
-                                            isScanned = isMatched,
-                                            scannedStatus = if (isMatched) "Matched" else "Unmatched"
-                                        )
+                                            scanned.originalBulkItem.copy(
+                                                isScanned = isMatched,
+                                                scannedStatus = if (isMatched) "Matched" else "Unmatched"
+                                            )
+                                        }
+                                        .toList()
+
+
+                                bulkViewModel.saveScanResultLocally(finalItems)
+                                val scannedItems = withContext(Dispatchers.Default) { buildItemsForUpload(scannedItemsSequence.toList()) } // Pass the materialized list here
+
+                                Log.d("SAVE_DEBUG", "scopeItems=${scannedItemsSequence.count()} " +
+                                        "matched=${scannedItemsSequence.count { it.currentScannedStatus == "Matched" }} " +
+                                        "unmatched=${scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" }}")
+
+                                Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
+                                        "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
+                                        "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
+                                //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
+                                //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
+                                //val json = Gson().toJson(scannedItems)
+                                val root = JsonObject()
+
+                                root.addProperty("ClientCode", clientCode)
+                                root.add("Items", Gson().toJsonTree(scannedItems))
+                                val json = root.toString()
+
+                                //Log.d("JSON_BODY", json)
+                                val file = writeToFile(context, json)
+                                Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")
+                                //scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 2000)
+                                uploadOk = scanDisplayViewModel.uploadStockVerificationFile(
+                                    clientCode.toString(),
+                                    file
+                                )
+                            } finally {
+                                // Dismiss loader first, then show result (Flutter _showSaveResult pattern).
+                                withContext(Dispatchers.Main) {
+                                    _isLoadingCommon.value = false
+                                    if (uploadOk) {
+                                        Toast.makeText(
+                                            context,
+                                            localizedContext.getString(R.string.stock_verification_uploaded),
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        scanDisplayViewModel.clearMessages()
                                     }
-                                    .toList()
-
-
-                            bulkViewModel.saveScanResultLocally(finalItems)
-                            val scannedItems = withContext(Dispatchers.Default) { buildItemsForUpload(scannedItemsSequence.toList()) } // Pass the materialized list here
-
-                            Log.d("SAVE_DEBUG", "scopeItems=${scannedItemsSequence.count()} " +
-                                    "matched=${scannedItemsSequence.count { it.currentScannedStatus == "Matched" }} " +
-                                    "unmatched=${scannedItemsSequence.count { it.currentScannedStatus == "Unmatched" }}")
-
-                            Log.d("SAVE_DEBUG", "payload=${scannedItems.size} " +
-                                    "payloadMatched=${scannedItems.count { it.status == "Matched" }} " +
-                                    "payloadUnmatched=${scannedItems.count { it.status == "Unmatched" }}")
-                            //val scannedItems = buildItemsForUpload(scopeItems, matchedEpcs)
-                            //val scannedItems: List<Item> = buildItemsForUpload(scopeItems)// 🔁 replace with your actual list
-                            //val json = Gson().toJson(scannedItems)
-                            val root = JsonObject()
-
-                            root.addProperty("ClientCode", clientCode)
-                            root.add("Items", Gson().toJsonTree(scannedItems))
-                            val json = root.toString()
-
-                            //Log.d("JSON_BODY", json)
-                            val file = writeToFile(context, json)
-                            Log.d("DEBUG_FILE", "Saved at: ${file.absolutePath}")
-                            //scanDisplayViewModel.uploadStockVerification(clientCode.toString(), scannedItems, batchSize = 2000)
-                            scanDisplayViewModel.uploadStockVerificationFile(clientCode.toString(),file)
-                            withContext(Dispatchers.Main) {
-                                _isLoadingCommon.value = false
+                                }
                             }
                         }
                     },

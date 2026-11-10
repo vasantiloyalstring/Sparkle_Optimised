@@ -734,6 +734,7 @@
     <string name="all_items_matched_scan_stopped">تمت مطابقة جميع العناصر. تم إيقاف المسح.</string>
     <string name="load_more_items">تحميل المزيد من العناصر</string>
     <string name="please_wait">يرجى الانتظار...</string>
+    <string name="stock_verification_uploaded">تم رفع التحقق من المخزون بنجاح!</string>
     <string name="loading_products">جارٍ تحميل المنتجات...</string>
     <string name="design">التصميم</string>
     <string name="rfid_no">رقم RFID</string>
